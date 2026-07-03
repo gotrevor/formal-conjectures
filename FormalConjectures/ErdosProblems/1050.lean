@@ -28,11 +28,9 @@ J. Number Theory **37** (1991) 253-259 (cleaner self-contained proof in *On the 
 certain series*, Math. Proc. Camb. Phil. Soc. **112** (1992) 141-146), specialized to $q = 2$,
 $r = -3$.
 
-**Index convention.** The series below sums $\frac{1}{2^{n+2} - 3}$ over $n \ge 0$, i.e. the tail
-$\sum_{n \ge 2} \frac{1}{2^n - 3}$ in which every denominator is a positive integer. The classical
-series $\sum_n \frac{1}{2^n - 3}$ differs only by the finitely many low terms ($n = 0, 1$ give the
-rationals $-\tfrac12, -1$), and irrationality is invariant under adding/removing finitely many
-rationals, so this is a faithful encoding.
+The series is stated below exactly as posed, summing over all $n \ge 0$. The denominator
+$2^n - 3$ is never zero (there is no $n$ with $2^n = 3$), so every term is a genuine real; the
+$n = 0, 1$ terms are the rationals $-\tfrac12$ and $-1$.
 
 A formal Lean proof is given in an external repository,
 [`gotrevor/lean-gallery`](https://github.com/gotrevor/lean-gallery), formalized by Trevor Morris with
@@ -44,8 +42,8 @@ namespace Erdos1050
 /-- **Erdős Problem 1050.** The series `∑ 1/(2ⁿ − 3)` is irrational. -/
 @[category research solved, AMS 11,
   formal_proof using lean4 at
-    "https://github.com/gotrevor/lean-gallery/blob/d1a31b87277c82cc625f859e58c9ffb239ffcab5/LeanGallery/NumberTheory/Erdos1050/Statement.lean#L39"]
-theorem erdos_1050 : Irrational (∑' n : ℕ, (1 : ℝ) / ((2 : ℝ) ^ (n + 2) - 3)) := by
+    "https://github.com/gotrevor/lean-gallery/blob/a3f20b098d6eb0c6e8fc5cae2937838ec1b6df09/LeanGallery/NumberTheory/Erdos1050/Statement.lean#L59"]
+theorem erdos_1050 : Irrational (∑' n : ℕ, (1 : ℝ) / ((2 : ℝ) ^ n - 3)) := by
   sorry
 
 end Erdos1050
