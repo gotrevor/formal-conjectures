@@ -28,10 +28,6 @@ J. Number Theory **37** (1991) 253-259 (cleaner self-contained proof in *On the 
 certain series*, Math. Proc. Camb. Phil. Soc. **112** (1992) 141-146), specialized to $q = 2$,
 $r = -3$.
 
-The series is stated below exactly as posed, summing over all $n \ge 0$. The denominator
-$2^n - 3$ is never zero (there is no $n$ with $2^n = 3$), so every term is a genuine real; the
-$n = 0, 1$ terms are the rationals $-\tfrac12$ and $-1$.
-
 A formal Lean proof is given in an external repository,
 [`gotrevor/lean-gallery`](https://github.com/gotrevor/lean-gallery), formalized by Trevor Morris with
 Claude Code and Harmonic's Aristotle.
