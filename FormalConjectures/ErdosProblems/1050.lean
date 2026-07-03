@@ -34,7 +34,7 @@ $n = 0, 1$ terms are the rationals $-\tfrac12$ and $-1$.
 
 A formal Lean proof is given in an external repository,
 [`gotrevor/lean-gallery`](https://github.com/gotrevor/lean-gallery), formalized by Trevor Morris with
-Claude Code.
+Claude Code and Harmonic's Aristotle.
 -/
 
 namespace Erdos1050
@@ -42,7 +42,7 @@ namespace Erdos1050
 /-- **Erdős Problem 1050.** The series `∑ 1/(2ⁿ − 3)` is irrational. -/
 @[category research solved, AMS 11,
   formal_proof using lean4 at
-    "https://github.com/gotrevor/lean-gallery/blob/a3f20b098d6eb0c6e8fc5cae2937838ec1b6df09/LeanGallery/NumberTheory/Erdos1050/Statement.lean#L59"]
+    "https://github.com/gotrevor/lean-gallery/blob/54df62fffb442cf8d6d9f49c663b9853dfb36977/LeanGallery/NumberTheory/Erdos1050/Statement.lean#L59"]
 theorem erdos_1050 : Irrational (∑' n : ℕ, (1 : ℝ) / ((2 : ℝ) ^ n - 3)) := by
   sorry
 
