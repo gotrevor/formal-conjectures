@@ -38,7 +38,7 @@ namespace Erdos1050
 /-- **Erdős Problem 1050.** The series `∑ 1/(2ⁿ − 3)` is irrational. -/
 @[category research solved, AMS 11,
   formal_proof using lean4 at
-    "https://github.com/gotrevor/lean-gallery/blob/54df62fffb442cf8d6d9f49c663b9853dfb36977/LeanGallery/NumberTheory/Erdos1050/Statement.lean#L59"]
+    "https://github.com/gotrevor/lean-gallery/blob/f4c466986d0fa75a3e5260e2f7825fad301f5fde/LeanGallery/NumberTheory/Erdos1050/Statement.lean#L59"]
 theorem erdos_1050 : Irrational (∑' n : ℕ, (1 : ℝ) / ((2 : ℝ) ^ n - 3)) := by
   sorry
 
