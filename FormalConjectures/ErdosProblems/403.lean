@@ -62,7 +62,7 @@ $2^7$, i.e. any solution has $m \le 7$. -/
 @[category research solved, AMS 11,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/NumberTheory/Erdos403/Statement.lean"]
-theorem erdos_403_sharp {S : Finset ℕ} {m : ℕ} (h : factSum S = 2 ^ m) : m ≤ 7 := by
+theorem erdos_403.variants.sharp {S : Finset ℕ} {m : ℕ} (h : factSum S = 2 ^ m) : m ≤ 7 := by
   sorry
 
 end Erdos403
