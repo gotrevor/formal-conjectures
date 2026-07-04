@@ -53,22 +53,43 @@ within `C` above it (so consecutive members are $\le C$ apart, i.e. $b_{n+1} - b
 def BoundedGapsBy (S : Set ℕ) (C : ℕ) : Prop :=
   ∃ N : ℕ, ∀ x : ℕ, N ≤ x → ∃ y ∈ S, x ≤ y ∧ y ≤ x + C
 
+/-- `S` has **unbounded gaps**: arbitrarily long runs of consecutive integers are missing from `S`
+(so $b_{n+1} - b_n$ is not $O(1)$). -/
+def UnboundedGaps (S : Set ℕ) : Prop :=
+  ∀ G : ℕ, ∃ m : ℕ, ∀ x : ℕ, m ≤ x → x ≤ m + G → x ∉ S
+
 /-- **Erdős Problem 880** (Burr–Erdős): Let $A \subseteq \mathbb{N}$ be an additive basis of order
 $k$, and let $B = \{b_1 < b_2 < \cdots\}$ be the set of integers that are a sum of $k$ or fewer
 distinct elements of $A$. Is it true that $b_{n+1} - b_n = O(1)$ (where the implied constant may
 depend on both $A$ and $k$)?
 
 The answer is **no** in general: Hegyvári, Hennecart, and Plagne [HHP07] showed it holds for
-$k = 2$ (in fact $b_{n+1} - b_n \le 2$ for large $n$) but fails for $k \ge 3$. So the claim below,
-that *every* additive basis has $O(1)$ gaps in its restricted-sum set, is false — refuted by the
-$k \ge 3$ construction. The full dichotomy (the positive $k = 2$ bound and the $k \ge 3$
-counterexamples) is developed in the linked repository. -/
+$k = 2$ but fails for $k \ge 3$ (see the variants below). So the claim that *every* additive basis
+has $O(1)$ gaps in its restricted-sum set is false, refuted by the $k \ge 3$ construction. -/
 @[category research solved, AMS 5,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos880/Statement.lean"]
 theorem erdos_880 : answer(False) ↔
     ∀ (A : Set ℕ) (k : ℕ), IsBasisOfOrder A k →
       ∃ C : ℕ, BoundedGapsBy (restrictedSums A k) C := by
+  sorry
+
+/-- The positive case $k = 2$ [HHP07]: for any additive basis `A` of order `2`, the restricted-sum
+set has gaps eventually bounded by `2` (in fact $b_{n+1} - b_n \le 2$ for large $n$). -/
+@[category research solved, AMS 5,
+  formal_proof using lean4 at
+    "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos880/Statement.lean"]
+theorem erdos_880.variants.k_eq_two (A : Set ℕ) (hbasis : IsBasisOfOrder A 2) :
+    BoundedGapsBy (restrictedSums A 2) 2 := by
+  sorry
+
+/-- The negative case $k \ge 3$ [HHP07]: for every order $h \ge 3$ there is an additive basis `A` of
+order `h` whose restricted-sum set has arbitrarily long gaps, so $b_{n+1} - b_n$ is not $O(1)$. -/
+@[category research solved, AMS 5,
+  formal_proof using lean4 at
+    "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos880/Statement.lean"]
+theorem erdos_880.variants.k_ge_three (h : ℕ) (hh : 3 ≤ h) :
+    ∃ A : Set ℕ, IsBasisOfOrder A h ∧ UnboundedGaps (restrictedSums A h) := by
   sorry
 
 end Erdos880
