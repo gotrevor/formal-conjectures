@@ -1,0 +1,65 @@
+/-
+Copyright 2026 The Formal Conjectures Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-/
+
+import FormalConjectures.Util.ProblemImports
+
+/-!
+# Erdős Problem 1213
+
+*Reference:* [erdosproblems.com/1213](https://www.erdosproblems.com/1213)
+
+Let $a_1 < a_2 < \cdots < a_s$ be a strictly increasing sequence of positive integers with all gaps
+at most $K$ (so $a_{i+1} \le a_i + K$). If all consecutive-block sums $a_u + a_{u+1} + \cdots + a_v$
+($1 \le u \le v \le s$) are distinct, must the sequence be short? Equivalently, is $f(a, K)$ — the
+largest possible last term — finite?
+
+The answer is **yes**: this is Theorem 3 of N. Hegyvári, *On consecutive sums in sequences*,
+Acta Math. Hungar. **48** (1986) 193-200 (DOI 10.1007/BF01949064), which gives the explicit bound
+$$a_s < \left(a_1 + \tfrac{K}{2}\right) e^{K+1} + K e^{2K+2}.$$
+
+A formal Lean proof is given in an external repository,
+[`gotrevor/lean-gallery`](https://github.com/gotrevor/lean-gallery), formalized by Trevor Morris with
+Claude Code and Harmonic's Aristotle.
+-/
+
+namespace Erdos1213
+
+/-- The "consecutive sum" of `a` over the index block `u..v` (1-based, `u ≤ v`): `a u + ⋯ + a v`. -/
+def csum (a : ℕ → ℕ) (u v : ℕ) : ℕ := ∑ i ∈ Finset.Icc u v, a i
+
+/-- All consecutive-block sums of `a` on blocks inside `[1, s]` are pairwise distinct (as a function
+of the block `(u, v)`). -/
+def AllCSumsDistinct (a : ℕ → ℕ) (s : ℕ) : Prop :=
+  ∀ u₁ v₁ u₂ v₂, 1 ≤ u₁ → u₁ ≤ v₁ → v₁ ≤ s → 1 ≤ u₂ → u₂ ≤ v₂ → v₂ ≤ s →
+    csum a u₁ v₁ = csum a u₂ v₂ → u₁ = u₂ ∧ v₁ = v₂
+
+/-- **Erdős Problem 1213 (Hegyvári, Theorem 3).** A strictly increasing positive sequence with gaps
+at most `K` whose consecutive-block sums are all distinct has its last term bounded by
+`(a₁ + K/2)·e^(K+1) + K·e^(2K+2)`. In particular no such sequence can be arbitrarily long, so the
+extremal function `f(a, K)` is finite. -/
+@[category research solved, AMS 5,
+  formal_proof using lean4 at
+    "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos1213/Statement.lean"]
+theorem erdos_1213 (a : ℕ → ℕ) (s K : ℕ) (hK : 1 ≤ K) (hs : 1 ≤ s) (ha1 : 1 ≤ a 1)
+    (hmono : ∀ i, 1 ≤ i → i < s → a i < a (i + 1))
+    (hgap : ∀ i, 1 ≤ i → i < s → a (i + 1) ≤ a i + K)
+    (hdist : AllCSumsDistinct a s) :
+    (a s : ℝ) <
+      ((a 1 : ℝ) + (K : ℝ) / 2) * Real.exp ((K : ℝ) + 1)
+        + (K : ℝ) * Real.exp (2 * (K : ℝ) + 2) := by
+  sorry
+
+end Erdos1213
