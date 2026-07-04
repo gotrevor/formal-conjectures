@@ -38,25 +38,39 @@ def AllCSumsDistinct (a : ℕ → ℕ) (s : ℕ) : Prop :=
 
 /-- **Erdős Problem 1213** (Hegyvári): Let $a, K \ge 1$. Does there exist $f(a, K)$ such that if
 $$a = a_1 < \cdots < a_s$$
-is a sequence of integers with $a_s > f(a, K)$ and with bounded gaps $a_{i+1} - a_i \le K$, then
-there are two distinct intervals $I$ and $J$ with $\sum_{i \in I} a_i = \sum_{j \in J} a_j$?
+is a sequence of integers with $a_s > f(a, K)$ and bounded gaps $a_{i+1} - a_i \le K$, then there are
+two distinct intervals $I$ and $J$ with $\sum_{i \in I} a_i = \sum_{j \in J} a_j$?
 
-The answer is **yes** [He86], with an explicit bound of the shape $f(a, K) \ll a \, e^{O(K)}$.
-Equivalently (contrapositive), any such sequence *all* of whose consecutive-block sums are distinct
-has a bounded last term; we state Hegyvári's explicit bound
-$$a_s < \left(a_1 + \tfrac{K}{2}\right) e^{K+1} + K \, e^{2K+2},$$
-which is stronger than the bare existence of $f$. -/
+The answer is **yes** [He86], with an explicit bound of the shape $f(a, K) \ll a \, e^{O(K)}$ (recorded
+as `variants.explicit_bound` below). Two distinct intervals with equal sums is the negation of
+`AllCSumsDistinct`. -/
 @[category research solved, AMS 5,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos1213/Statement.lean"]
 theorem erdos_1213 : answer(True) ↔
-    ∀ (a : ℕ → ℕ) (s K : ℕ), 1 ≤ K → 1 ≤ s → 1 ≤ a 1 →
-      (∀ i, 1 ≤ i → i < s → a i < a (i + 1)) →
-      (∀ i, 1 ≤ i → i < s → a (i + 1) ≤ a i + K) →
-      AllCSumsDistinct a s →
-        (a s : ℝ) <
-          ((a 1 : ℝ) + (K : ℝ) / 2) * Real.exp ((K : ℝ) + 1)
-            + (K : ℝ) * Real.exp (2 * (K : ℝ) + 2) := by
+    ∀ (a₁ K : ℕ), 1 ≤ a₁ → 1 ≤ K →
+      ∃ f : ℝ, ∀ (a : ℕ → ℕ) (s : ℕ), a 1 = a₁ → 1 ≤ s →
+        (∀ i, 1 ≤ i → i < s → a i < a (i + 1)) →
+        (∀ i, 1 ≤ i → i < s → a (i + 1) ≤ a i + K) →
+        f < (a s : ℝ) →
+          ¬ AllCSumsDistinct a s := by
+  sorry
+
+/-- Hegyvári's explicit bound [He86]: any strictly increasing positive sequence with gaps at most `K`
+whose consecutive-block sums are all distinct has last term bounded by
+$$a_s < \left(a_1 + \tfrac{K}{2}\right) e^{K+1} + K \, e^{2K+2}.$$
+This gives an admissible witness $f$ for the existence question above. -/
+@[category research solved, AMS 5,
+  formal_proof using lean4 at
+    "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos1213/Statement.lean"]
+theorem erdos_1213.variants.explicit_bound (a : ℕ → ℕ) (s K : ℕ) (hK : 1 ≤ K) (hs : 1 ≤ s)
+    (ha1 : 1 ≤ a 1)
+    (hmono : ∀ i, 1 ≤ i → i < s → a i < a (i + 1))
+    (hgap : ∀ i, 1 ≤ i → i < s → a (i + 1) ≤ a i + K)
+    (hdist : AllCSumsDistinct a s) :
+    (a s : ℝ) <
+      ((a 1 : ℝ) + (K : ℝ) / 2) * Real.exp ((K : ℝ) + 1)
+        + (K : ℝ) * Real.exp (2 * (K : ℝ) + 2) := by
   sorry
 
 end Erdos1213
