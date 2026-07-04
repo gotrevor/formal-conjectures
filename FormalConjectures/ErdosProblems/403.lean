@@ -19,46 +19,46 @@ import FormalConjectures.Util.ProblemImports
 /-!
 # Erdős Problem 403
 
-*Reference:* [erdosproblems.com/403](https://www.erdosproblems.com/403)
-
-Is it true that there are only finitely many solutions to
-$$2^m = a_1! + a_2! + \cdots + a_k!$$
-with $a_1 < a_2 < \cdots < a_k$, and that the largest is $2^7 = 2! + 3! + 5!$?
-
-This was proved independently by Frankl and by Lin (1976), in both cases unpublished (Lin's was a
-Bell Laboratories internal memorandum, *On Two Problems of Erdős Concerning Sums of Distinct
-Factorials*).
-
-A formal Lean proof of both statements below is given in an external repository,
-[`gotrevor/lean-gallery`](https://github.com/gotrevor/lean-gallery), formalized by Trevor Morris with
-Claude Code.
+*References:*
+- [erdosproblems.com/403](https://www.erdosproblems.com/403)
+- [ErGr80] Erdős, P. and Graham, R. L., _Old and new problems and results in combinatorial number
+  theory_. (1980), p. 79.
+- [Li76] Lin, S., _On two problems of Erdős concerning sums of distinct factorials_. Bell
+  Laboratories internal memorandum (1976).
 -/
 
 open scoped Nat
 
 namespace Erdos403
 
-/-- The sum of the distinct factorials indexed by a finite set `S ⊆ ℕ`, namely `∑_{a ∈ S} a!`.
-A "sum of distinct factorials" is exactly `factSum S` for some `S : Finset ℕ` (distinctness of the
-summands is automatic, the indices being a set). Note `0! = 1! = 1`. -/
+/-- The sum of the distinct factorials indexed by a finite set $S \subseteq \mathbb{N}$, namely
+$\sum_{a \in S} a!$. A "sum of distinct factorials" is exactly `factSum S` for some `S : Finset ℕ`
+(distinctness of the summands is automatic, the indices being a set). Note $0! = 1! = 1$. -/
 def factSum (S : Finset ℕ) : ℕ := ∑ a ∈ S, a !
 
-/-- The extremal solution: `2! + 3! + 5! = 2 + 6 + 120 = 128 = 2^7`. -/
+/-- The extremal solution: $2! + 3! + 5! = 2 + 6 + 120 = 128 = 2^7$. -/
 @[category test, AMS 11]
 theorem factSum_two_three_five : factSum {2, 3, 5} = 2 ^ 7 := by
   rw [factSum, Finset.sum_insert (by decide), Finset.sum_insert (by decide),
     Finset.sum_singleton]
   decide
 
-/-- **Erdős Problem 403.** There are only finitely many sums of distinct factorials that are
-powers of two. -/
+/-- **Erdős Problem 403** (Burr–Erdős): Does the equation
+$$2^m = a_1! + \cdots + a_k!$$
+with $a_1 < a_2 < \cdots < a_k$ have only finitely many solutions?
+
+The answer is **yes**, proved independently by Frankl and by Lin [Li76]; the largest solution is
+$2^7 = 2! + 3! + 5!$. A sum of distinct factorials is `factSum S` for `S : Finset ℕ`, so the
+solutions are the sets `S` with `factSum S` a power of two, and the claim is that there are finitely
+many such `S`. -/
 @[category research solved, AMS 11,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/NumberTheory/Erdos403/Statement.lean"]
-theorem erdos_403 : {S : Finset ℕ | ∃ m, factSum S = 2 ^ m}.Finite := by
+theorem erdos_403 : answer(True) ↔ {S : Finset ℕ | ∃ m, factSum S = 2 ^ m}.Finite := by
   sorry
 
-/-- The sharp form: the largest power of two that is a sum of distinct factorials is `2^7`. -/
+/-- The sharp form of the answer: the largest power of two that is a sum of distinct factorials is
+$2^7$, i.e. any solution has $m \le 7$. -/
 @[category research solved, AMS 11,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/NumberTheory/Erdos403/Statement.lean"]
