@@ -19,47 +19,44 @@ import FormalConjectures.Util.ProblemImports
 /-!
 # Erdős Problem 1213
 
-*Reference:* [erdosproblems.com/1213](https://www.erdosproblems.com/1213)
-
-Let $a_1 < a_2 < \cdots < a_s$ be a strictly increasing sequence of positive integers with all gaps
-at most $K$ (so $a_{i+1} \le a_i + K$). If all consecutive-block sums $a_u + a_{u+1} + \cdots + a_v$
-($1 \le u \le v \le s$) are distinct, must the sequence be short? Equivalently, is $f(a, K)$ — the
-largest possible last term — finite?
-
-The answer is **yes**: this is Theorem 3 of N. Hegyvári, *On consecutive sums in sequences*,
-Acta Math. Hungar. **48** (1986) 193-200 (DOI 10.1007/BF01949064), which gives the explicit bound
-$$a_s < \left(a_1 + \tfrac{K}{2}\right) e^{K+1} + K e^{2K+2}.$$
-
-A formal Lean proof is given in an external repository,
-[`gotrevor/lean-gallery`](https://github.com/gotrevor/lean-gallery), formalized by Trevor Morris with
-Claude Code and Harmonic's Aristotle.
+*References:*
+- [erdosproblems.com/1213](https://www.erdosproblems.com/1213)
+- [He86] Hegyvári, N., _On consecutive sums in sequences_. Acta Math. Hungar. 48 (1986), 193-200.
 -/
 
 namespace Erdos1213
 
-/-- The "consecutive sum" of `a` over the index block `u..v` (1-based, `u ≤ v`): `a u + ⋯ + a v`. -/
+/-- The "consecutive sum" of `a` over the index block $[u, v]$ (1-based, $u \le v$):
+$a_u + \cdots + a_v$. -/
 def csum (a : ℕ → ℕ) (u v : ℕ) : ℕ := ∑ i ∈ Finset.Icc u v, a i
 
-/-- All consecutive-block sums of `a` on blocks inside `[1, s]` are pairwise distinct (as a function
-of the block `(u, v)`). -/
+/-- All consecutive-block sums of `a` on blocks inside $[1, s]$ are pairwise distinct (as a function
+of the block $(u, v)$); equivalently, no two distinct intervals have equal sums. -/
 def AllCSumsDistinct (a : ℕ → ℕ) (s : ℕ) : Prop :=
   ∀ u₁ v₁ u₂ v₂, 1 ≤ u₁ → u₁ ≤ v₁ → v₁ ≤ s → 1 ≤ u₂ → u₂ ≤ v₂ → v₂ ≤ s →
     csum a u₁ v₁ = csum a u₂ v₂ → u₁ = u₂ ∧ v₁ = v₂
 
-/-- **Erdős Problem 1213 (Hegyvári, Theorem 3).** A strictly increasing positive sequence with gaps
-at most `K` whose consecutive-block sums are all distinct has its last term bounded by
-`(a₁ + K/2)·e^(K+1) + K·e^(2K+2)`. In particular no such sequence can be arbitrarily long, so the
-extremal function `f(a, K)` is finite. -/
+/-- **Erdős Problem 1213** (Hegyvári): Let $a, K \ge 1$. Does there exist $f(a, K)$ such that if
+$$a = a_1 < \cdots < a_s$$
+is a sequence of integers with $a_s > f(a, K)$ and with bounded gaps $a_{i+1} - a_i \le K$, then
+there are two distinct intervals $I$ and $J$ with $\sum_{i \in I} a_i = \sum_{j \in J} a_j$?
+
+The answer is **yes** [He86], with an explicit bound of the shape $f(a, K) \ll a \, e^{O(K)}$.
+Equivalently (contrapositive), any such sequence *all* of whose consecutive-block sums are distinct
+has a bounded last term; we state Hegyvári's explicit bound
+$$a_s < \left(a_1 + \tfrac{K}{2}\right) e^{K+1} + K \, e^{2K+2},$$
+which is stronger than the bare existence of $f$. -/
 @[category research solved, AMS 5,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos1213/Statement.lean"]
-theorem erdos_1213 (a : ℕ → ℕ) (s K : ℕ) (hK : 1 ≤ K) (hs : 1 ≤ s) (ha1 : 1 ≤ a 1)
-    (hmono : ∀ i, 1 ≤ i → i < s → a i < a (i + 1))
-    (hgap : ∀ i, 1 ≤ i → i < s → a (i + 1) ≤ a i + K)
-    (hdist : AllCSumsDistinct a s) :
-    (a s : ℝ) <
-      ((a 1 : ℝ) + (K : ℝ) / 2) * Real.exp ((K : ℝ) + 1)
-        + (K : ℝ) * Real.exp (2 * (K : ℝ) + 2) := by
+theorem erdos_1213 : answer(True) ↔
+    ∀ (a : ℕ → ℕ) (s K : ℕ), 1 ≤ K → 1 ≤ s → 1 ≤ a 1 →
+      (∀ i, 1 ≤ i → i < s → a i < a (i + 1)) →
+      (∀ i, 1 ≤ i → i < s → a (i + 1) ≤ a i + K) →
+      AllCSumsDistinct a s →
+        (a s : ℝ) <
+          ((a 1 : ℝ) + (K : ℝ) / 2) * Real.exp ((K : ℝ) + 1)
+            + (K : ℝ) * Real.exp (2 * (K : ℝ) + 2) := by
   sorry
 
 end Erdos1213
