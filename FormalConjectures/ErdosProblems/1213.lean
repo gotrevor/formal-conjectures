@@ -26,15 +26,25 @@ import FormalConjectures.Util.ProblemImports
 
 namespace Erdos1213
 
-/-- The "consecutive sum" of `a` over the index block $[u, v]$ (1-based, $u \le v$):
+/-- The consecutive sum of $a$ over the index block $[u, v]$ (1-based, $u \le v$):
 $a_u + \cdots + a_v$. -/
 def csum (a : ℕ → ℕ) (u v : ℕ) : ℕ := ∑ i ∈ Finset.Icc u v, a i
 
-/-- All consecutive-block sums of `a` on blocks inside $[1, s]$ are pairwise distinct (as a function
+/-- All consecutive-block sums of $a$ on blocks inside $[1, s]$ are pairwise distinct (as a function
 of the block $(u, v)$); equivalently, no two distinct intervals have equal sums. -/
 def AllCSumsDistinct (a : ℕ → ℕ) (s : ℕ) : Prop :=
   ∀ u₁ v₁ u₂ v₂, 1 ≤ u₁ → u₁ ≤ v₁ → v₁ ≤ s → 1 ≤ u₂ → u₂ ≤ v₂ → v₂ ≤ s →
     csum a u₁ v₁ = csum a u₂ v₂ → u₁ = u₂ ∧ v₁ = v₂
+
+/-- $F(a_1, K)$ is an admissible threshold for Problem 1213: every sufficiently long increasing
+sequence starting at $a_1$, with gaps at most $K$, has two equal consecutive-block sums. -/
+def IsAdmissibleBound (F : ℕ → ℕ → ℝ) : Prop :=
+  ∀ (a₁ K : ℕ), 1 ≤ a₁ → 1 ≤ K →
+    ∀ (a : ℕ → ℕ) (s : ℕ), a 1 = a₁ → 1 ≤ s →
+      (∀ i, 1 ≤ i → i < s → a i < a (i + 1)) →
+      (∀ i, 1 ≤ i → i < s → a (i + 1) ≤ a i + K) →
+      F a₁ K < (a s : ℝ) →
+        ¬ AllCSumsDistinct a s
 
 /-- **Erdős Problem 1213** (Hegyvári): Let $a, K \ge 1$. Does there exist $f(a, K)$ such that if
 $$a = a_1 < \cdots < a_s$$
@@ -56,7 +66,7 @@ theorem erdos_1213 : answer(True) ↔
           ¬ AllCSumsDistinct a s := by
   sorry
 
-/-- Hegyvári's explicit bound [He86]: any strictly increasing positive sequence with gaps at most `K`
+/-- Hegyvári's explicit bound [He86]: any strictly increasing positive sequence with gaps at most $K$
 whose consecutive-block sums are all distinct has last term bounded by
 $$a_s < \left(a_1 + \tfrac{K}{2}\right) e^{K+1} + K \, e^{2K+2}.$$
 This gives an admissible witness $f$ for the existence question above. -/
@@ -71,6 +81,17 @@ theorem erdos_1213.variants.explicit_bound (a : ℕ → ℕ) (s K : ℕ) (hK : 1
     (a s : ℝ) <
       ((a 1 : ℝ) + (K : ℝ) / 2) * Real.exp ((K : ℝ) + 1)
         + (K : ℝ) * Real.exp (2 * (K : ℝ) + 2) := by
+  sorry
+
+/-- Hegyvári's below-box conjectural refinement: the exponential dependence on $K$ in the proved
+bound should not be best possible. One precise formalization is the existence of an admissible
+threshold $F(a, K)$ with subexponential dependence on $K$, uniformly up to the linear factor in $a$. -/
+@[category research open, AMS 5]
+theorem erdos_1213.variants.subexponential_k_dependence : answer(sorry) ↔
+    ∃ F : ℕ → ℕ → ℝ, IsAdmissibleBound F ∧
+      ∀ c : ℝ, 0 < c →
+        ∀ᶠ K : ℕ in Filter.atTop, ∀ a₁ : ℕ, 1 ≤ a₁ →
+          F a₁ K ≤ (a₁ : ℝ) * Real.exp (c * (K : ℝ)) := by
   sorry
 
 end Erdos1213
