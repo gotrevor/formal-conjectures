@@ -29,31 +29,32 @@ import FormalConjectures.Util.ProblemImports
 
 namespace Erdos880
 
-/-- Integers that are a sum of **exactly `h` pairwise distinct** elements of `A` (the restricted
-`h`-fold sumset, written $h \times A$ in the paper). -/
+/-- Integers that are a sum of **exactly $h$ pairwise distinct** elements of $A$ (the restricted
+$h$-fold sumset, written $h \times A$ in the paper). -/
 def restrictedSumset (A : Set ℕ) (h : ℕ) : Set ℕ :=
   {n | ∃ T : Finset ℕ, (↑T ⊆ A) ∧ T.card = h ∧ ∑ a ∈ T, a = n}
 
-/-- Integers that are a sum of **at most `k` (not necessarily distinct)** elements of `A` — the
+/-- Integers that are a sum of **at most $k$ (not necessarily distinct)** elements of $A$ — the
 ordinary "$\le k$-fold" sumset, used for the basis condition. -/
 def sumsetLE (A : Set ℕ) (k : ℕ) : Set ℕ :=
   {n | ∃ (m : ℕ) (f : Fin m → ℕ), m ≤ k ∧ (∀ i, f i ∈ A) ∧ ∑ i, f i = n}
 
-/-- The set $B$ of Problem 880: integers that are a sum of `k` or fewer pairwise distinct elements
-of `A`. -/
+/-- The set $B$ of Problem 880: integers that are a sum of $k$ or fewer pairwise distinct elements
+of $A$. -/
 def restrictedSums (A : Set ℕ) (k : ℕ) : Set ℕ :=
   ⋃ h ∈ Finset.Icc 1 k, restrictedSumset A h
 
-/-- `A` is an additive basis of order `k`: all but finitely many naturals lie in `sumsetLE A k`. -/
+/-- $A$ is an additive basis of order $k$: all but finitely many naturals lie in the ordinary
+$\le k$-fold sumset. -/
 def IsBasisOfOrder (A : Set ℕ) (k : ℕ) : Prop :=
   {n : ℕ | n ∉ sumsetLE A k}.Finite
 
-/-- `S` has **gaps eventually bounded by `C`**: beyond some `N`, every integer has a member of `S`
-within `C` above it (so consecutive members are $\le C$ apart, i.e. $b_{n+1} - b_n = O(1)$). -/
+/-- $S$ has **gaps eventually bounded by $C$**: beyond some $N$, every integer has a member of $S$
+within $C$ above it (so consecutive members are $\le C$ apart, i.e. $b_{n+1} - b_n = O(1)$). -/
 def BoundedGapsBy (S : Set ℕ) (C : ℕ) : Prop :=
   ∃ N : ℕ, ∀ x : ℕ, N ≤ x → ∃ y ∈ S, x ≤ y ∧ y ≤ x + C
 
-/-- `S` has **unbounded gaps**: arbitrarily long runs of consecutive integers are missing from `S`
+/-- $S$ has **unbounded gaps**: arbitrarily long runs of consecutive integers are missing from $S$
 (so $b_{n+1} - b_n$ is not $O(1)$). -/
 def UnboundedGaps (S : Set ℕ) : Prop :=
   ∀ G : ℕ, ∃ m : ℕ, ∀ x : ℕ, m ≤ x → x ≤ m + G → x ∉ S
@@ -74,8 +75,8 @@ theorem erdos_880 : answer(False) ↔
       ∃ C : ℕ, BoundedGapsBy (restrictedSums A k) C := by
   sorry
 
-/-- The positive case $k = 2$ [HHP07]: for any additive basis `A` of order `2`, the restricted-sum
-set has gaps eventually bounded by `2` (in fact $b_{n+1} - b_n \le 2$ for large $n$). -/
+/-- The positive case $k = 2$ [HHP07]: for any additive basis $A$ of order $2$, the restricted-sum
+set has gaps eventually bounded by $2$ (in fact $b_{n+1} - b_n \le 2$ for large $n$). -/
 @[category research solved, AMS 5,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos880/Statement.lean"]
@@ -83,8 +84,19 @@ theorem erdos_880.variants.k_eq_two (A : Set ℕ) (hbasis : IsBasisOfOrder A 2) 
     BoundedGapsBy (restrictedSums A 2) 2 := by
   sorry
 
-/-- The negative case $k \ge 3$ [HHP07]: for every order $h \ge 3$ there is an additive basis `A` of
-order `h` whose restricted-sum set has arbitrarily long gaps, so $b_{n+1} - b_n$ is not $O(1)$. -/
+/-- The parity argument behind the $k = 2$ case: if $A$ is an additive basis of order $2$, then every
+sufficiently large odd integer is a sum of at most two distinct elements of $A$, hence lies in the
+restricted-sum set. -/
+@[category research solved, AMS 5,
+  formal_proof using lean4 at
+    "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos880/Basic.lean"]
+theorem erdos_880.variants.order_two_odd_mem_restricted (A : Set ℕ)
+    (hbasis : IsBasisOfOrder A 2) :
+    ∃ N : ℕ, ∀ n : ℕ, N ≤ n → Odd n → n ∈ restrictedSums A 2 := by
+  sorry
+
+/-- The negative case $k \ge 3$ [HHP07]: for every order $h \ge 3$ there is an additive basis $A$ of
+order $h$ whose restricted-sum set has arbitrarily long gaps, so $b_{n+1} - b_n$ is not $O(1)$. -/
 @[category research solved, AMS 5,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/Combinatorics/Erdos880/Statement.lean"]
