@@ -33,16 +33,24 @@ import FormalConjectures.Util.ProblemImports
 
 namespace Erdos482
 
-/-- The Graham–Pollak sequence, indexed from `0`: `u 0 = 1` and
+/-- The Graham–Pollak sequence, indexed from $0$: $u_0 = 1$ and
 $u_{n+1} = \lfloor \sqrt{2}\,(u_n + 1/2) \rfloor$. This is the sequence $a$ of the problem shifted by
-one, `u n` $= a_{n+1}$. -/
+one, so $u_n = a_{n+1}$. -/
 noncomputable def u : ℕ → ℕ
   | 0     => 1
   | n + 1 => ⌊Real.sqrt 2 * ((u n : ℝ) + 1 / 2)⌋₊
 
-/-- The `n`-th (fractional) binary digit of `t` via the floor formula:
+/-- The $n$-th fractional binary digit of $t$ via the floor formula:
 $\lfloor t\,2^n \rfloor - 2 \lfloor t\,2^{n-1} \rfloor \in \{0, 1\}$. -/
 noncomputable def binDigit (t : ℝ) (n : ℕ) : ℤ := ⌊t * 2 ^ n⌋ - 2 * ⌊t * 2 ^ (n - 1)⌋
+
+/-- Stoll's general Graham–Pollak-type recurrence in base $g$, with real parameters $a$, $b$, and
+$\varepsilon$. Its even-index differences are used to read base-$g$ digits. -/
+noncomputable def generalRecurrence (g : ℕ) (a b ε : ℝ) : ℕ → ℤ
+  | 0     => 1
+  | n + 1 =>
+      if Even n then ⌊a * ((generalRecurrence g a b ε n : ℝ) + ε)⌋
+      else ⌊b * ((generalRecurrence g a b ε n : ℝ) + 1 / ((g : ℝ) - 1))⌋
 
 /-- **Erdős Problem 482** (Graham–Pollak): Define a sequence by $a_1 = 1$ and
 $$a_{n+1} = \lfloor \sqrt{2}\,(a_n + 1/2) \rfloor$$
@@ -52,15 +60,34 @@ numbers.)
 
 The answer is **yes** [GrPo70]; wide-ranging generalisations are due to Stoll [St05], [St06].
 
-Encoded with the `0`-indexed sequence `u` above (`u n` $= a_{n+1}$), the claim reads
-`u (2*n+1) - 2 * u (2*n-1) = binDigit (√2) n`, where `binDigit` extracts the `n`-th fractional
-base-2 digit of $\sqrt{2}$. -/
+Encoded with the $0$-indexed sequence $u$ above, the claim reads
+$$u_{2n+1} - 2u_{2n-1} = \operatorname{binDigit}(\sqrt{2}, n),$$
+where `binDigit` extracts the $n$-th fractional base-$2$ digit of $\sqrt{2}$. -/
 @[category research solved, AMS 11,
   formal_proof using lean4 at
     "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/NumberTheory/Erdos482/Statement.lean"]
 theorem erdos_482 : answer(True) ↔
     ∀ n : ℕ, 1 ≤ n →
       (u (2 * n + 1) : ℤ) - 2 * (u (2 * n - 1) : ℤ) = binDigit (Real.sqrt 2) n := by
+  sorry
+
+/-- Stoll's general answer to the additional Erdős--Graham question [St05]: for every real $w > 0$
+and every base $g \ge 2$, there are parameters $a$, $b$, and $\varepsilon$, with $ab = g$, such that
+the corresponding Graham–Pollak-type recurrence reads the base-$g$ digits of $w$.
+
+The mantissa normalization is $w / g^{\lfloor \log_g w \rfloor}$, so the right-hand side is the
+standard mathlib base-$g$ digit of the normalized expansion. -/
+@[category research solved, AMS 11,
+  formal_proof using lean4 at
+    "https://github.com/gotrevor/lean-gallery/blob/main/LeanGallery/NumberTheory/Erdos482/Statement.lean"]
+theorem erdos_482.variants.stoll_general : answer(True) ↔
+    ∀ (g : ℕ) [NeZero g], 2 ≤ g → ∀ w : ℝ, 0 < w →
+      ∃ a b ε : ℝ, a * b = (g : ℝ) ∧
+        ∀ n : ℕ, 1 ≤ n →
+          generalRecurrence g a b ε (2 * n) -
+              (g : ℤ) * generalRecurrence g a b ε (2 * n - 2) =
+            ((Real.digits
+              (w / (g : ℝ) ^ (⌊Real.logb g w⌋) * (g : ℝ) ^ (n - 1) / g) g 0 : ℕ) : ℤ) := by
   sorry
 
 end Erdos482
