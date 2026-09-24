@@ -880,4 +880,80 @@ theorem abs_sum_weight_sub_le (w' : ℕ → ℝ) (N : ℕ) (c : ℝ)
 
 end Abel
 
+@[category API, AMS 11]
+theorem abs_logMean_le (hf : IsPMOneMultiplicative f) (M : ℕ) :
+    |logMean f M| ≤ 1 + Real.log M := by
+  have h := abs_logMean_sub_le f hf (Nat.zero_le M)
+  have h0 : logMean f 0 = 0 := by simp [logMean]
+  have h0' : harmonicSum 0 = 0 := by simp [harmonicSum]
+  rw [h0, h0', sub_zero, sub_zero] at h
+  exact h.trans (sum_one_div_le M)
+
+open scoped Classical in
+/-- The prime weights `log p / p`, extended by zero to all of `ℕ`. -/
+noncomputable def primeWeight (k : ℕ) : ℝ := if k.Prime then Real.log k / k else 0
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem sum_primeWeight_mul (g : ℕ → ℝ) (n : ℕ) :
+    ∑ k ∈ Icc 1 n, primeWeight k * g k
+      = ∑ p ∈ (Icc 1 n).filter Nat.Prime, Real.log p / p * g p := by
+  rw [Finset.sum_filter]
+  exact Finset.sum_congr rfl fun k _ ↦ by simp only [primeWeight]; split_ifs <;> ring
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem abs_sum_primeWeight_sub_harmonicSum_le (n : ℕ) :
+    |(∑ k ∈ Icc 1 n, primeWeight k) - harmonicSum n| ≤ Real.log 4 + 9 := by
+  rcases Nat.eq_zero_or_pos n with rfl | hn
+  · have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    simp only [harmonicSum]
+    norm_num
+    linarith
+  have hprime : ∑ k ∈ Icc 1 n, primeWeight k
+      = ∑ p ∈ (Icc 1 n).filter Nat.Prime, Real.log p / p := by
+    have := sum_primeWeight_mul (fun _ ↦ (1 : ℝ)) n
+    simpa using this
+  have h1 := Mertens.abs_sum_log_prime_div_sub_log_le (N := n) hn
+  have h2 : Real.log n ≤ harmonicSum n := log_le_harmonicSum n
+  have h3 : harmonicSum n ≤ 1 + Real.log n := sum_one_div_le n
+  rw [hprime, abs_le] at *
+  constructor <;> linarith [h1.1, h1.2]
+
+/--
+Replacing the prime weights `log p / p` by the harmonic weights `1/k` in
+`∑ L(⌊N/k⌋)` costs `O(log N)`: by Mertens both weight systems have partial sums
+`log n + O(1)`, and `k ↦ L(⌊N/k⌋)` has total variation at most `1 + log N`.
+-/
+@[category API, AMS 11]
+theorem abs_sum_prime_sub_sum_one_div_logMean_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |(∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * logMean f (N / p))
+      - ∑ k ∈ Icc 1 N, (1 : ℝ) / k * logMean f (N / k)|
+      ≤ 2 * (Real.log 4 + 9) * (1 + Real.log N) := by
+  classical
+  set c := Real.log 4 + 9 with hc
+  set g : ℕ → ℝ := fun k ↦ logMean f (N / k) with hg
+  have hcnn : 0 ≤ c := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    simp only [hc]; linarith
+  have hkey := abs_sum_weight_sub_le primeWeight g (fun k ↦ (1 : ℝ) / k) N c
+    (fun n _ ↦ abs_sum_primeWeight_sub_harmonicSum_le n)
+  rw [sum_primeWeight_mul] at hkey
+  have hvar : ∑ k ∈ Ico 1 N, |g (k + 1) - g k| ≤ 1 + Real.log N := by
+    have h := sum_abs_logMean_div_sub_le f hf N
+    calc ∑ k ∈ Ico 1 N, |g (k + 1) - g k|
+        = ∑ k ∈ Ico 1 N, |logMean f (N / k) - logMean f (N / (k + 1))| :=
+          Finset.sum_congr rfl fun k _ ↦ abs_sub_comm _ _
+    _ ≤ 1 + Real.log N := h
+  have hgN : |g N| ≤ 1 + Real.log N := (abs_logMean_le f hf (N / N)).trans (by
+    have := log_natCast_div_le N N
+    linarith)
+  calc |(∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * logMean f (N / p))
+      - ∑ k ∈ Icc 1 N, (1 : ℝ) / k * logMean f (N / k)|
+      ≤ c * |g N| + c * ∑ k ∈ Ico 1 N, |g (k + 1) - g k| := hkey
+  _ ≤ c * (1 + Real.log N) + c * (1 + Real.log N) := by
+        exact add_le_add (mul_le_mul_of_nonneg_left hgN hcnn)
+          (mul_le_mul_of_nonneg_left hvar hcnn)
+  _ = 2 * c * (1 + Real.log N) := by ring
+
 end Wirsing
