@@ -866,6 +866,61 @@ theorem norm_trunc_mul_kernel_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t|
         positivity
     _ = 2 * C / R ^ 2 := hfin
 
+/-! ### The two closed arcs -/
+
+/-- On the imaginary axis the Newman kernel vanishes. -/
+@[category API, AMS 30]
+theorem kernel_eq_zero_of_re_eq_zero {z : ℂ} {R : ℝ} (hR : 0 < R) (hz : ‖z‖ = R)
+    (hzre : z.re = 0) : (1 + z ^ 2 / (R : ℂ) ^ 2) / z = 0 := by
+  rw [kernel_eq hR hz, hzre]
+  simp
+
+/--
+**The right closed arc.**  On `|z| = R`, `\mathrm{Re}\,z \ge 0`,
+$$\bigl\|(G(z) - g_T(z))e^{zT}\tfrac{1 + z^2/R^2}{z}\bigr\| \le \frac{2C}{R^2}.$$
+
+For `\mathrm{Re}\,z > 0` this is `Newman.integral_Ioi_sub_integral_Ioc` followed by
+`Newman.norm_tail_mul_kernel_le`; on the imaginary axis the kernel vanishes
+(`Newman.kernel_eq_zero_of_re_eq_zero`), so the bound holds there for free.  Closing the arc
+at `\mathrm{Re}\,z = 0` is what makes the contour split into two *closed* arcs, with no
+measure-zero bookkeeping.
+-/
+@[category API, AMS 30]
+theorem norm_sub_trunc_mul_kernel_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {G : ℂ → ℂ}
+    (hGeq : ∀ z : ℂ, 0 < z.re →
+      G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+    {z : ℂ} {R T : ℝ} (hR : 0 < R) (hz : ‖z‖ = R) (hzre : 0 ≤ z.re) (hT : 0 ≤ T) :
+    ‖(G z - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))) *
+        Complex.exp (z * (T : ℂ)) * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z)‖
+      ≤ 2 * C / R ^ 2 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  rcases eq_or_lt_of_le hzre with hzero | hpos
+  · rw [kernel_eq_zero_of_re_eq_zero hR hz hzero.symm, mul_zero, norm_zero]
+    positivity
+  · rw [hGeq z hpos, integral_Ioi_sub_integral_Ioc hFb hFi hpos hT]
+    exact norm_tail_mul_kernel_le hFb hR hz hpos
+
+/--
+**The left closed arc.**  On `|z| = R`, `\mathrm{Re}\,z \le 0`,
+`\|g_T(z)e^{zT}(1 + z^2/R^2)/z\| \le 2C/R^2`.
+
+`Newman.norm_trunc_mul_kernel_le` with the imaginary axis added, again because the kernel
+vanishes there.  Note that `g_T` is entire, so unlike Zagier's presentation no deformation of
+the left contour is needed.
+-/
+@[category API, AMS 30]
+theorem norm_trunc_mul_kernel_le' {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C) {z : ℂ} {R T : ℝ}
+    (hR : 0 < R) (hz : ‖z‖ = R) (hzre : z.re ≤ 0) (hT : 0 ≤ T) :
+    ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))) *
+        Complex.exp (z * (T : ℂ)) * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z)‖
+      ≤ 2 * C / R ^ 2 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  rcases eq_or_lt_of_le hzre with hzero | hneg
+  · rw [kernel_eq_zero_of_re_eq_zero hR hz hzero, mul_zero, norm_zero]
+    positivity
+  · exact norm_trunc_mul_kernel_le hFb hR hz hneg hT
+
 /-! ### The Cauchy value of the Newman kernel -/
 
 open Metric in
