@@ -398,4 +398,90 @@ theorem testFun_le_bracketHigh {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) (u : 
       min_eq_left (le_max_of_le_right h1)
     simp [bracketHigh, testFun, if_pos hu, hmaxu, hnum]
 
+/-! ### Integrals of the brackets -/
+
+/-- On `[θ+η, 1]` the lower bracket is exactly `u^{-1}`. -/
+@[category API, AMS 11]
+theorem bracketLow_eq {θ η u : ℝ} (hθ : 0 < θ) (hη : 0 < η) (hu : θ + η ≤ u) :
+    bracketLow θ η u = 1 / u := by
+  have h1 : (1 : ℝ) ≤ (u - θ) / η := by rw [le_div_iff₀ hη]; linarith
+  have hmaxu : max u (θ / 2) = u := max_eq_left (by linarith)
+  simp [bracketLow, hmaxu, min_eq_left (le_max_of_le_right h1)]
+
+/-- On `[0, θ-η]` the upper bracket vanishes. -/
+@[category API, AMS 11]
+theorem bracketHigh_eq_zero {θ η u : ℝ} (hη : 0 < η) (hu : u ≤ θ - η) :
+    bracketHigh θ η u = 0 := by
+  have h1 : (u - θ + η) / η ≤ 0 := div_nonpos_of_nonpos_of_nonneg (by linarith) hη.le
+  simp [bracketHigh, max_eq_left h1]
+
+/-- Off `[0, θ-η]` the upper bracket is at most `u^{-1}`. -/
+@[category API, AMS 11]
+theorem bracketHigh_le_inv {θ η u : ℝ} (hθ : 0 < θ) (hη : η < θ / 2) (hu : θ - η ≤ u) :
+    bracketHigh θ η u ≤ 1 / u := by
+  have hupos : 0 < u := by linarith
+  have hmaxu : max u (θ / 2) = u := max_eq_left (by linarith)
+  simp only [bracketHigh, hmaxu]
+  rw [div_le_div_iff_of_pos_right hupos]
+  exact min_le_left _ _
+
+/-- The integral of the lower bracket is at least `-\log(θ+η)`. -/
+@[category API, AMS 11]
+theorem integral_bracketLow_ge {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) (hsum1 : θ + η ≤ 1) :
+    -Real.log (θ + η) ≤ ∫ u in (0 : ℝ)..1, bracketLow θ η u := by
+  have hcont := continuous_bracketLow hθ hη
+  have hsplit : (∫ u in (0 : ℝ)..1, bracketLow θ η u)
+      = (∫ u in (0 : ℝ)..(θ + η), bracketLow θ η u)
+        + ∫ u in (θ + η)..1, bracketLow θ η u :=
+    (intervalIntegral.integral_add_adjacent_intervals
+      (hcont.intervalIntegrable _ _) (hcont.intervalIntegrable _ _)).symm
+  have h1 : 0 ≤ ∫ u in (0 : ℝ)..(θ + η), bracketLow θ η u :=
+    intervalIntegral.integral_nonneg (by linarith) fun u _ ↦ bracketLow_nonneg hθ u
+  have h2 : (∫ u in (θ + η)..1, bracketLow θ η u) = Real.log (1 / (θ + η)) := by
+    rw [← integral_one_div (Set.notMem_uIcc_of_lt (by linarith : (0:ℝ) < θ + η)
+      (by linarith : (0:ℝ) < 1))]
+    refine intervalIntegral.integral_congr fun u hu ↦ ?_
+    rw [Set.uIcc_of_le hsum1] at hu
+    exact bracketLow_eq hθ hη hu.1
+  have h4 : Real.log (1 / (θ + η)) = -Real.log (θ + η) := by
+    rw [Real.log_div one_ne_zero (by linarith), Real.log_one]; ring
+  rw [hsplit, h2, h4]
+  linarith
+
+/-- The integral of the upper bracket is at most `-\log(θ-η)`. -/
+@[category API, AMS 11]
+theorem integral_bracketHigh_le {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) (hηθ : η < θ / 2)
+    (hθ1 : θ ≤ 1) :
+    (∫ u in (0 : ℝ)..1, bracketHigh θ η u) ≤ -Real.log (θ - η) := by
+  have hcont := continuous_bracketHigh hθ hη
+  have hd : 0 < θ - η := by linarith
+  have hd1 : θ - η ≤ 1 := by linarith
+  have hsplit : (∫ u in (0 : ℝ)..1, bracketHigh θ η u)
+      = (∫ u in (0 : ℝ)..(θ - η), bracketHigh θ η u)
+        + ∫ u in (θ - η)..1, bracketHigh θ η u :=
+    (intervalIntegral.integral_add_adjacent_intervals
+      (hcont.intervalIntegrable _ _) (hcont.intervalIntegrable _ _)).symm
+  have h1 : (∫ u in (0 : ℝ)..(θ - η), bracketHigh θ η u) = 0 := by
+    have hz : Set.EqOn (bracketHigh θ η) (fun _ ↦ (0 : ℝ)) (Set.uIcc (0 : ℝ) (θ - η)) := by
+      intro u hu
+      rw [Set.uIcc_of_le hd.le] at hu
+      exact bracketHigh_eq_zero hη hu.2
+    rw [intervalIntegral.integral_congr hz]
+    simp
+  have hinvint : IntervalIntegrable (fun u : ℝ ↦ 1 / u) MeasureTheory.volume (θ - η) 1 := by
+    apply ContinuousOn.intervalIntegrable
+    rw [Set.uIcc_of_le hd1]
+    exact continuousOn_const.div continuousOn_id fun u hu ↦ ne_of_gt (lt_of_lt_of_le hd hu.1)
+  have h2 : (∫ u in (θ - η)..1, bracketHigh θ η u) ≤ ∫ u in (θ - η)..1, 1 / u := by
+    refine intervalIntegral.integral_mono_on hd1 (hcont.intervalIntegrable _ _) hinvint ?_
+    intro u hu
+    exact bracketHigh_le_inv hθ hηθ hu.1
+  have h3 : (∫ u in (θ - η)..1, (1 : ℝ) / u) = Real.log (1 / (θ - η)) :=
+    integral_one_div (Set.notMem_uIcc_of_lt hd (by linarith : (0:ℝ) < 1))
+  have h4 : Real.log (1 / (θ - η)) = -Real.log (θ - η) := by
+    rw [Real.log_div one_ne_zero (by linarith), Real.log_one]; ring
+  rw [hsplit, h1, zero_add]
+  rw [h3, h4] at h2
+  linarith
+
 end Karamata
