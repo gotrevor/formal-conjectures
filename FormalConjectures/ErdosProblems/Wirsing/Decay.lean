@@ -285,4 +285,120 @@ theorem abs_sum_primeWeight_comp_sub_sum_div_le (g : ℕ → ℝ) (N : ℕ)
       ≤ _ := abs_add_le _ _
   _ ≤ 11 * |g 1| + 16 * Real.log N := add_le_add hhead htail
 
+variable (f : ℕ → ℝ)
+
+/-- One step of the logarithmic average: `L(k+1) = L(k) + f(k+1)/(k+1)`. -/
+@[category API, AMS 11]
+theorem logMean_succ (k : ℕ) : logMean f (k + 1) = logMean f k + f (k + 1) / (k + 1) := by
+  rw [logMean, logMean, Finset.sum_Icc_succ_top (by omega : 1 ≤ k + 1)]
+  push_cast
+  ring
+
+/-- `|L|` is `1/m`-Lipschitz along `ℕ`: this is the only regularity the whole argument uses. -/
+@[category API, AMS 11]
+theorem abs_abs_logMean_sub_le (hf : IsPMOneMultiplicative f) {m : ℕ} (hm : 1 ≤ m) :
+    abs (|logMean f m| - |logMean f (m - 1)|) ≤ 1 / m := by
+  obtain ⟨k, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+  simp only [Nat.add_sub_cancel]
+  have hstep := logMean_succ f k
+  have hfm : |f (k + 1)| = 1 := by
+    rcases hf.pmOne (k + 1) (by omega) with h | h <;> rw [h] <;> norm_num
+  calc abs (|logMean f (k + 1)| - |logMean f k|)
+      ≤ |logMean f (k + 1) - logMean f k| := abs_abs_sub_abs_le_abs_sub _ _
+  _ = 1 / ((k : ℝ) + 1) := by
+        rw [hstep]
+        simp only [add_sub_cancel_left, abs_div, hfm]
+        rw [abs_of_nonneg (by positivity : (0 : ℝ) ≤ (k : ℝ) + 1)]
+  _ = 1 / ((k + 1 : ℕ) : ℝ) := by push_cast; ring
+
+/-- `L(1) = 1`. -/
+@[category API, AMS 11]
+theorem logMean_one (hf : IsPMOneMultiplicative f) : logMean f 1 = 1 := by
+  simp [logMean, hf.map_one]
+
+/-- The potential `Φ(N) = ∑_{n ≤ N} |L(n)|/n`.  Its increments are exactly `|L(N)|/N`. -/
+noncomputable def potential (N : ℕ) : ℝ := ∑ n ∈ Icc 1 N, |logMean f n| / n
+
+@[category API, AMS 11]
+theorem potential_nonneg (N : ℕ) : 0 ≤ potential f N :=
+  Finset.sum_nonneg fun n _ ↦ by positivity
+
+@[category API, AMS 11]
+theorem potential_succ (N : ℕ) :
+    potential f (N + 1) = potential f N + |logMean f (N + 1)| / (N + 1) := by
+  rw [potential, potential, Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1)]
+  push_cast
+  ring
+
+open scoped Classical in
+/-- The bad-prime deficit `D(N) = ∑_{p ≤ N, f p = -1} (log p/p)·|L(⌊N/p⌋)|`. -/
+noncomputable def badWeight (N : ℕ) : ℝ :=
+  ∑ p ∈ (Icc 1 N).filter (fun p ↦ p.Prime ∧ f p = -1),
+    Real.log p / p * |logMean f (N / p)|
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem badWeight_nonneg (N : ℕ) : 0 ≤ badWeight f N := by
+  refine Finset.sum_nonneg fun p hp ↦ ?_
+  have hp1 : 1 ≤ p := (mem_Icc.1 (mem_filter.1 hp).1).1
+  have hpR : (1 : ℝ) ≤ p := by exact_mod_cast hp1
+  have : 0 ≤ Real.log p / p := div_nonneg (Real.log_nonneg hpR) (by positivity)
+  positivity
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem sum_one_sub_eq_two_mul_badWeight (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * ((1 - f p) * |logMean f (N / p)|))
+      = 2 * badWeight f N := by
+  have hstep : ∀ p ∈ (Icc 1 N).filter Nat.Prime,
+      Real.log p / p * ((1 - f p) * |logMean f (N / p)|)
+        = if f p = -1 then 2 * (Real.log p / p * |logMean f (N / p)|) else 0 := by
+    intro p hp
+    have hp1 : 1 ≤ p := (mem_Icc.1 (mem_filter.1 hp).1).1
+    rcases hf.pmOne p hp1 with h | h
+    · rw [h, if_neg (by norm_num)]; ring
+    · rw [h, if_pos rfl]; ring
+  rw [Finset.sum_congr rfl hstep, ← Finset.sum_filter, badWeight, Finset.filter_filter,
+    Finset.mul_sum]
+
+open scoped Classical in
+/--
+**The closed inequality.**  Combining the engine identity with the weight comparison:
+$$|L(N)|\log N \le 2\Phi(N) - 2D(N) + 64(1 + \log N).$$
+
+Everything on the right is a function of `N` alone; `D(N) \ge 0` carries the whole effect of
+the hypothesis, and `Φ` is the potential whose telescoping drives the rest of the proof.
+-/
+@[category API, AMS 11]
+theorem abs_logMean_mul_log_le_potential (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |logMean f N| * Real.log N
+      ≤ 2 * potential f N - 2 * badWeight f N + 64 * (1 + Real.log N) := by
+  classical
+  set g : ℕ → ℝ := fun n ↦ |logMean f n| with hg
+  have hengine := abs_logMean_mul_log_le_of_forall_le f hf (N := N) g (fun M _ ↦ le_rfl)
+  have hsplit : ∀ p ∈ (Icc 1 N).filter Nat.Prime,
+      Real.log p / p * ((1 + f p) * g (N / p))
+        = 2 * (Real.log p / p * g (N / p))
+          - Real.log p / p * ((1 - f p) * g (N / p)) := fun p _ ↦ by ring
+  rw [Finset.sum_congr rfl hsplit, Finset.sum_sub_distrib, ← Finset.mul_sum,
+    sum_one_sub_eq_two_mul_badWeight f hf N] at hengine
+  -- the good-prime sum, compared with the potential
+  have hcomp := abs_sum_primeWeight_comp_sub_sum_div_le g N (fun m hm2 _ ↦ by
+    simpa only [hg] using abs_abs_logMean_sub_le f hf (by omega : 1 ≤ m))
+  have hprime : ∑ k ∈ Icc 1 N, primeWeight k * g (N / k)
+      = ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * g (N / p) :=
+    sum_primeWeight_mul (fun k ↦ g (N / k)) N
+  have hg1 : g 1 = 1 := by rw [hg]; simp [logMean_one f hf]
+  have hpot : ∑ n ∈ Icc 1 N, g n / n = potential f N := rfl
+  rw [hprime, hg1, hpot] at hcomp
+  have hle : ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * g (N / p)
+      ≤ potential f N + 11 + 16 * Real.log N := by
+    have := (abs_le.1 hcomp).2
+    simp only [abs_one] at this
+    linarith
+  have hlog : 0 ≤ Real.log N := Real.log_natCast_nonneg N
+  have hlog4 : Real.log 4 ≤ 2 := log_four_le_two
+  nlinarith [hengine, hle, hlog, hlog4]
+
 end Wirsing
