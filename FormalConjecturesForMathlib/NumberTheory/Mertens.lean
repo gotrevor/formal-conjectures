@@ -207,4 +207,114 @@ theorem sum_log_div_sq_le (N : ℕ) : ∑ n ∈ Icc 2 N, log n / (n : ℝ) ^ 2 �
         have h0 : A 0 = 2 := by simp [hA]
         linarith [hAnn (N + 1 - 2), h0]
 
+private lemma geom_tail_le {x : ℝ} (hx0 : 0 ≤ x) (hx : x ≤ 1 / 2) (N : ℕ) :
+    ∑ k ∈ Icc 2 N, x ^ k ≤ 2 * x ^ 2 := by
+  have hx1 : x ≠ 1 := by intro h; rw [h] at hx; norm_num at hx
+  have hgeom : ∑ i ∈ range (N + 1 - 2), x ^ i ≤ 2 := by
+    rw [geom_sum_eq hx1]
+    have hp : (0 : ℝ) ≤ x ^ (N + 1 - 2) := pow_nonneg hx0 _
+    rw [div_le_iff_of_neg (by linarith : x - 1 < 0)]
+    linarith
+  calc ∑ k ∈ Icc 2 N, x ^ k = ∑ i ∈ range (N + 1 - 2), x ^ (2 + i) := by
+        rw [(by rfl : Icc 2 N = Ico 2 (N + 1)), Finset.sum_Ico_eq_sum_range]
+  _ = x ^ 2 * ∑ i ∈ range (N + 1 - 2), x ^ i := by
+        rw [Finset.mul_sum]; exact sum_congr rfl fun i _ ↦ by rw [pow_add]
+  _ ≤ x ^ 2 * 2 := by have := sq_nonneg x; nlinarith
+  _ = 2 * x ^ 2 := by ring
+
+/-- The contribution of the proper prime powers to $\sum_{d \le N} \Lambda(d)/d$ is bounded:
+$\sum_{p^k \le N,\ k \ge 2} \log p / p^k \le 4$. -/
+theorem sum_vonMangoldt_div_nonprime_le (N : ℕ) :
+    ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime), Λ d / d ≤ 4 := by
+  classical
+  set T := (Icc 1 N).filter (fun d ↦ ¬ d.Prime) with hT
+  set T₀ := T.filter (fun d ↦ Λ d ≠ 0) with hT₀
+  set P := (range (N + 1)).filter Nat.Prime with hP
+  set F : ℕ × ℕ → ℝ := fun x ↦ Real.log x.1 / (x.1 : ℝ) ^ x.2 with hF
+  have hFnn : ∀ x ∈ P ×ˢ Icc 2 N, 0 ≤ F x := by
+    rintro ⟨p, k⟩ hx
+    simp only [hP, mem_product, mem_filter, mem_range] at hx
+    have hp := hx.1.2
+    exact div_nonneg (log_natCast_nonneg _) (by positivity)
+  -- structure of the elements of `T₀`
+  have hstruct : ∀ d ∈ T₀, ∃ p k, p.Prime ∧ 2 ≤ k ∧ p ^ k = d ∧ p ≤ N ∧ k ≤ N := by
+    intro d hd
+    simp only [hT₀, hT, mem_filter, mem_Icc] at hd
+    obtain ⟨⟨⟨hd1, hdN⟩, hdnp⟩, hΛ⟩ := hd
+    obtain ⟨p, k, hp, hk, rfl⟩ := (ArithmeticFunction.vonMangoldt_ne_zero_iff.1 hΛ)
+    have hp' : p.Prime := hp.nat_prime
+    have hk2 : 2 ≤ k := by
+      rcases Nat.lt_or_ge k 2 with h | h
+      · have hk1 : k = 1 := by omega
+        subst hk1
+        exact absurd (by simpa using hp') hdnp
+      · exact h
+    have hple : p ≤ p ^ k := Nat.le_self_pow (by omega) p
+    have hklt : k ≤ p ^ k := Nat.le_of_lt (Nat.lt_pow_self hp'.one_lt)
+    exact ⟨p, k, hp', hk2, rfl, le_trans hple hdN, le_trans hklt hdN⟩
+  -- the reindexing map
+  set i : ℕ → ℕ × ℕ := fun d ↦ (d.minFac, d.factorization d.minFac) with hi
+  have hival : ∀ d ∈ T₀, i d ∈ P ×ˢ Icc 2 N ∧ F (i d) = Λ d / d := by
+    intro d hd
+    obtain ⟨p, k, hp, hk2, rfl, hpN, hkN⟩ := hstruct d hd
+    have hmf : (p ^ k).minFac = p := Nat.Prime.pow_minFac hp (by omega)
+    have hfac : (p ^ k).factorization p = k := by
+      rw [Nat.Prime.factorization_pow hp]; simp
+    constructor
+    · simp only [hi, hmf, hfac, hP, mem_product, mem_filter, mem_range, mem_Icc]
+      exact ⟨⟨Nat.lt_succ_of_le hpN, hp⟩, hk2, hkN⟩
+    · simp only [hi, hmf, hfac, hF]
+      rw [ArithmeticFunction.vonMangoldt_apply_pow (by omega),
+        ArithmeticFunction.vonMangoldt_apply_prime hp]
+      push_cast
+      ring
+  have hinj : Set.InjOn i T₀ := by
+    intro a ha b hb hab
+    obtain ⟨p, k, hp, hk2, rfl, _, _⟩ := hstruct a ha
+    obtain ⟨q, l, hq, hl2, rfl, _, _⟩ := hstruct b hb
+    have hmfa : (p ^ k).minFac = p := Nat.Prime.pow_minFac hp (by omega)
+    have hmfb : (q ^ l).minFac = q := Nat.Prime.pow_minFac hq (by omega)
+    have hfa : (p ^ k).factorization p = k := by rw [Nat.Prime.factorization_pow hp]; simp
+    have hfb : (q ^ l).factorization q = l := by rw [Nat.Prime.factorization_pow hq]; simp
+    simp only [hi, hmfa, hmfb, Prod.mk.injEq] at hab
+    obtain ⟨rfl, h2⟩ := hab
+    rw [hfa, hfb] at h2
+    rw [h2]
+  calc ∑ d ∈ T, Λ d / d = ∑ d ∈ T₀, Λ d / d := by
+        refine (Finset.sum_subset (Finset.filter_subset _ _) ?_).symm
+        intro d hdT hd
+        simp only [mem_filter, not_and, not_not] at hd
+        rw [hd hdT, zero_div]
+  _ = ∑ d ∈ T₀, F (i d) := sum_congr rfl fun d hd ↦ ((hival d hd).2).symm
+  _ = ∑ x ∈ T₀.image i, F x := (Finset.sum_image (fun a ha b hb h ↦ hinj ha hb h)).symm
+  _ ≤ ∑ x ∈ P ×ˢ Icc 2 N, F x := by
+        refine Finset.sum_le_sum_of_subset_of_nonneg ?_ (fun x hx _ ↦ hFnn x hx)
+        intro x hx
+        simp only [mem_image] at hx
+        obtain ⟨d, hd, rfl⟩ := hx
+        exact (hival d hd).1
+  _ = ∑ p ∈ P, ∑ k ∈ Icc 2 N, Real.log p / (p : ℝ) ^ k := by rw [Finset.sum_product]
+  _ ≤ ∑ p ∈ P, 2 * (Real.log p / (p : ℝ) ^ 2) := by
+        refine sum_le_sum fun p hp ↦ ?_
+        simp only [hP, mem_filter, mem_range] at hp
+        have hp2 : (2 : ℝ) ≤ p := by exact_mod_cast hp.2.two_le
+        have hlog : 0 ≤ Real.log p := log_natCast_nonneg _
+        have hgt := geom_tail_le (x := 1 / (p : ℝ)) (by positivity)
+          (by rw [div_le_div_iff₀ (by linarith) (by norm_num)]; linarith) N
+        calc ∑ k ∈ Icc 2 N, Real.log p / (p : ℝ) ^ k
+            = Real.log p * ∑ k ∈ Icc 2 N, (1 / (p : ℝ)) ^ k := by
+              rw [Finset.mul_sum]
+              exact sum_congr rfl fun k _ ↦ by rw [div_pow, one_pow]; ring
+        _ ≤ Real.log p * (2 * (1 / (p : ℝ)) ^ 2) := by exact mul_le_mul_of_nonneg_left hgt hlog
+        _ = 2 * (Real.log p / (p : ℝ) ^ 2) := by rw [div_pow, one_pow]; ring
+  _ ≤ 2 * ∑ n ∈ Icc 2 N, Real.log n / (n : ℝ) ^ 2 := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_le_sum_of_subset_of_nonneg ?_ (fun n _ _ ↦ ?_)
+        · intro p hp
+          simp only [hP, mem_filter, mem_range] at hp
+          simp only [mem_Icc]
+          exact ⟨hp.2.two_le, by omega⟩
+        · exact mul_nonneg (by norm_num) (div_nonneg (log_natCast_nonneg _) (by positivity))
+  _ ≤ 4 := by linarith [sum_log_div_sq_le N]
+
 end Mertens
