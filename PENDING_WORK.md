@@ -135,6 +135,62 @@ weights `1/p`, `p ∈ E`, `p ≤ N`, normalised by `E(N)`.
   on building analytic machinery.  The elementary substitute is what Wirsing/Hildebrand
   supply and what the online request asks for.
 
+## Route C (log-weighted / Wirsing's integral equation) — OPENED 2026-09-24
+
+`PENDING_WORK` previously recorded that route A was blocked because mathlib has no
+Mertens asymptotic.  **That block is now removed**: Mertens' first theorem is proved in
+`FormalConjecturesForMathlib/NumberTheory/Mertens.lean` (sorry-free):
+
+* `Mertens.sum_log_le`, `Mertens.sum_log_ge` — `x log x - 2x ≤ ∑_{n ≤ x} log n ≤ x log x`
+* `Mertens.sum_log_eq_sum_vonMangoldt` — `∑_{n ≤ x} log n = ∑_{d ≤ x} Λ(d) ⌊x/d⌋`
+* `Mertens.abs_sum_vonMangoldt_div_sub_log_le` — `|∑_{d ≤ x} Λ(d)/d - log x| ≤ log 4 + 4`
+* `Mertens.sum_log_div_sq_le` — `∑_{2 ≤ n ≤ N} log n / n² ≤ 2`
+* `Mertens.sum_vonMangoldt_div_nonprime_le` — the proper prime powers contribute `≤ 4`
+* `Mertens.abs_sum_log_prime_div_sub_log_le` — `|∑_{p ≤ N} log p / p - log N| ≤ log 4 + 8`
+
+On top of it `FormalConjectures/ErdosProblems/Wirsing/Log.lean` (sorry-free) carries the
+whole log-weighted identity:
+
+* `Wirsing.abs_sum_mul_log_sub_partialSum_mul_log_le` — Abel: `|∑_{n≤N} f(n) log n - S(N) log N| ≤ N`
+* `Wirsing.abs_sum_shift_prime_sub_le` — `|∑_{m≤M} f(pm) - f(p) S(M)| ≤ 2⌊M/p⌋`
+* `Wirsing.abs_sum_vonMangoldt_nonprime_le`, `Wirsing.abs_sum_vonMangoldt_prime_sub_le` — the two `O(N)` errors
+* `Wirsing.abs_partialSum_mul_log_sub_sum_prime_le` —
+  `|S(N) log N - ∑_{p ≤ N} log p · f(p) · S(⌊N/p⌋)| ≤ 9N`
+* `Wirsing.abs_mean_mul_log_sub_sum_prime_le` — the dimensionless form, for `N ≥ 1`:
+  `|σ(N) log N - ∑_{p ≤ N} (log p / p) f(p) σ(⌊N/p⌋)| ≤ 9 + log 4`
+* `Wirsing.sum_Icc_div_mul_log` — the same von Mangoldt identity for `f(n)/n`
+
+### Why route C beats route B for the endgame
+
+In route B the weights are `1/p`, normalised by `E(N)`; they concentrate on **small** primes,
+and the induced measure on `log p` is an arbitrary atomic measure, so `1 + ν̂(τ) ≈ 0` is
+possible for a finite `S` and the Fourier obstruction is real.
+
+In route C the weights are `(log p / p)/log N`.  By Mertens their total mass over `p ≤ N^θ`
+is `θ + O(1/log N)`, so the induced measure on `log p / log N` is asymptotically **uniform
+on `[0,1]`** — smooth, non-atomic, no resonance.  Writing `u = log N`, `F(u) = σ(e^u)`, the
+relation is Wirsing's integral equation
+`u F(u) = ∫_0^u F(u - t) dμ_f(t) + O(1)`, `μ_f` having `f`-signed density `≈ 1`.
+
+For the extreme case `f(p) = -1` for every `p` this closes completely and elementarily:
+`dμ_f = -dt`, so with `G(u) = ∫_0^u F`, `u G'(u) + G(u) = O(1)`, hence `(uG)' = O(1)`,
+`G(u) = O(1)` and `F(u) = -G(u)/u + O(1/u) → 0`.  The naive limsup argument that only gave
+`A ≤ A` in route B is therefore **not** the obstruction here; the `1/u` gain is real.
+
+### Next steps on route C
+
+1. Discrete `G`: relate `∑_{p ≤ N} (log p / p) σ(⌊N/p⌋)` to `∑_{n ≤ N} σ(⌊N/n⌋)/n` (or to
+   `logMean`), using Mertens to replace `log p / p` by the uniform density.  This is the step
+   that turns the sum over primes into an honest Riemann sum, and it is the next thing to
+   formalise.
+2. The differential inequality `(u G)' = O(1)` in discrete form, giving `σ(N) = O(1/log N)`
+   whenever `f(p) = -1` for all `p`.
+3. The general case: `f(p) = ±1` with `∑_p (1 - f(p))/p = ∞`.  Here `dμ_f` is not `-dt`;
+   what is needed is that its "average sign" is bounded away from `+1` on a set of positive
+   density, which is exactly the divergence hypothesis.  `Wirsing.sum_Icc_div_mul_log` is
+   the entry point for the standard upper bound
+   `|∑_{n ≤ N} f(n)/n| ≪ log N · exp(-c ∑_{p ≤ N} (1 - f(p))/p)`.
+
 ## Build note
 
 The global pre-commit hook runs a whole-project `lake build`, which on this box fails with

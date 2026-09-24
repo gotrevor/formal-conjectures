@@ -354,4 +354,30 @@ theorem abs_mean_mul_log_sub_sum_prime_le (hf : IsPMOneMultiplicative f) {N : �
       ≤ 9 * N + Real.log 4 * N := hcomb
   _ = (N : ℝ) * (9 + Real.log 4) := by ring
 
+/-- The logarithmic average `L(N) = ∑_{n ≤ N} f(n)/n`. -/
+noncomputable def logMean (N : ℕ) : ℝ := ∑ n ∈ Icc 1 N, f n / n
+
+/--
+The von Mangoldt identity for the logarithmic average:
+$$\sum_{n \le N} \frac{f(n)}{n}\log n
+  = \sum_{d \le N} \frac{\Lambda(d)}{d} \sum_{m \le N/d} \frac{f(dm)}{m}.$$
+-/
+@[category API, AMS 11]
+theorem sum_Icc_div_mul_log (N : ℕ) :
+    ∑ n ∈ Icc 1 N, (f n / n) * Real.log n
+      = ∑ d ∈ Icc 1 N, (ArithmeticFunction.vonMangoldt d / d)
+          * ∑ m ∈ Icc 1 (N / d), f (d * m) / m := by
+  rw [sum_Icc_mul_log (fun n ↦ f n / n) N]
+  refine Finset.sum_congr rfl fun d hd ↦ ?_
+  have hd1 : 1 ≤ d := (mem_Icc.1 hd).1
+  have hdR : (0 : ℝ) ≠ d := by
+    have : (0 : ℝ) < d := by exact_mod_cast hd1
+    exact ne_of_lt this
+  rw [Finset.mul_sum, Finset.mul_sum]
+  refine Finset.sum_congr rfl fun m hm ↦ ?_
+  have hm1 : 1 ≤ m := (mem_Icc.1 hm).1
+  have hmR : (0 : ℝ) < m := by exact_mod_cast hm1
+  push_cast
+  field_simp
+
 end Wirsing
