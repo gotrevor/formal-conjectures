@@ -273,6 +273,143 @@ theorem exists_tsum_vonMangoldt_twisted_ge {t : ℝ} (ht : t ≠ 0) :
   rw [hsplit, hval, hval, hpole0, hpolet]
   linarith
 
+/-- Splitting a sum over `Ioc a c` at an intermediate point `b`. -/
+@[category API, AMS 11]
+theorem sum_Ioc_add_sum_Ioc {f : ℕ → ℝ} {a b c : ℕ} (h₁ : a ≤ b) (h₂ : b ≤ c) :
+    ∑ n ∈ Ioc a b, f n + ∑ n ∈ Ioc b c, f n = ∑ n ∈ Ioc a c, f n := by
+  rw [← Finset.sum_union (Finset.Ioc_disjoint_Ioc_of_le le_rfl),
+    Finset.Ioc_union_Ioc_eq_Ioc h₁ h₂]
+
+/-- A monotone family of cut points decomposes `Ioc (k 0) (k m)` into `m` consecutive blocks. -/
+@[category API, AMS 11]
+theorem sum_range_sum_Ioc {f : ℕ → ℝ} {k : ℕ → ℕ} (hk : Monotone k) (m : ℕ) :
+    ∑ i ∈ range m, ∑ n ∈ Ioc (k i) (k (i + 1)), f n = ∑ n ∈ Ioc (k 0) (k m), f n := by
+  induction m with
+  | zero => simp
+  | succ m ih =>
+    rw [Finset.sum_range_succ, ih, sum_Ioc_add_sum_Ioc (hk (Nat.zero_le m)) (hk m.le_succ)]
+
+/--
+**Mertens' first theorem in geometric blocks.**  With `x = c/\log N`, the head
+`\sum_{n \le N}\Lambda(n)n^{-1-x}` is bounded below by the Riemann sum of `e^{-cu}` on `[0,1]`
+with `m` blocks:
+$$\sum_{n \le N}\frac{\Lambda(n)}{n^{1+x}}
+  \ \ge\ \Bigl(\frac{\log N}{m} - 2B\Bigr)\sum_{i<m} e^{-c(i+1)/m},
+  \qquad B = \log 4 + 4.$$
+
+The `i`-th block is `N^{i/m} < n \le N^{(i+1)/m}`, on which `n^{-x} \ge e^{-c(i+1)/m}` and, by
+`Mertens.abs_sum_vonMangoldt_div_sub_log_le`, `\sum \Lambda(n)/n \ge \log N/m - 2B`.
+-/
+@[category API, AMS 11]
+theorem sum_vonMangoldt_rpow_head_ge {m : ℕ} (hm : 0 < m) {c : ℝ} (hc : 0 < c)
+    {N : ℕ} (hN : 1 ≤ N) (hL : 0 < Real.log N) :
+    (Real.log N / m - 2 * (Real.log 4 + 4)) *
+        ∑ i ∈ range m, Real.exp (-(c * (i + 1) / m))
+      ≤ ∑ n ∈ Ioc 0 N, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + c / Real.log N)) := by
+  set L := Real.log N with hLdef
+  set x := c / L with hxdef
+  have hx : 0 < x := div_pos hc hL
+  have hNR : (0 : ℝ) < (N : ℝ) := by exact_mod_cast hN
+  have hmR : (0 : ℝ) < (m : ℝ) := by exact_mod_cast hm
+  have hLne : L ≠ 0 := ne_of_gt hL
+  have hmne : (m : ℝ) ≠ 0 := ne_of_gt hmR
+  set B := Real.log 4 + 4 with hB
+  set k : ℕ → ℕ := fun i ↦ ⌊(N : ℝ) ^ ((i : ℝ) / m)⌋₊ with hk
+  have hu1 : ∀ i : ℕ, (1 : ℝ) ≤ (N : ℝ) ^ ((i : ℝ) / m) := fun i ↦
+    Real.one_le_rpow (by exact_mod_cast hN) (by positivity)
+  have hulog : ∀ i : ℕ, Real.log ((N : ℝ) ^ ((i : ℝ) / m)) = (i : ℝ) / m * L :=
+    fun i ↦ Real.log_rpow hNR _
+  have hkmono : Monotone k := by
+    intro i j hij
+    exact Nat.floor_le_floor (Real.rpow_le_rpow_of_exponent_le (by exact_mod_cast hN)
+      (by gcongr))
+  have hk0 : k 0 = 1 := by simp [hk]
+  have hkm : k m = N := by
+    simp only [hk]
+    rw [div_self (by positivity), Real.rpow_one, Nat.floor_natCast]
+  -- The Mertens partial sums at the cut points.
+  have hA : ∀ i : ℕ, |(∑ d ∈ Ioc 0 (k i), (ArithmeticFunction.vonMangoldt d : ℝ) / d)
+      - (i : ℝ) / m * L| ≤ B := by
+    intro i
+    have := Mertens.abs_sum_vonMangoldt_div_sub_log_le (x := (N : ℝ) ^ ((i : ℝ) / m)) (hu1 i)
+    rwa [hulog i] at this
+  -- Block lower bound.
+  have hblock : ∀ i ∈ range m, (L / m - 2 * B) * Real.exp (-(c * (i + 1) / m))
+      ≤ ∑ n ∈ Ioc (k i) (k (i + 1)),
+          (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x)) := by
+    intro i _
+    have hmert : L / m - 2 * B ≤ ∑ n ∈ Ioc (k i) (k (i + 1)),
+        (ArithmeticFunction.vonMangoldt n : ℝ) / n := by
+      have hsplit := sum_Ioc_add_sum_Ioc (f := fun n ↦ (ArithmeticFunction.vonMangoldt n : ℝ) / n)
+        (Nat.zero_le (k i)) (hkmono i.le_succ)
+      have h1 := abs_le.1 (hA i)
+      have h2 := abs_le.1 (hA (i + 1))
+      push_cast at h2 ⊢
+      have : ((i : ℝ) + 1) / m * L - (i : ℝ) / m * L = L / m := by field_simp; ring
+      linarith [hsplit]
+    have hexp : ∀ n ∈ Ioc (k i) (k (i + 1)),
+        (ArithmeticFunction.vonMangoldt n : ℝ) / n * Real.exp (-(c * (i + 1) / m))
+          ≤ (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x)) := by
+      intro n hn
+      obtain ⟨hn1, hn2⟩ := Finset.mem_Ioc.1 hn
+      have hnpos : 0 < n := lt_of_le_of_lt (Nat.zero_le _) hn1
+      have hnR : (0 : ℝ) < (n : ℝ) := by exact_mod_cast hnpos
+      have hnle : (n : ℝ) ≤ (N : ℝ) ^ (((i : ℝ) + 1) / m) := by
+        have h1 : (n : ℝ) ≤ ((k (i + 1) : ℕ) : ℝ) := by exact_mod_cast hn2
+        have h2 : ((k (i + 1) : ℕ) : ℝ) ≤ (N : ℝ) ^ ((((i + 1 : ℕ)) : ℝ) / m) :=
+          Nat.floor_le (le_trans zero_le_one (hu1 (i + 1)))
+        push_cast at h2
+        linarith
+      have hlogn : Real.log n ≤ ((i : ℝ) + 1) / m * L := by
+        have h3 := Real.log_le_log hnR hnle
+        rw [Real.log_rpow hNR] at h3
+        linarith
+      have hpow : Real.exp (-(c * ((i : ℝ) + 1) / m)) ≤ (n : ℝ) ^ (-x) := by
+        rw [Real.rpow_def_of_pos hnR]
+        refine Real.exp_le_exp.2 ?_
+        have h4 : x * Real.log n ≤ x * (((i : ℝ) + 1) / m * L) := by nlinarith [hx.le]
+        have h5 : x * (((i : ℝ) + 1) / m * L) = c * ((i : ℝ) + 1) / m := by
+          rw [hxdef]; field_simp
+        linarith
+      have hsplit : (n : ℝ) ^ (-(1 + x)) = (n : ℝ)⁻¹ * (n : ℝ) ^ (-x) := by
+        rw [show -(1 + x) = -1 + -x by ring, Real.rpow_add hnR, Real.rpow_neg_one]
+      have hnn : (0 : ℝ) ≤ (ArithmeticFunction.vonMangoldt n : ℝ) :=
+        ArithmeticFunction.vonMangoldt_nonneg
+      rw [hsplit]
+      push_cast
+      calc (ArithmeticFunction.vonMangoldt n : ℝ) / n * Real.exp (-(c * ((i : ℝ) + 1) / m))
+          ≤ (ArithmeticFunction.vonMangoldt n : ℝ) / n * (n : ℝ) ^ (-x) := by
+            gcongr
+        _ = (ArithmeticFunction.vonMangoldt n : ℝ) * ((n : ℝ)⁻¹ * (n : ℝ) ^ (-x)) := by
+            rw [div_eq_mul_inv, mul_assoc]
+    calc (L / m - 2 * B) * Real.exp (-(c * (i + 1) / m))
+        ≤ (∑ n ∈ Ioc (k i) (k (i + 1)), (ArithmeticFunction.vonMangoldt n : ℝ) / n) *
+            Real.exp (-(c * (i + 1) / m)) := by
+          gcongr
+      _ = ∑ n ∈ Ioc (k i) (k (i + 1)),
+            (ArithmeticFunction.vonMangoldt n : ℝ) / n * Real.exp (-(c * (i + 1) / m)) := by
+          rw [Finset.sum_mul]
+      _ ≤ _ := Finset.sum_le_sum hexp
+  calc (L / m - 2 * B) * ∑ i ∈ range m, Real.exp (-(c * (i + 1) / m))
+      = ∑ i ∈ range m, (L / m - 2 * B) * Real.exp (-(c * (i + 1) / m)) := by
+        rw [Finset.mul_sum]
+    _ ≤ ∑ i ∈ range m, ∑ n ∈ Ioc (k i) (k (i + 1)),
+          (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x)) :=
+        Finset.sum_le_sum hblock
+    _ = ∑ n ∈ Ioc (k 0) (k m),
+          (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x)) :=
+        sum_range_sum_Ioc hkmono m
+    _ ≤ ∑ n ∈ Ioc 0 N, (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x)) := by
+        rw [hk0, hkm]
+        refine Finset.sum_le_sum_of_subset_of_nonneg (by
+          intro n hn
+          obtain ⟨ha, hb⟩ := Finset.mem_Ioc.1 hn
+          exact Finset.mem_Ioc.2 ⟨by omega, hb⟩) ?_
+        intro n hn _
+        have hnR : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg n
+        have := ArithmeticFunction.vonMangoldt_nonneg (n := n)
+        positivity
+
 /--
 **The Mertens-weighted deficit.**  For `t ≠ 0`,
 $$\sum_{p \le N} \frac{\log p}{p}\bigl(1 - \cos(t\log p)\bigr) \ge \frac{\log N}{4} - C_t.$$
