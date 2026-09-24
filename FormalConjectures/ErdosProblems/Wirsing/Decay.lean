@@ -823,6 +823,16 @@ theorem potential_sub {a b : ℕ} (hab : a ≤ b) :
     ← Finset.sum_Ioc_consecutive _ (Nat.zero_le a) hab]
   ring
 
+/-- Every term of the window sum is nonnegative (including the degenerate `N = 0`). -/
+@[category API, AMS 11]
+theorem windowTerm_nonneg (p N : ℕ) :
+    0 ≤ |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) := by
+  rcases Nat.eq_zero_or_pos N with rfl | hN
+  · norm_num
+  · have h1 : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+    have : (0 : ℝ) ≤ Real.log (N : ℝ) := Real.log_nonneg h1
+    positivity
+
 open scoped Classical in
 /--
 **The per-prime window bound.**  For a prime-sized `p ≥ 2` and `X ≥ p^3 + p`, the growth of
@@ -835,14 +845,15 @@ Two factors of `2` and one of `64` are lost: `M + 1 ≤ 2M`, and on the block
 `N ≤ 2p^3`, so `\log N ≤ 4 \log p`.
 -/
 @[category API, AMS 11]
-theorem potential_window_le_sum {p X : ℕ} (hp : 2 ≤ p) (hX : p * p ^ 2 + p ≤ X) :
+theorem potential_window_le_sum {p X a : ℕ} (hp : 2 ≤ p) (hX : p * p ^ 2 + p ≤ X)
+    (ha : a ≤ p * (p + 1)) :
     (potential f (p ^ 2) - potential f p) / (128 * Real.log p ^ 3)
-      ≤ ∑ N ∈ Icc 3 X, |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) := by
+      ≤ ∑ N ∈ Icc a X, |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) := by
   classical
   have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp
   have hlogp : 0 < Real.log (p : ℝ) := Real.log_pos (by linarith)
   have hlog2p : Real.log 2 ≤ Real.log (p : ℝ) := Real.log_le_log (by norm_num) hpR
-  set S : ℝ := ∑ N ∈ Icc 3 X, |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) with hS
+  set S : ℝ := ∑ N ∈ Icc a X, |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) with hS
   -- the window as a sum
   have hple : p ≤ p ^ 2 := by nlinarith [hp]
   have hwin : potential f (p ^ 2) - potential f p
@@ -866,11 +877,10 @@ theorem potential_window_le_sum {p X : ℕ} (hp : 2 ≤ p) (hX : p * p ^ 2 + p �
   have hstep2 := sum_div_succ_le_sum_block (p := p) (by omega)
     (fun M ↦ |logMean f M|) (fun M ↦ abs_nonneg _) (a := p + 1) (b := p ^ 2) (by omega)
   -- on the block, `(log N)^3 ≤ 64 (log p)^3`
-  have hsub : Icc (p * (p + 1)) (p * p ^ 2 + p - 1) ⊆ Icc 3 X := by
+  have hsub : Icc (p * (p + 1)) (p * p ^ 2 + p - 1) ⊆ Icc a X := by
     intro N hN
     obtain ⟨hN1, hN2⟩ := mem_Icc.1 hN
     rw [mem_Icc]
-    have : 3 ≤ p * (p + 1) := by nlinarith [hp]
     omega
   have hstep3 : ∑ N ∈ Icc (p * (p + 1)) (p * p ^ 2 + p - 1),
       |logMean f (N / p)| / (N : ℝ) ≤ 64 * Real.log (p : ℝ) ^ 3 * S := by
@@ -924,13 +934,7 @@ theorem potential_window_le_sum {p X : ℕ} (hp : 2 ≤ p) (hX : p * p ^ 2 + p �
       _ ≤ 64 * Real.log (p : ℝ) ^ 3 * S := by
           refine mul_le_mul_of_nonneg_left ?_ (by positivity)
           rw [hS]
-          refine Finset.sum_le_sum_of_subset_of_nonneg hsub fun N hN _ ↦ ?_
-          have : (0 : ℝ) ≤ Real.log (N : ℝ) := Real.log_nonneg (by
-            have : 3 ≤ N := by
-              have h3 : 3 ≤ X := le_trans (by nlinarith [hp]) hX
-              exact (mem_Icc.1 hN).1
-            exact_mod_cast le_trans (by norm_num) this)
-          positivity
+          exact Finset.sum_le_sum_of_subset_of_nonneg hsub fun N _ _ ↦ windowTerm_nonneg f p N
   have hfinal : potential f (p ^ 2) - potential f p ≤ 128 * Real.log (p : ℝ) ^ 3 * S := by
     rw [hwin]
     calc ∑ M ∈ Icc (p + 1) (p ^ 2), |logMean f M| / (M : ℝ)
@@ -941,5 +945,72 @@ theorem potential_window_le_sum {p X : ℕ} (hp : 2 ≤ p) (hX : p * p ^ 2 + p �
       _ = 128 * Real.log (p : ℝ) ^ 3 * S := by ring
   rw [div_le_iff₀ (by positivity)]
   linarith [hfinal]
+
+open scoped Classical in
+/--
+**Fubini over the bad primes.**  The deficit sum, weighted by `1/(N(\log N)^3)`, rearranges
+into a sum over bad primes of their window sums.
+-/
+@[category API, AMS 11]
+theorem sum_badWeight_div_eq (X : ℕ) :
+    ∑ N ∈ Icc 3 X, badWeight f N / ((N : ℝ) * Real.log N ^ 3)
+      = ∑ p ∈ (Icc 1 X).filter (fun p ↦ p.Prime ∧ f p = -1),
+          Real.log p / p *
+            ∑ N ∈ Icc (max 3 p) X, |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) := by
+  classical
+  have hL : ∀ N : ℕ, badWeight f N / ((N : ℝ) * Real.log N ^ 3)
+      = ∑ p ∈ (Icc 1 N).filter (fun p ↦ p.Prime ∧ f p = -1),
+          Real.log p / p * |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) := by
+    intro N
+    rw [badWeight, Finset.sum_div]
+  rw [Finset.sum_congr rfl fun N _ ↦ hL N]
+  rw [Finset.sum_comm' (s := Icc 3 X)
+    (t := fun N ↦ (Icc 1 N).filter (fun p ↦ p.Prime ∧ f p = -1))
+    (t' := (Icc 1 X).filter (fun p ↦ p.Prime ∧ f p = -1))
+    (s' := fun p ↦ Icc (max 3 p) X)
+    (by
+      intro N p
+      simp only [Finset.mem_Icc, Finset.mem_filter, Nat.max_le]
+      constructor
+      · rintro ⟨⟨h3, hX⟩, ⟨hp1, hpN⟩, hQ⟩
+        exact ⟨⟨⟨h3, by omega⟩, hX⟩, ⟨hp1, by omega⟩, hQ⟩
+      · rintro ⟨⟨⟨h3, hpN⟩, hX⟩, ⟨hp1, hpX⟩, hQ⟩
+        exact ⟨⟨h3, hX⟩, ⟨hp1, hpN⟩, hQ⟩)]
+  refine Finset.sum_congr rfl fun p _ ↦ ?_
+  rw [Finset.mul_sum]
+  exact Finset.sum_congr rfl fun N _ ↦ by ring
+
+open scoped Classical in
+/--
+**The deficit sum dominates the windows of any finite set of large bad primes.**
+-/
+@[category API, AMS 11]
+theorem sum_window_le_sum_badWeight (X : ℕ) (S : Finset ℕ)
+    (hS : ∀ p ∈ S, p.Prime ∧ f p = -1 ∧ 2 ≤ p ∧ p * p ^ 2 + p ≤ X) :
+    ∑ p ∈ S, Real.log p / p *
+        ((potential f (p ^ 2) - potential f p) / (128 * Real.log p ^ 3))
+      ≤ ∑ N ∈ Icc 3 X, badWeight f N / ((N : ℝ) * Real.log N ^ 3) := by
+  classical
+  rw [sum_badWeight_div_eq f X]
+  have hsub : S ⊆ (Icc 1 X).filter (fun p ↦ p.Prime ∧ f p = -1) := by
+    intro p hp
+    obtain ⟨hprime, hval, hp2, hpX⟩ := hS p hp
+    rw [mem_filter, mem_Icc]
+    refine ⟨⟨by omega, by nlinarith [hp2, hpX]⟩, hprime, hval⟩
+  refine le_trans (Finset.sum_le_sum ?_) (Finset.sum_le_sum_of_subset_of_nonneg hsub ?_)
+  · intro p hp
+    obtain ⟨hprime, hval, hp2, hpX⟩ := hS p hp
+    have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp2
+    have hw : 0 ≤ Real.log (p : ℝ) / p :=
+      div_nonneg (Real.log_nonneg (by linarith)) (by linarith)
+    exact mul_le_mul_of_nonneg_left
+      (potential_window_le_sum f hp2 hpX
+        (Nat.max_le.2 ⟨by nlinarith [hp2], Nat.le_mul_of_pos_right p (by omega)⟩)) hw
+  · intro p hp _
+    have hp1 : 1 ≤ p := (mem_Icc.1 (mem_filter.1 hp).1).1
+    have hpR : (1 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp1
+    have hw : 0 ≤ Real.log (p : ℝ) / p :=
+      div_nonneg (Real.log_nonneg hpR) (by linarith)
+    exact mul_nonneg hw (Finset.sum_nonneg fun N _ ↦ windowTerm_nonneg f p N)
 
 end Wirsing
