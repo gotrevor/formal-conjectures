@@ -376,4 +376,107 @@ theorem wintnerCoeff_mul_of_coprime (hf : IsPMOneMultiplicative f) {m n : ℕ}
   rw [hgF, hgF, hgF]
   exact (ArithmeticFunction.isMultiplicative_moebius.intCast.mul hFmul).map_mul_of_coprime hmn
 
+/-- `g(1) = 1`. -/
+@[category API, AMS 11]
+theorem wintnerCoeff_one (hf : IsPMOneMultiplicative f) : wintnerCoeff f 1 = 1 := by
+  rw [wintnerCoeff]
+  simp [hf.map_one]
+
+/-- The local factor of `∑_d |g(d)|/d` at `p` is summable, dominated by `2 (1/p)^k`. -/
+@[category API, AMS 11]
+theorem summable_abs_wintnerCoeff_prime_pow_div (hf : IsPMOneMultiplicative f) {p : ℕ}
+    (hp : p.Prime) :
+    Summable (fun k : ℕ ↦ |wintnerCoeff f (p ^ k)| / ((p : ℝ) ^ k)) := by
+  have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.two_le
+  have hdom : ∀ k, |wintnerCoeff f (p ^ k)| / ((p : ℝ) ^ k) ≤ 2 * (1 / (p : ℝ)) ^ k := by
+    intro k
+    have hpk : (0 : ℝ) < (p : ℝ) ^ k := by positivity
+    have hrw : 2 * (1 / (p : ℝ)) ^ k * (p : ℝ) ^ k = 2 := by
+      rw [div_pow, one_pow]
+      field_simp
+    rw [div_le_iff₀ hpk, hrw]
+    rcases Nat.eq_zero_or_pos k with rfl | hk
+    · rw [pow_zero, wintnerCoeff_one f hf]
+      norm_num
+    · exact abs_wintnerCoeff_prime_pow_le f hf hp hk
+  refine Summable.of_nonneg_of_le (fun k ↦ by positivity) hdom ?_
+  refine Summable.mul_left 2 (summable_geometric_of_lt_one (by positivity) ?_)
+  rw [div_lt_one (by linarith)]
+  linarith
+
+/--
+**The local Euler factor bound.**
+`∑_k |g(p^k)|/p^k ≤ 1 + (1 - f(p))/p + 4/p²`.
+
+The `k = 1` term is exactly the term of `Wirsing.pretentiousSeries` at `p`, and the tail
+`k ≥ 2` is geometric with ratio `1/p ≤ 1/2`, hence at most `4/p²`.
+-/
+@[category API, AMS 11]
+theorem tsum_abs_wintnerCoeff_prime_pow_div_le (hf : IsPMOneMultiplicative f) {p : ℕ}
+    (hp : p.Prime) :
+    ∑' k : ℕ, |wintnerCoeff f (p ^ k)| / ((p : ℝ) ^ k)
+      ≤ 1 + (1 - f p) / p + 4 / (p : ℝ) ^ 2 := by
+  have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.two_le
+  have hppos : (0 : ℝ) < (p : ℝ) := by linarith
+  set a : ℕ → ℝ := fun k ↦ |wintnerCoeff f (p ^ k)| / ((p : ℝ) ^ k) with ha
+  have hsum : Summable a := summable_abs_wintnerCoeff_prime_pow_div f hf hp
+  have hsum1 : Summable (fun k ↦ a (k + 1)) := hsum.comp_injective (add_left_injective 1)
+  have hsum2 : Summable (fun k ↦ a (k + 2)) := hsum.comp_injective (add_left_injective 2)
+  -- peel the first two terms
+  have hpeel : ∑' k, a k = a 0 + a 1 + ∑' k, a (k + 2) := by
+    rw [hsum.tsum_eq_zero_add, hsum1.tsum_eq_zero_add]
+    ring_nf
+  have ha0 : a 0 = 1 := by
+    rw [ha]
+    simp only [pow_zero, div_one]
+    rw [wintnerCoeff_one f hf]
+    norm_num
+  have ha1 : a 1 = (1 - f p) / p := by
+    rw [ha]
+    simp only [pow_one]
+    rw [abs_wintnerCoeff_prime f hf hp]
+  -- the geometric tail
+  have hgeom : Summable (fun k : ℕ ↦ (1 / (p : ℝ)) ^ k) := by
+    refine summable_geometric_of_lt_one (by positivity) ?_
+    rw [div_lt_one hppos]
+    linarith
+  have htail : ∑' k, a (k + 2) ≤ 4 / (p : ℝ) ^ 2 := by
+    have hdom : ∀ k, a (k + 2) ≤ 2 * (1 / (p : ℝ)) ^ 2 * (1 / (p : ℝ)) ^ k := by
+      intro k
+      have hpk : (0 : ℝ) < (p : ℝ) ^ (k + 2) := by positivity
+      have hrw : 2 * (1 / (p : ℝ)) ^ 2 * (1 / (p : ℝ)) ^ k * (p : ℝ) ^ (k + 2) = 2 := by
+        rw [div_pow, div_pow, one_pow, one_pow]
+        field_simp
+        rw [pow_add]
+        ring
+      rw [ha]
+      simp only
+      rw [div_le_iff₀ hpk, hrw]
+      exact abs_wintnerCoeff_prime_pow_le f hf hp (by omega)
+    have hle : ∑' k, a (k + 2)
+        ≤ ∑' k : ℕ, 2 * (1 / (p : ℝ)) ^ 2 * (1 / (p : ℝ)) ^ k :=
+      hsum2.tsum_le_tsum hdom (hgeom.mul_left _)
+    have hval : ∑' k : ℕ, 2 * (1 / (p : ℝ)) ^ 2 * (1 / (p : ℝ)) ^ k
+        = 2 * (1 / (p : ℝ)) ^ 2 * (1 - 1 / (p : ℝ))⁻¹ := by
+      rw [tsum_mul_left, tsum_geometric_of_lt_one (by positivity) (by
+        rw [div_lt_one hppos]; linarith)]
+    rw [hval] at hle
+    refine le_trans hle ?_
+    rw [div_pow, one_pow]
+    have hp2 : 1 / (p : ℝ) ≤ 1 / 2 := by
+      rw [div_le_div_iff₀ hppos (by norm_num : (0 : ℝ) < 2)]
+      linarith
+    have hinv : (1 - 1 / (p : ℝ))⁻¹ ≤ 2 := by
+      rw [inv_le_comm₀ (by rw [sub_pos]; linarith) (by norm_num)]
+      have h2 : (2 : ℝ)⁻¹ = 1 / 2 := by norm_num
+      rw [h2]
+      linarith
+    have h1 : (0 : ℝ) < 1 / (p : ℝ) ^ 2 := by positivity
+    calc 2 * (1 / (p : ℝ) ^ 2) * (1 - 1 / (p : ℝ))⁻¹
+        ≤ 2 * (1 / (p : ℝ) ^ 2) * 2 := by
+          refine mul_le_mul_of_nonneg_left hinv (by positivity)
+      _ = 4 / (p : ℝ) ^ 2 := by ring
+  rw [hpeel, ha0, ha1]
+  linarith
+
 end Wirsing
