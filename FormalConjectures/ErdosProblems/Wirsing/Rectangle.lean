@@ -525,4 +525,43 @@ theorem rectInt_mul_kernel {h : ℂ → ℂ} {U : Set ℂ} {a b c d : ℝ} (R : 
   rw [hsplit, hzero, rectInt_inv ha hb hc hd, zero_add]
   ring
 
+/-! ### Bounding a boundary integral edge by edge -/
+
+/--
+**The edge-by-edge bound.**  A pointwise bound on each of the four edges bounds the whole
+boundary integral, each edge weighted by its length.
+-/
+@[category API, AMS 30]
+theorem norm_rectInt_le {f : ℂ → ℂ} {a b c d B₁ B₂ B₃ B₄ : ℝ}
+    (h₁ : ∀ x ∈ [[a, b]], ‖f ((x : ℂ) + c * Complex.I)‖ ≤ B₁)
+    (h₂ : ∀ x ∈ [[a, b]], ‖f ((x : ℂ) + d * Complex.I)‖ ≤ B₂)
+    (h₃ : ∀ y ∈ [[c, d]], ‖f ((b : ℂ) + y * Complex.I)‖ ≤ B₃)
+    (h₄ : ∀ y ∈ [[c, d]], ‖f ((a : ℂ) + y * Complex.I)‖ ≤ B₄) :
+    ‖rectInt f a b c d‖ ≤ (B₁ + B₂) * |b - a| + (B₃ + B₄) * |d - c| := by
+  have hsub₁ : Set.uIoc a b ⊆ [[a, b]] := Set.Ioc_subset_Icc_self
+  have hsub₂ : Set.uIoc c d ⊆ [[c, d]] := Set.Ioc_subset_Icc_self
+  have e₁ : ‖∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I)‖ ≤ B₁ * |b - a| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun x hx ↦ h₁ x (hsub₁ hx)
+  have e₂ : ‖∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I)‖ ≤ B₂ * |b - a| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun x hx ↦ h₂ x (hsub₁ hx)
+  have e₃ : ‖∫ y : ℝ in c..d, f ((b : ℂ) + y * Complex.I)‖ ≤ B₃ * |d - c| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun y hy ↦ h₃ y (hsub₂ hy)
+  have e₄ : ‖∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I)‖ ≤ B₄ * |d - c| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun y hy ↦ h₄ y (hsub₂ hy)
+  have hI : ∀ w : ℂ, ‖Complex.I * w‖ = ‖w‖ := by
+    intro w; rw [norm_mul, Complex.norm_I, one_mul]
+  have key : ∀ w x y z : ℂ, ‖w - x + y - z‖ ≤ ‖w‖ + ‖x‖ + ‖y‖ + ‖z‖ := by
+    intro w x y z
+    calc ‖w - x + y - z‖ ≤ ‖w - x + y‖ + ‖z‖ := norm_sub_le _ _
+      _ ≤ (‖w - x‖ + ‖y‖) + ‖z‖ := by gcongr; exact norm_add_le _ _
+      _ ≤ ((‖w‖ + ‖x‖) + ‖y‖) + ‖z‖ := by gcongr; exact norm_sub_le _ _
+      _ = ‖w‖ + ‖x‖ + ‖y‖ + ‖z‖ := by ring
+  have hmain := key (∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I))
+    (∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I))
+    (Complex.I * ∫ y : ℝ in c..d, f ((b : ℂ) + y * Complex.I))
+    (Complex.I * ∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I))
+  rw [hI, hI] at hmain
+  rw [rectInt]
+  linarith
+
 end Newman

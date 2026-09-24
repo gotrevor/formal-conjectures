@@ -690,6 +690,269 @@ theorem norm_sub_integral_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤
   rw [hB]
   field_simp
 
+/-! ### Newman's contour, on a rectangle -/
+
+/--
+`h_T(z) = (G(z) - g_T(z))e^{zT}`, the function Newman integrates against the kernel.  Its
+value at the origin is exactly the quantity to be estimated.
+-/
+noncomputable def newmanAux (F : ℝ → ℝ) (G : ℂ → ℂ) (T : ℝ) (z : ℂ) : ℂ :=
+  (G z - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))) *
+    Complex.exp (z * (T : ℂ))
+
+@[category API, AMS 30]
+theorem newmanAux_zero (F : ℝ → ℝ) (G : ℂ → ℂ) (T : ℝ) :
+    newmanAux F G T 0 = G 0 - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) := by
+  simp [newmanAux]
+
+@[category API, AMS 30]
+theorem differentiable_newmanAux {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {G : ℂ → ℂ} {U : Set ℂ}
+    (hG : DifferentiableOn ℂ G U) {T : ℝ} (hT : 0 ≤ T) :
+    DifferentiableOn ℂ (newmanAux F G T) U := by
+  have hg := differentiable_truncLaplace hFb hFi hT
+  have hexp : Differentiable ℂ fun w : ℂ ↦ Complex.exp (w * (T : ℂ)) := by fun_prop
+  exact (hG.sub hg.differentiableOn).mul hexp.differentiableOn
+
+@[category API, AMS 30]
+theorem norm_exp_mul_ofReal (z : ℂ) (T : ℝ) :
+    ‖Complex.exp (z * (T : ℂ))‖ = Real.exp (z.re * T) := by
+  rw [Complex.norm_exp]; congr 1; simp
+
+/--
+**The tail bound on the right.**  For `\mathrm{Re}\,z > 0`, `\|h_T(z)\| \le C/\mathrm{Re}\,z`,
+uniformly in `T`.
+-/
+@[category API, AMS 30]
+theorem norm_newmanAux_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {G : ℂ → ℂ}
+    (hGeq : ∀ z : ℂ, 0 < z.re →
+      G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+    {z : ℂ} {T : ℝ} (hzre : 0 < z.re) (hT : 0 ≤ T) :
+    ‖newmanAux F G T z‖ ≤ C / z.re := by
+  rw [newmanAux, hGeq z hzre, integral_Ioi_sub_integral_Ioc hFb hFi hzre hT, norm_mul,
+    norm_exp_mul_ofReal]
+  have htail := norm_integral_Ioi_le hFb hzre T
+  have hprod : (C * Real.exp (-z.re * T) / z.re) * Real.exp (z.re * T) = C / z.re := by
+    rw [show -z.re * T = -(z.re * T) by ring, Real.exp_neg]
+    field_simp
+  calc ‖∫ t in Set.Ioi T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ * Real.exp (z.re * T)
+      ≤ (C * Real.exp (-z.re * T) / z.re) * Real.exp (z.re * T) :=
+        mul_le_mul_of_nonneg_right htail (Real.exp_pos _).le
+    _ = C / z.re := hprod
+
+/--
+**The truncated transform on the left.**  For `\mathrm{Re}\,z < 0`,
+`\|g_T(z)e^{zT}\| \le C/(-\mathrm{Re}\,z)`, uniformly in `T`.
+-/
+@[category API, AMS 30]
+theorem norm_trunc_mul_exp_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    {z : ℂ} {T : ℝ} (hzre : z.re < 0) (hT : 0 ≤ T) :
+    ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+        * Complex.exp (z * (T : ℂ))‖ ≤ C / (-z.re) := by
+  rw [norm_mul, norm_exp_mul_ofReal]
+  have htr := norm_integral_Ioc_le hFb hzre hT
+  have hprod : (C * Real.exp (-z.re * T) / (-z.re)) * Real.exp (z.re * T) = C / (-z.re) := by
+    rw [show -z.re * T = -(z.re * T) by ring, Real.exp_neg]
+    field_simp
+  calc ‖∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ *
+        Real.exp (z.re * T)
+      ≤ (C * Real.exp (-z.re * T) / (-z.re)) * Real.exp (z.re * T) :=
+        mul_le_mul_of_nonneg_right htr (Real.exp_pos _).le
+    _ = C / (-z.re) := hprod
+
+/-- The crude kernel bound `\|k(z)\| \le \|z\|^{-1} + \|z\|/R^2`. -/
+@[category API, AMS 30]
+theorem norm_newmanKernel_le (R : ℝ) (z : ℂ) :
+    ‖newmanKernel R z‖ ≤ ‖z‖⁻¹ + ‖z‖ / R ^ 2 := by
+  have hRn : ‖((R : ℂ)) ^ 2‖ = R ^ 2 := by
+    rw [norm_pow, Complex.norm_real, Real.norm_eq_abs, sq_abs]
+  calc ‖newmanKernel R z‖ ≤ ‖z⁻¹‖ + ‖z / (R : ℂ) ^ 2‖ := norm_add_le _ _
+    _ = ‖z‖⁻¹ + ‖z‖ / R ^ 2 := by rw [norm_inv, norm_div, hRn]
+
+/-! ### The four edges of the inner rectangle -/
+
+/--
+**The horizontal edges.**  On `|\mathrm{Im}\,z| = R`, `-\delta \le \mathrm{Re}\,z \le R`,
+$$\|h_T(z)k(z)\| \le \frac{3(M\delta + C)}{R^2},$$
+where `M` bounds `\|G\|`.  The kernel's factor `|\mathrm{Re}\,z|` cancels the `1/x` of the
+Laplace bound on the right, and on the short left overhang it is at most `\delta`.
+-/
+@[category API, AMS 30]
+theorem norm_integrand_horiz_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {G : ℂ → ℂ}
+    (hGeq : ∀ z : ℂ, 0 < z.re →
+      G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+    {M R δ T : ℝ} (hR : 0 < R) (hδ : 0 < δ) (hδR : δ ≤ R) (hT : 0 ≤ T)
+    {z : ℂ} (him : |z.im| = R) (hlo : -δ ≤ z.re) (hhi : z.re ≤ R) (hM : ‖G z‖ ≤ M) :
+    ‖newmanAux F G T z * newmanKernel R z‖ ≤ 3 * (M * δ + C) / R ^ 2 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hM0 : 0 ≤ M := le_trans (norm_nonneg _) hM
+  have hre : |z.re| ≤ R := abs_le.2 ⟨by linarith, hhi⟩
+  have hk := norm_newmanKernel_horiz hR him hre
+  rcases lt_trichotomy z.re 0 with hneg | hzero | hpos
+  · have hexple : Real.exp (z.re * T) ≤ 1 :=
+      Real.exp_le_one_iff.2 (by nlinarith [mul_nonneg (neg_nonneg.mpr hneg.le) hT])
+    have hzne : z.re ≠ 0 := ne_of_lt hneg
+    have h1 : ‖newmanAux F G T z‖ ≤ M + C / (-z.re) := by
+      have hsplit : newmanAux F G T z
+          = G z * Complex.exp (z * (T : ℂ))
+            - (∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+                * Complex.exp (z * (T : ℂ)) := by
+        rw [newmanAux]; ring
+      rw [hsplit]
+      refine le_trans (norm_sub_le _ _) (add_le_add ?_ (norm_trunc_mul_exp_le hFb hneg hT))
+      rw [norm_mul, norm_exp_mul_ofReal]
+      calc ‖G z‖ * Real.exp (z.re * T) ≤ M * 1 :=
+            mul_le_mul hM hexple (Real.exp_pos _).le hM0
+        _ = M := mul_one M
+    have hk' : ‖newmanKernel R z‖ ≤ 3 * (-z.re) / R ^ 2 := by rwa [abs_of_neg hneg] at hk
+    have hxpos : 0 < -z.re := by linarith
+    calc ‖newmanAux F G T z * newmanKernel R z‖
+        = ‖newmanAux F G T z‖ * ‖newmanKernel R z‖ := norm_mul _ _
+      _ ≤ (M + C / (-z.re)) * (3 * (-z.re) / R ^ 2) :=
+          mul_le_mul h1 hk' (norm_nonneg _) (add_nonneg hM0 (div_nonneg hC0 hxpos.le))
+      _ = 3 * (M * (-z.re) + C) / R ^ 2 := by
+          field_simp
+          ring
+      _ ≤ 3 * (M * δ + C) / R ^ 2 := by
+          have : M * (-z.re) ≤ M * δ := by
+            refine mul_le_mul_of_nonneg_left ?_ hM0
+            linarith
+          have hR2 : (0 : ℝ) < R ^ 2 := by positivity
+          rw [div_le_div_iff_of_pos_right hR2]
+          linarith
+  · have hk0 : ‖newmanKernel R z‖ = 0 := by
+      have := hk
+      rw [hzero] at this
+      simp only [abs_zero, mul_zero, zero_div] at this
+      exact le_antisymm this (norm_nonneg _)
+    rw [norm_mul, hk0, mul_zero]
+    positivity
+  · have h1 : ‖newmanAux F G T z‖ ≤ C / z.re := norm_newmanAux_le hFb hFi hGeq hpos hT
+    have hk' : ‖newmanKernel R z‖ ≤ 3 * z.re / R ^ 2 := by rwa [abs_of_pos hpos] at hk
+    have hzne : z.re ≠ 0 := ne_of_gt hpos
+    calc ‖newmanAux F G T z * newmanKernel R z‖
+        = ‖newmanAux F G T z‖ * ‖newmanKernel R z‖ := norm_mul _ _
+      _ ≤ (C / z.re) * (3 * z.re / R ^ 2) :=
+          mul_le_mul h1 hk' (norm_nonneg _) (div_nonneg hC0 hpos.le)
+      _ = 3 * C / R ^ 2 := by
+          field_simp
+      _ ≤ 3 * (M * δ + C) / R ^ 2 := by
+          have hR2 : (0 : ℝ) < R ^ 2 := by positivity
+          rw [div_le_div_iff_of_pos_right hR2]
+          nlinarith
+
+/--
+**The right edge.**  On `\mathrm{Re}\,z = R`, `|\mathrm{Im}\,z| \le R`,
+`\|h_T(z)k(z)\| \le 3C/R^2`.
+-/
+@[category API, AMS 30]
+theorem norm_integrand_vert_right_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {G : ℂ → ℂ}
+    (hGeq : ∀ z : ℂ, 0 < z.re →
+      G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+    {R T : ℝ} (hR : 0 < R) (hT : 0 ≤ T)
+    {z : ℂ} (hre : z.re = R) (him : |z.im| ≤ R) :
+    ‖newmanAux F G T z * newmanKernel R z‖ ≤ 3 * C / R ^ 2 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hzre : 0 < z.re := by rw [hre]; exact hR
+  have habs : |z.re| = R := by rw [hre, abs_of_pos hR]
+  have h1 : ‖newmanAux F G T z‖ ≤ C / z.re := norm_newmanAux_le hFb hFi hGeq hzre hT
+  have hk := norm_newmanKernel_vert hR habs him
+  calc ‖newmanAux F G T z * newmanKernel R z‖
+      = ‖newmanAux F G T z‖ * ‖newmanKernel R z‖ := norm_mul _ _
+    _ ≤ (C / z.re) * (3 / R) :=
+        mul_le_mul h1 hk (norm_nonneg _) (div_nonneg hC0 hzre.le)
+    _ = 3 * C / R ^ 2 := by
+        rw [hre]
+        field_simp
+
+/--
+**The truncated transform on a horizontal edge to the left of the axis.**
+-/
+@[category API, AMS 30]
+theorem norm_trunc_integrand_horiz_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    {R T : ℝ} (hR : 0 < R) (hT : 0 ≤ T)
+    {z : ℂ} (him : |z.im| = R) (hre : |z.re| ≤ R) (hneg : z.re < 0) :
+    ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+        * Complex.exp (z * (T : ℂ)) * newmanKernel R z‖ ≤ 3 * C / R ^ 2 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have h1 := norm_trunc_mul_exp_le hFb hneg hT
+  have hk : ‖newmanKernel R z‖ ≤ 3 * (-z.re) / R ^ 2 := by
+    have := norm_newmanKernel_horiz hR him hre
+    rwa [abs_of_neg hneg] at this
+  have hxpos : 0 < -z.re := by linarith
+  calc ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+          * Complex.exp (z * (T : ℂ)) * newmanKernel R z‖
+      = ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+          * Complex.exp (z * (T : ℂ))‖ * ‖newmanKernel R z‖ := norm_mul _ _
+    _ ≤ (C / (-z.re)) * (3 * (-z.re) / R ^ 2) :=
+        mul_le_mul h1 hk (norm_nonneg _) (div_nonneg hC0 hxpos.le)
+    _ = 3 * C / R ^ 2 := by
+        have hzne : z.re ≠ 0 := ne_of_lt hneg
+        field_simp
+
+/-- **The truncated transform on the far left edge** `\mathrm{Re}\,z = -R`. -/
+@[category API, AMS 30]
+theorem norm_trunc_integrand_vert_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    {R T : ℝ} (hR : 0 < R) (hT : 0 ≤ T)
+    {z : ℂ} (hre : z.re = -R) (him : |z.im| ≤ R) :
+    ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+        * Complex.exp (z * (T : ℂ)) * newmanKernel R z‖ ≤ 3 * C / R ^ 2 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hneg : z.re < 0 := by rw [hre]; linarith
+  have habs : |z.re| = R := by rw [hre, abs_neg, abs_of_pos hR]
+  have h1 := norm_trunc_mul_exp_le hFb hneg hT
+  have hk := norm_newmanKernel_vert hR habs him
+  calc ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+          * Complex.exp (z * (T : ℂ)) * newmanKernel R z‖
+      = ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+          * Complex.exp (z * (T : ℂ))‖ * ‖newmanKernel R z‖ := norm_mul _ _
+    _ ≤ (C / (-z.re)) * (3 / R) :=
+        mul_le_mul h1 hk (norm_nonneg _) (div_nonneg hC0 (by linarith))
+    _ = 3 * C / R ^ 2 := by
+        rw [hre]
+        field_simp
+
+/--
+**The left edge, `G` part.**  On `\mathrm{Re}\,z = -\delta`, `|\mathrm{Im}\,z| \le R`,
+$$\|G(z)e^{zT}k(z)\| \le M e^{-\delta T}\Bigl(\frac1\delta + \frac2R\Bigr),$$
+which tends to `0` as `T \to \infty` with `\delta` and `R` fixed.  This is the one place the
+analytic continuation past the imaginary axis is used.
+-/
+@[category API, AMS 30]
+theorem norm_G_integrand_left_le {G : ℂ → ℂ} {M R δ T : ℝ} (hR : 0 < R) (hδ : 0 < δ)
+    (hδR : δ ≤ R) {z : ℂ} (hre : z.re = -δ) (him : |z.im| ≤ R) (hM : ‖G z‖ ≤ M) :
+    ‖G z * Complex.exp (z * (T : ℂ)) * newmanKernel R z‖
+      ≤ M * Real.exp (-(δ * T)) * (1 / δ + 2 / R) := by
+  have hM0 : 0 ≤ M := le_trans (norm_nonneg _) hM
+  have hlow : δ ≤ ‖z‖ := by
+    have : |z.re| ≤ ‖z‖ := Complex.abs_re_le_norm z
+    rwa [hre, abs_neg, abs_of_pos hδ] at this
+  have hupp : ‖z‖ ≤ 2 * R := by
+    have h1 : ‖z‖ ^ 2 = z.re ^ 2 + z.im ^ 2 := by
+      rw [Complex.sq_norm, Complex.normSq_apply]; ring
+    have h2 : z.re ^ 2 ≤ R ^ 2 := by rw [hre]; nlinarith
+    have h3 : z.im ^ 2 ≤ R ^ 2 := by nlinarith [abs_nonneg z.im, sq_abs z.im]
+    nlinarith [norm_nonneg z, hR]
+  have hk : ‖newmanKernel R z‖ ≤ 1 / δ + 2 / R := by
+    refine le_trans (norm_newmanKernel_le R z) ?_
+    have ha : ‖z‖⁻¹ ≤ 1 / δ := by
+      rw [inv_eq_one_div, div_le_div_iff₀ (lt_of_lt_of_le hδ hlow) hδ]; linarith
+    have hb : ‖z‖ / R ^ 2 ≤ 2 / R := by
+      rw [div_le_div_iff₀ (by positivity) hR]; nlinarith
+    linarith
+  have hexp : ‖Complex.exp (z * (T : ℂ))‖ = Real.exp (-(δ * T)) := by
+    rw [norm_exp_mul_ofReal, hre]; ring_nf
+  calc ‖G z * Complex.exp (z * (T : ℂ)) * newmanKernel R z‖
+      = ‖G z‖ * ‖Complex.exp (z * (T : ℂ))‖ * ‖newmanKernel R z‖ := by
+        rw [norm_mul, norm_mul]
+    _ ≤ M * Real.exp (-(δ * T)) * (1 / δ + 2 / R) := by
+        rw [hexp]
+        refine mul_le_mul ?_ hk (norm_nonneg _) (mul_nonneg hM0 (Real.exp_pos _).le)
+        exact mul_le_mul_of_nonneg_right hM (Real.exp_pos _).le
+
 /--
 **Newman's analytic theorem.**  A bounded, locally integrable `F : [0,∞) → ℝ` whose Laplace
 transform continues analytically to the closed half plane has a convergent improper integral,
