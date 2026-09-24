@@ -737,4 +737,52 @@ theorem sum_one_div_mul_logMean_eq (N : ℕ) :
         push_cast
         ring
 
+/-- `log M ≤ ∑_{n ≤ M} 1/n`. -/
+@[category API, AMS 11]
+theorem log_le_harmonicSum (M : ℕ) : Real.log M ≤ harmonicSum M := by
+  have h := log_add_one_le_harmonic M
+  rw [harmonic_eq_sum_Icc] at h
+  push_cast at h
+  have hmono : Real.log M ≤ Real.log ((M : ℝ) + 1) := by
+    rcases Nat.eq_zero_or_pos M with rfl | hM
+    · simp
+    · exact Real.log_le_log (by exact_mod_cast hM) (by linarith)
+  refine hmono.trans (h.trans (le_of_eq ?_))
+  exact Finset.sum_congr rfl fun n _ ↦ by rw [one_div]
+
+/--
+`H(⌊N/m⌋)` is `log N - log m` up to `1`, for `1 ≤ m ≤ N`.
+-/
+@[category API, AMS 11]
+theorem abs_harmonicSum_div_sub_le {N m : ℕ} (hm : 1 ≤ m) (hmN : m ≤ N) :
+    |harmonicSum (N / m) - (Real.log N - Real.log m)| ≤ 1 := by
+  have hmR : (0 : ℝ) < m := by exact_mod_cast hm
+  have hNR : (0 : ℝ) < N := by exact_mod_cast lt_of_lt_of_le hm hmN
+  have hq : 1 ≤ N / m := (Nat.one_le_div_iff (by omega)).2 hmN
+  have hqR : (1 : ℝ) ≤ ((N / m : ℕ) : ℝ) := by exact_mod_cast hq
+  have hlogdiff : Real.log N - Real.log m = Real.log ((N : ℝ) / m) :=
+    (Real.log_div (ne_of_gt hNR) (ne_of_gt hmR)).symm
+  have hupper : ((N / m : ℕ) : ℝ) ≤ (N : ℝ) / m := Nat.cast_div_le
+  have hlower : (N : ℝ) / m < 2 * ((N / m : ℕ) : ℝ) := by
+    have hmod : N % m < m := Nat.mod_lt _ (by omega)
+    have hdm := Nat.div_add_mod N m
+    have hlt : N < m * (2 * (N / m)) := by
+      have : 1 ≤ N / m := hq
+      nlinarith [hdm, hmod, this]
+    have hltR : (N : ℝ) < (m : ℝ) * (2 * ((N / m : ℕ) : ℝ)) := by exact_mod_cast hlt
+    rw [div_lt_iff₀ hmR]
+    linarith
+  have h1 : Real.log ((N / m : ℕ) : ℝ) ≤ Real.log ((N : ℝ) / m) :=
+    Real.log_le_log (by linarith) hupper
+  have h2 : Real.log ((N : ℝ) / m) ≤ Real.log 2 + Real.log ((N / m : ℕ) : ℝ) := by
+    have := Real.log_le_log (by positivity) hlower.le
+    rwa [Real.log_mul (by norm_num) (by linarith)] at this
+  have h3 : Real.log ((N / m : ℕ) : ℝ) ≤ harmonicSum (N / m) := log_le_harmonicSum _
+  have h4 : harmonicSum (N / m) ≤ 1 + Real.log ((N / m : ℕ) : ℝ) := sum_one_div_le _
+  have hlog2 : Real.log 2 ≤ 1 := by
+    have := Real.log_le_sub_one_of_pos (show (0:ℝ) < 2 by norm_num)
+    linarith
+  rw [hlogdiff, abs_le]
+  constructor <;> linarith
+
 end Wirsing
