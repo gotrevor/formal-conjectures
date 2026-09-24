@@ -1800,4 +1800,70 @@ theorem abs_logMean_le_logProfile (hf : IsPMOneMultiplicative f) (N : ℕ) :
       rw [logProfile_of_one_lt f hN1, le_div_iff₀ hlogpos]
       exact hstep
 
+open scoped Classical in
+/-- The bad-prime deficit for the profile `α log M + β`. -/
+noncomputable def badDefect (f : ℕ → ℝ) (α β : ℝ) (N : ℕ) : ℝ :=
+  ∑ p ∈ (Icc 1 N).filter (fun p ↦ p.Prime ∧ f p = -1),
+    Real.log p / p * (α * Real.log ((N / p : ℕ) : ℝ) + β)
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem sum_one_sub_eq_two_mul_badDefect (hf : IsPMOneMultiplicative f) (α β : ℝ) (N : ℕ) :
+    (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * ((1 - f p) * (α * Real.log ((N / p : ℕ) : ℝ) + β)))
+      = 2 * badDefect f α β N := by
+  have hstep : ∀ p ∈ (Icc 1 N).filter Nat.Prime,
+      Real.log p / p * ((1 - f p) * (α * Real.log ((N / p : ℕ) : ℝ) + β))
+        = if f p = -1 then
+            2 * (Real.log p / p * (α * Real.log ((N / p : ℕ) : ℝ) + β)) else 0 := by
+    intro p hp
+    have hp1 : 1 ≤ p := (mem_Icc.1 (mem_filter.1 hp).1).1
+    rcases hf.pmOne p hp1 with h | h
+    · rw [h, if_neg (by norm_num)]; ring
+    · rw [h, if_pos rfl]; ring
+  rw [Finset.sum_congr rfl hstep, ← Finset.sum_filter, badDefect, Finset.filter_filter,
+    Finset.mul_sum]
+
+open scoped Classical in
+/--
+**The sharp Gronwall step.**  If `|L(M)| ≤ α log M + β` for every `M ≤ N` then
+
+    |L(N)| log N ≤ α (log N)² + 2β log N - 2 · badDefect f α β N + O(1 + α + β).
+
+Compared with `Wirsing.abs_logMean_mul_log_le_of_profile` the `(log N)²` coefficient is now
+**exact**: `sum_primeWeight_mul_log_div_le` contributes no `log N` term, so the only
+`log N` terms left are `2β log N` (from the constant part of the profile) and the `O(log N)`
+error of the engine identity.  The deficit is the entire gain.
+-/
+@[category API, AMS 11]
+theorem abs_logMean_mul_log_le_of_profile_sharp (hf : IsPMOneMultiplicative f) {N : ℕ}
+    (hN : 1 ≤ N) {α β : ℝ} (hα : 0 ≤ α) (hβ : 0 ≤ β)
+    (hbd : ∀ M ≤ N, |logMean f M| ≤ α * Real.log M + β) :
+    |logMean f N| * Real.log N
+      ≤ α * Real.log N ^ 2 + 2 * β * Real.log N - 2 * badDefect f α β N
+        + (2 * α * (2 * 10 ^ 11) + 2 * β * (Real.log 4 + 8)
+            + (27 + 2 * Real.log 4) * (1 + Real.log N)) := by
+  classical
+  have hmain := abs_logMean_mul_log_le_of_forall_le f hf
+    (fun M ↦ α * Real.log M + β) hbd
+  have hterm : ∀ p ∈ (Icc 1 N).filter Nat.Prime,
+      Real.log p / p * ((1 + f p) * (α * Real.log ((N / p : ℕ) : ℝ) + β))
+        = 2 * (Real.log p / p * (α * Real.log ((N / p : ℕ) : ℝ) + β))
+          - Real.log p / p * ((1 - f p) * (α * Real.log ((N / p : ℕ) : ℝ) + β)) :=
+    fun p _ ↦ by ring
+  rw [Finset.sum_congr rfl hterm, Finset.sum_sub_distrib, ← Finset.mul_sum,
+    sum_one_sub_eq_two_mul_badDefect f hf α β N] at hmain
+  -- the two pieces of the good-prime sum
+  have hsplit : (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * (α * Real.log ((N / p : ℕ) : ℝ) + β))
+      = α * (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+            Real.log p / p * Real.log ((N / p : ℕ) : ℝ))
+        + β * ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p := by
+    rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]
+    exact Finset.sum_congr rfl fun p _ ↦ by ring
+  have h1 := sum_primeWeight_mul_log_div_le (N := N)
+  have h2 := (abs_le.1 (Mertens.abs_sum_log_prime_div_sub_log_le hN)).2
+  rw [hsplit] at hmain
+  nlinarith [hmain, h1, h2, hα, hβ]
+
 end Wirsing
