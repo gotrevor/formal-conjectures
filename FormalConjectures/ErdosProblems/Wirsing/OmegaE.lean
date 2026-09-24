@@ -342,6 +342,72 @@ theorem exists_turan_kubilius :
   nlinarith [mul_le_mul_of_nonneg_left h2 (by linarith : (0 : ℝ) ≤ 2 * badPrimeSum f N),
     mul_nonneg hE hN, mul_nonneg hE hE]
 
+/-- Telescoping bound `∑_{2 ≤ k ≤ N} 1/k² ≤ 1 - 1/N`. -/
+@[category API, AMS 11]
+theorem sum_Icc_one_div_sq_le : ∀ N : ℕ, 1 ≤ N →
+    ∑ k ∈ Icc 2 N, (1 : ℝ) / k ^ 2 ≤ 1 - 1 / N := by
+  intro N
+  induction N with
+  | zero => omega
+  | succ n ih =>
+    intro _
+    rcases Nat.lt_or_ge n 1 with h | h
+    · interval_cases n
+      norm_num
+    · have hnR : (1 : ℝ) ≤ n := by exact_mod_cast h
+      have hstep := ih h
+      rw [Finset.sum_Icc_succ_top (by omega : 2 ≤ n + 1)]
+      push_cast
+      have h1 : (1 : ℝ) / ((n : ℝ) + 1) ^ 2 ≤ 1 / (n : ℝ) - 1 / ((n : ℝ) + 1) := by
+        rw [div_sub_div _ _ (by linarith) (by linarith),
+          div_le_div_iff₀ (by positivity) (by positivity)]
+        nlinarith
+      linarith
+
+open scoped Classical in
+/-- Reindexing the multiples of `p` in `[1, N]` as `p * m` with `m ∈ [1, ⌊N/p⌋]`. -/
+@[category API, AMS 11]
+theorem sum_filter_dvd_eq {N p : ℕ} (hp : 0 < p) (g : ℕ → ℝ) :
+    ∑ n ∈ {n ∈ Icc 1 N | p ∣ n}, g n = ∑ m ∈ Icc 1 (N / p), g (p * m) := by
+  refine (Finset.sum_nbij' (i := fun m ↦ p * m) (j := fun n ↦ n / p) ?_ ?_ ?_ ?_ ?_).symm
+  · intro m hm
+    simp only [Finset.mem_Icc] at hm
+    simp only [Finset.mem_filter, Finset.mem_Icc]
+    refine ⟨⟨?_, ?_⟩, Dvd.intro m rfl⟩
+    · simpa using Nat.mul_le_mul hp hm.1
+    · rw [mul_comm, ← Nat.le_div_iff_mul_le hp]
+      exact hm.2
+  · intro n hn
+    simp only [Finset.mem_filter, Finset.mem_Icc] at hn
+    obtain ⟨⟨hn1, hnN⟩, hdvd⟩ := hn
+    simp only [Finset.mem_Icc]
+    refine ⟨?_, Nat.div_le_div_right hnN⟩
+    exact Nat.one_le_div_iff hp |>.2 (Nat.le_of_dvd (by omega) hdvd)
+  · intro m _
+    exact Nat.mul_div_cancel_left m hp
+  · intro n hn
+    simp only [Finset.mem_filter] at hn
+    exact Nat.mul_div_cancel' hn.2
+  · intro m _
+    rfl
+
+open scoped Classical in
+/-- `∑_{n ≤ N} f(n) ω_E(n) = ∑_{p ∈ E, p ≤ N} ∑_{m ≤ N/p} f(p m)`. -/
+@[category API, AMS 11]
+theorem sum_mul_omegaBad_eq (N : ℕ) :
+    ∑ n ∈ Icc 1 N, f n * omegaBad f n
+      = ∑ p ∈ badPrimesLE f N, ∑ m ∈ Icc 1 (N / p), f (p * m) := by
+  have hexp : ∀ n ∈ Icc 1 N, f n * (omegaBad f n : ℝ)
+      = ∑ p ∈ badPrimesLE f N, if p ∣ n then f n else 0 := by
+    intro n hn
+    simp only [Finset.mem_Icc] at hn
+    rw [omegaBad_eq_card_filter_badPrimesLE f hn.1 hn.2, ← Finset.sum_boole, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun p _ ↦ by split <;> simp
+  rw [Finset.sum_congr rfl hexp, Finset.sum_comm]
+  refine Finset.sum_congr rfl fun p hp ↦ ?_
+  rw [← Finset.sum_filter]
+  exact sum_filter_dvd_eq (mem_badPrimesLE_iff f |>.1 hp).2.1.pos f
+
 /--
 The hyperbola estimate: `∑_{n ≤ N} f(n) ω_E(n) = ∑_{p ∈ E, p ≤ N} f(p) S(N/p) + O(N)`.
 
