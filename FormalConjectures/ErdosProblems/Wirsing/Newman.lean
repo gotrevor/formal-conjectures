@@ -190,6 +190,56 @@ theorem exists_tendsto_sum_vonMangoldt_div_sub_log
     sum_one_div_succ_eq_harmonic_sub hN, hrange N hN, ← hpsiSum N]
   ring
 
+/-! ### The Laplace transform of `ψ(e^t)e^{-t} - 1` -/
+
+/--
+**The polar part of `-\zeta'/\zeta` is simple, and the rest is ANALYTIC up to the `1`-line.**
+The analytic strengthening of `Wirsing.exists_continuousOn_lSeries_vonMangoldt_sub`, which
+gives only continuity.  Newman's theorem needs analyticity on a neighbourhood of the closed
+half plane, so the continuous version is not enough.
+
+`\Lambda_1(s) = (s-1)\zeta(s)` is entire and has no zero with `\mathrm{Re}\,s \ge 1`: away
+from `s = 1` because `\zeta` has none there
+(`riemannZeta_ne_zero_of_one_le_re`), and at `s = 1` because the pole of `\zeta` is simple
+(`DirichletCharacter.LFunctionTrivChar₁_apply_one_ne_zero`).  Hence its logarithmic
+derivative is analytic there.
+-/
+@[category API, AMS 11]
+theorem exists_analyticOnNhd_lSeries_vonMangoldt_sub :
+    ∃ Φ : ℂ → ℂ, AnalyticOnNhd ℂ Φ {s : ℂ | 1 ≤ s.re} ∧
+      ∀ s : ℂ, 1 < s.re →
+        LSeries (fun n ↦ (ArithmeticFunction.vonMangoldt n : ℂ)) s = 1 / (s - 1) + Φ s := by
+  set L : ℂ → ℂ := DirichletCharacter.LFunctionTrivChar₁ 1 with hL
+  have hLd : Differentiable ℂ L := DirichletCharacter.differentiable_LFunctionTrivChar₁ 1
+  have hLa : ∀ s : ℂ, AnalyticAt ℂ L s := fun s ↦ hLd.analyticAt s
+  have hLda : ∀ s : ℂ, AnalyticAt ℂ (deriv L) s := fun s ↦ (hLa s).deriv
+  have hLne : ∀ s : ℂ, 1 ≤ s.re → L s ≠ 0 := by
+    intro s hs
+    rcases eq_or_ne s 1 with rfl | hs1
+    · exact DirichletCharacter.LFunctionTrivChar₁_apply_one_ne_zero 1
+    · have hval : L s = (s - 1) * riemannZeta s := by
+        rw [hL, DirichletCharacter.LFunctionTrivChar₁, Function.update_of_ne hs1,
+          Wirsing.lFunctionTrivChar_one_eq]
+      rw [hval]
+      exact mul_ne_zero (sub_ne_zero_of_ne hs1) (riemannZeta_ne_zero_of_one_le_re hs)
+  refine ⟨fun s ↦ -deriv L s / L s, ?_, ?_⟩
+  · intro s hs
+    exact ((hLda s).neg).div (hLa s) (hLne s hs)
+  · intro s hs
+    have hs1 : s ≠ 1 := fun h ↦ by simp [h] at hs
+    have hsub : s - 1 ≠ 0 := sub_ne_zero_of_ne hs1
+    have hz : riemannZeta s ≠ 0 := riemannZeta_ne_zero_of_one_le_re hs.le
+    have hval : L s = (s - 1) * riemannZeta s := by
+      rw [hL, DirichletCharacter.LFunctionTrivChar₁, Function.update_of_ne hs1,
+        Wirsing.lFunctionTrivChar_one_eq]
+    have hderiv : deriv L s = (s - 1) * deriv riemannZeta s + riemannZeta s := by
+      rw [hL, DirichletCharacter.deriv_LFunctionTrivChar₁_apply_of_ne_one 1 hs1,
+        Wirsing.lFunctionTrivChar_one_eq]
+    rw [ArithmeticFunction.LSeries_vonMangoldt_eq_deriv_riemannZeta_div hs]
+    simp only [hderiv, hval]
+    field_simp
+    ring
+
 /--
 **Newman's convergent integral, in discrete form.**  The partial sums of the error series of
 Chebyshev's `ψ` against the main term converge:
