@@ -1,5 +1,74 @@
 # PENDING WORK — Erdős 239
 
+## Lap 10 (2026-09-24) — the deficit budget, and where PNT is unavoidable
+
+### REFUTED: "propagate rigidity from primes to integers by induction on `Ω(k)`"
+
+Lap 9 named this as step 4, the crux.  It cannot work, and the reason is a conservation law.
+
+`Wirsing.sum_bad_weight_le` says the bad Mertens weight at threshold `ρ` is at most
+`(2δ log N + C)/(ρ + δ)`, where `δ` is the slack in `|σ(N)| ≥ A - δ`.  Read as a budget: the
+*total* deficit `∑_p (log p/p)(A + δ - s f(p) σ(⌊N/p⌋))` is at most `2δ log N + C`, and that
+budget can be spent either on a small threshold `ρ` or on a small bad weight — never both.
+
+At level 2 one applies the same estimate at `N' = ⌊N/p⌋`, where the slack is now `δ' = ρ₁`, a
+*constant*.  So the level-2 bad weight is `≈ 2ρ₁ log N / ρ₂`, which is a small fraction of
+`log N` only if `ρ₂ ≳ ρ₁/ε`.  Thresholds therefore grow geometrically, `ρ_k ≈ ρ₀(2/ε)^k`, and
+must stay below `A`: only `O(1)` levels fit.  Integers with `O(1)` prime factors carry
+harmonic weight `(log log N)^{O(1)}`, not `log N`.  **Do not retry.**
+
+The variational fix of this lap (below) removes the `log N` at level 1 only; the quotient
+`⌊N/p⌋` is not ours to choose, so level 2 is unaffected.
+
+### LANDED: `Wirsing/Extremal.lean` — the variational extremal point
+
+Choose `N` and `δ` *together*.  With `B = \sup_{M ≥ M₀}|σ(M)|`, the functional
+`(B - |σ(N)|)·log N` is a nonnegative real for every `N ≥ M₀`, so its infimum `D` is finite
+and nearly attained.  At a near-minimiser,
+
+    ∑_{p bad} log p / p ≤ (2(D + ε) + rigidityConst M₀) / ρ,
+
+**independent of `N`** — where the naive order of quantifiers gives only `ε log N`.  Also
+`|σ(M)| ≤ B` for every `M ≥ M₀` with no slack at all.  Sorry-free,
+`[propext, Classical.choice, Quot.sound]`.
+
+### Where PNT is genuinely unavoidable, and why Chebyshev is not enough
+
+The window step `Wirsing.eq_of_mean_quotient_close` needs two good points whose quotients lie
+in a multiplicative window of ratio `c` with `1 - 1/c < A - ρ`, i.e. `c < 1/(1 - A + ρ)`.
+Since `σ` is 2-Lipschitz in `log`, a sign flip across the window costs `2(A - ρ)`, so this
+bound on `c` is sharp, not an artefact.
+
+Chebyshev's bounds `A₀x ≤ ψ(x) ≤ B₀x` give a prime in `(X, cX]` only for `c > B₀/A₀ ≈ 1.2`.
+That covers the window requirement only when `A ≳ 0.2`.  For small `A` the window is
+`1 + A + o(A)` and nothing short of `ψ(x) ∼ x` certifies a prime in it.  So the PNT branch is
+the live route; the integer reordering of lap 9 is not a way around it.
+
+### LANDED: two steps of the PNT branch
+
+* `Newman.tendsto_sum_log_prime_div_window` — **proved** (from the sharp-Mertens input it is
+  stated to consume): `∑_{X < p ≤ ⌊cX⌋} log p/p → log c` for every `c > 1`.  This is exactly
+  the gate above.
+* `Newman.two_pi_I_inv_circleIntegral_kernel` — **proved**: for `h` analytic on `|z| ≤ R`,
+  `(2πi)^{-1}∮_{|z|=R} h(z)(1 + z²/R²)/z dz = h(0)`, from mathlib's
+  `DifferentiableOn.circleIntegral_sub_inv_smul`.  The factor `1 + z²/R²` is `1` at the
+  origin, so it does not move the residue; `Newman.kernel_eq` is what it is there for.
+
+### Next attack on `Newman.tendsto_integral_of_analyticOn`
+
+All four quantitative pieces are now proved: `kernel_eq`, `norm_kernel`,
+`norm_tail_mul_kernel_le` (right arc), `norm_trunc_mul_kernel_le` (left arc), and the Cauchy
+value above.  What remains is purely the *indented* contour: `G` is analytic on
+`\mathrm{Re}\,z ≥ 0` only, so the left half of the circle must be replaced by a path inside
+`\mathrm{Re}\,z > -δ(R)`, on which `|G|` is bounded and `e^{zT} → 0` pointwise.  Note that
+`g_T` needs **no** deformation — `norm_trunc_mul_kernel_le` bounds it on the left arc
+directly, which is a simplification over Zagier's presentation.  Mathlib has Cauchy–Goursat
+for rectangles (`Complex.integral_boundary_rect_eq_zero_of_differentiableOn`); the plan is to
+replace Newman's indented disc by a rectangle contour, where the same two arc estimates apply
+verbatim to the vertical sides.
+
+---
+
 ## LAP 9 (2026-09-24): Karamata is PROVED, and the crux now has a COMPLETE elementary plan
 
 ### Proved this lap (all axiom-clean: `propext, Classical.choice, Quot.sound`)

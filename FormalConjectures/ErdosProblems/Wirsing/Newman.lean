@@ -425,4 +425,42 @@ theorem norm_trunc_mul_kernel_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t|
         positivity
     _ = 2 * C / R ^ 2 := hfin
 
+/-! ### The Cauchy value of the Newman kernel -/
+
+open Metric in
+/--
+**The Cauchy step of Newman's proof.**  For `h` analytic on the closed disc `|z| \le R`,
+$$\frac{1}{2\pi i}\oint_{|z| = R} h(z)\frac{1 + z^2/R^2}{z}\,dz = h(0).$$
+
+The extra factor `1 + z^2/R^2` is `1` at the origin, so it does not change the residue; its
+whole purpose is the boundary identity `Newman.kernel_eq`, which makes the kernel `O(1/R^2)`
+times `|\mathrm{Re}\,z|` on the circle.  This is the piece of
+`Newman.tendsto_integral_of_analyticOn` that mathlib's Cauchy integral formula supplies
+directly; what is still missing there is only the *indented* contour needed because the
+Laplace transform `G` is analytic on `\mathrm{Re}\,z \ge 0` and not on the full disc.
+-/
+@[category API, AMS 30]
+theorem two_pi_I_inv_circleIntegral_kernel {R : ℝ} (hR : 0 < R) {h : ℂ → ℂ}
+    (hd : DifferentiableOn ℂ h (closedBall (0 : ℂ) R)) :
+    ((2 * Real.pi * Complex.I : ℂ)⁻¹ *
+      ∮ z in C((0 : ℂ), R), h z * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z)) = h 0 := by
+  have hRne : ((R : ℂ)) ≠ 0 := by
+    simpa using ne_of_gt hR
+  set f : ℂ → ℂ := fun z ↦ h z * (1 + z ^ 2 / (R : ℂ) ^ 2) with hf
+  have hpoly : Differentiable ℂ fun z : ℂ ↦ 1 + z ^ 2 / (R : ℂ) ^ 2 := by fun_prop
+  have hfd : DifferentiableOn ℂ f (closedBall (0 : ℂ) R) := hd.mul hpoly.differentiableOn
+  have hw : (0 : ℂ) ∈ ball (0 : ℂ) R := by simpa using hR
+  have hcauchy := hfd.circleIntegral_sub_inv_smul hw
+  have hrw : (∮ z in C((0 : ℂ), R), (z - 0)⁻¹ • f z)
+      = ∮ z in C((0 : ℂ), R), h z * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z) := by
+    refine circleIntegral.integral_congr hR.le fun z _ ↦ ?_
+    simp only [hf, sub_zero, smul_eq_mul, div_eq_mul_inv]
+    ring
+  rw [hrw] at hcauchy
+  have hf0 : f 0 = h 0 := by
+    simp [hf]
+  have hne : (2 * Real.pi * Complex.I : ℂ) ≠ 0 := by
+    simp [Real.pi_ne_zero, Complex.I_ne_zero]
+  rw [hcauchy, smul_eq_mul, hf0, ← mul_assoc, inv_mul_cancel₀ hne, one_mul]
+
 end Newman
