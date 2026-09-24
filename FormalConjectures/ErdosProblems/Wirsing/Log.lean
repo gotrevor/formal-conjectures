@@ -1434,4 +1434,52 @@ theorem mul_badLogSum_le_badProfile {K N : ℕ} (hKN : K ≤ N) : (Real.log N - 
   _ ≤ Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ)) :=
         mul_le_mul_of_nonneg_left hstep hwnn
 
+open scoped Classical in
+@[category API, AMS 11]
+theorem badLogSum_nonneg (K : ℕ) : 0 ≤ badLogSum f K := by
+  refine Finset.sum_nonneg fun p hp ↦ ?_
+  have hpp : p.Prime := by
+    rw [badPrimesLE, Finset.mem_filter] at hp
+    exact hp.2.1
+  have hp1 : (1 : ℝ) ≤ p := by exact_mod_cast hpp.one_lt.le
+  exact div_nonneg (Real.log_nonneg hp1) (by linarith)
+
+open scoped Classical in
+/--
+**One scale of the iteration.**  Assume `|L(M)| ≤ α(1 + log M)` for all `M ≤ N`, and let
+`K ≤ √N` (in the form `2 log K ≤ log N`).  Then
+
+    |L(N)| ≤ α log N - α r(K) + 2 C(α),   r(K) = ∑_{p ≤ K, f p = -1} log p / p.
+
+The deficit `α r(K)` can be made as large as one likes by choosing `K`, because the
+hypothesis `∑_{f(p) = -1} 1/p = ∞` makes `r` unbounded
+(`Wirsing.log_two_mul_badPrimeSum_le_badLogSum`).  It is a deficit against `α log N`, not
+against `α`, so a single scale does not improve `α`; the iteration that turns these deficits
+into `L(N) = o(log N)` is what remains of
+`Wirsing.tendsto_logMean_div_log_atTop_zero`.
+-/
+@[category API, AMS 11]
+theorem abs_logMean_le_of_profile (hf : IsPMOneMultiplicative f) {N K : ℕ} {α : ℝ}
+    (hα : 0 ≤ α) (hKN : K ≤ N) (hlogK : 2 * Real.log K ≤ Real.log N)
+    (hlogN : 1 ≤ Real.log N)
+    (hbd : ∀ M ≤ N, |logMean f M| ≤ α * (1 + Real.log M)) :
+    |logMean f N| ≤ α * Real.log N - α * badLogSum f K
+      + 2 * (2 * α * (11 + Real.log 4) + (27 + 2 * Real.log 4)) := by
+  classical
+  have hstep := abs_logMean_mul_log_le_of_profile f hf hα hbd
+  have hprof := mul_badLogSum_le_badProfile f (K := K) (N := N) hKN
+  have hrnn := badLogSum_nonneg f K
+  have hlogNpos : (0 : ℝ) < Real.log N := by linarith
+  have hhalf : Real.log N / 2 ≤ Real.log N - Real.log K := by linarith
+  have hlow : Real.log N / 2 * badLogSum f K ≤ badProfile f N :=
+    le_trans (mul_le_mul_of_nonneg_right hhalf hrnn) hprof
+  have hC : 0 ≤ 2 * α * (11 + Real.log 4) + (27 + 2 * Real.log 4) := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    nlinarith
+  have hkey : |logMean f N| * Real.log N
+      ≤ (α * Real.log N - α * badLogSum f K
+          + 2 * (2 * α * (11 + Real.log 4) + (27 + 2 * Real.log 4))) * Real.log N := by
+    nlinarith [hstep, hlow, hα, hrnn, hlogNpos, hC]
+  exact le_of_mul_le_mul_right (by linarith [hkey]) hlogNpos
+
 end Wirsing
