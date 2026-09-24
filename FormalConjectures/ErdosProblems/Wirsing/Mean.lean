@@ -122,4 +122,81 @@ theorem abs_sum_partialSum_div_sub_mul_logMean_le (hf : IsPMOneMultiplicative f)
     _ ≤ ∑ _m ∈ Icc 1 N, (1 : ℝ) := Finset.sum_le_sum hterm
     _ = (N : ℝ) := by rw [Finset.sum_const, Nat.card_Icc, nsmul_eq_mul]; push_cast; ring
 
+/-- `|⌊N/m⌋ - N/m| ≤ 1`. -/
+@[category API, AMS 11]
+theorem abs_natDiv_sub_div_le_one {N m : ℕ} (hm : 1 ≤ m) :
+    |((N / m : ℕ) : ℝ) - (N : ℝ) / m| ≤ 1 := by
+  have hmR : (1 : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm
+  have hfl : ((N / m : ℕ) : ℝ) ≤ (N : ℝ) / m := by
+    rw [le_div_iff₀ (by linarith)]
+    have h : (N / m) * m ≤ N := Nat.div_mul_le_self N m
+    calc ((N / m : ℕ) : ℝ) * (m : ℝ) = (((N / m) * m : ℕ) : ℝ) := by push_cast; ring
+    _ ≤ (N : ℝ) := by exact_mod_cast h
+  have hfl2 : (N : ℝ) / m - 1 ≤ ((N / m : ℕ) : ℝ) := by
+    rw [sub_le_iff_le_add, div_le_iff₀ (by linarith)]
+    have h : N < (N / m + 1) * m := by
+      have h1 := Nat.div_add_mod N m
+      have h2 := Nat.mod_lt N (show 0 < m by omega)
+      have h3 : (N / m + 1) * m = m * (N / m) + m := by ring
+      omega
+    calc (N : ℝ) ≤ (((N / m + 1) * m : ℕ) : ℝ) := by exact_mod_cast h.le
+    _ = (((N / m : ℕ) : ℝ) + 1) * (m : ℝ) := by push_cast; ring
+  rw [abs_le]
+  constructor <;> linarith
+
+/--
+**The hyperbola identity on the mean side.**  The logarithmic average of `σ` along the
+quotients equals `L(N)` up to an absolute constant:
+$$\Big|\sum_{k \le N} \frac{\sigma(\lfloor N/k\rfloor)}{k} - L(N)\Big| \le 2.$$
+
+This is the first place where `L(N) = o(\log N)` gives information about the mean: the left
+sum has `N` terms and its trivial bound is `\log N`, so the identity is not vacuous.
+-/
+@[category API, AMS 11]
+theorem abs_sum_mean_div_sub_logMean_le (hf : IsPMOneMultiplicative f) {N : ℕ} (hN : 1 ≤ N) :
+    |∑ k ∈ Icc 1 N, mean f (N / k) / k - logMean f N| ≤ 2 := by
+  have hNR : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+  have hNpos : (0 : ℝ) < N := by linarith
+  set T : ℝ := ∑ k ∈ Icc 1 N, mean f (N / k) / k with hT
+  -- compare the exact sum of partial sums with `N * T`
+  have hcmp : |∑ k ∈ Icc 1 N, partialSum f (N / k) - (N : ℝ) * T| ≤ (N : ℝ) := by
+    rw [hT, Finset.mul_sum, ← Finset.sum_sub_distrib]
+    have hterm : ∀ k ∈ Icc 1 N,
+        |partialSum f (N / k) - (N : ℝ) * (mean f (N / k) / k)| ≤ 1 := by
+      intro k hk
+      have hk1 : 1 ≤ k := (mem_Icc.1 hk).1
+      have hkR : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk1
+      have hrw : partialSum f (N / k) - (N : ℝ) * (mean f (N / k) / k)
+          = (((N / k : ℕ) : ℝ) - (N : ℝ) / k) * mean f (N / k) := by
+        rw [partialSum_eq_mul_mean]
+        field_simp
+      rw [hrw, abs_mul]
+      calc |((N / k : ℕ) : ℝ) - (N : ℝ) / k| * |mean f (N / k)|
+          ≤ 1 * 1 := mul_le_mul (abs_natDiv_sub_div_le_one hk1) (abs_mean_le_one f hf _)
+            (abs_nonneg _) (by norm_num)
+        _ = 1 := by ring
+    calc |∑ k ∈ Icc 1 N, (partialSum f (N / k) - (N : ℝ) * (mean f (N / k) / k))|
+        ≤ ∑ k ∈ Icc 1 N, |partialSum f (N / k) - (N : ℝ) * (mean f (N / k) / k)| :=
+          Finset.abs_sum_le_sum_abs _ _
+      _ ≤ ∑ _k ∈ Icc 1 N, (1 : ℝ) := Finset.sum_le_sum hterm
+      _ = (N : ℝ) := by rw [Finset.sum_const, Nat.card_Icc, nsmul_eq_mul]; push_cast; ring
+  have hinv := abs_sum_partialSum_div_sub_mul_logMean_le f hf N
+  have hcomb : |(N : ℝ) * T - (N : ℝ) * logMean f N| ≤ 2 * (N : ℝ) := by
+    have h := abs_sub ((∑ k ∈ Icc 1 N, partialSum f (N / k)) - (N : ℝ) * logMean f N)
+      ((∑ k ∈ Icc 1 N, partialSum f (N / k)) - (N : ℝ) * T)
+    have hid : (N : ℝ) * T - (N : ℝ) * logMean f N
+        = ((∑ k ∈ Icc 1 N, partialSum f (N / k)) - (N : ℝ) * logMean f N)
+          - ((∑ k ∈ Icc 1 N, partialSum f (N / k)) - (N : ℝ) * T) := by ring
+    rw [hid]
+    calc |((∑ k ∈ Icc 1 N, partialSum f (N / k)) - (N : ℝ) * logMean f N)
+        - ((∑ k ∈ Icc 1 N, partialSum f (N / k)) - (N : ℝ) * T)|
+        ≤ |(∑ k ∈ Icc 1 N, partialSum f (N / k)) - (N : ℝ) * logMean f N|
+          + |(∑ k ∈ Icc 1 N, partialSum f (N / k)) - (N : ℝ) * T| := abs_sub _ _
+      _ ≤ (N : ℝ) + (N : ℝ) := by linarith [hinv, hcmp]
+      _ = 2 * (N : ℝ) := by ring
+  have hfac : (N : ℝ) * T - (N : ℝ) * logMean f N = (N : ℝ) * (T - logMean f N) := by ring
+  rw [hfac, abs_mul, abs_of_pos hNpos] at hcomb
+  have hfinal : (N : ℝ) * |T - logMean f N| ≤ (N : ℝ) * 2 := by linarith
+  exact le_of_mul_le_mul_left hfinal hNpos
+
 end Wirsing
