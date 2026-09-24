@@ -92,4 +92,73 @@ theorem functional_pow (ha0 : a 0 = 0) {x : ℝ} (hx : 0 < x) (k : ℕ) :
   simp only [hcongr]
   field_simp
 
+/-- Summability of the Karamata sum for a bounded `g`. -/
+@[category API, AMS 11]
+theorem summable_term (ha : ∀ n, 0 ≤ a n) {x : ℝ} (hx : 0 < x)
+    (hsum : Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {g : ℝ → ℝ} {M : ℝ}
+    (hg : ∀ u ∈ Set.Icc (0 : ℝ) 1, |g u| ≤ M) :
+    Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x) * g ((n : ℝ) ^ (-x))) := by
+  refine Summable.of_norm_bounded (hsum.mul_left M) fun n ↦ ?_
+  have h1 : 0 ≤ a n * (n : ℝ) ^ (-x) :=
+    mul_nonneg (ha n) (Real.rpow_nonneg (Nat.cast_nonneg n) _)
+  rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg h1, mul_comm M]
+  exact mul_le_mul_of_nonneg_left (hg _ (rpow_neg_mem_Icc hx n)) h1
+
+/-- The Karamata functional is linear in `g` (additivity). -/
+@[category API, AMS 11]
+theorem functional_add (ha : ∀ n, 0 ≤ a n) {x : ℝ} (hx : 0 < x)
+    (hsum : Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {g h : ℝ → ℝ} {M M' : ℝ}
+    (hg : ∀ u ∈ Set.Icc (0 : ℝ) 1, |g u| ≤ M) (hh : ∀ u ∈ Set.Icc (0 : ℝ) 1, |h u| ≤ M') :
+    functional a x (fun u ↦ g u + h u) = functional a x g + functional a x h := by
+  rw [functional, functional, functional, ← mul_add,
+    ← (summable_term ha hx hsum hg).tsum_add (summable_term ha hx hsum hh)]
+  congr 1
+  exact tsum_congr fun n ↦ by ring
+
+/-- The Karamata functional is linear in `g` (homogeneity). -/
+@[category API, AMS 11]
+theorem functional_const_mul {x : ℝ} (r : ℝ) (g : ℝ → ℝ) :
+    functional a x (fun u ↦ r * g u) = r * functional a x g := by
+  have hkey : ∑' n : ℕ, a n * (n : ℝ) ^ (-x) * (r * g ((n : ℝ) ^ (-x)))
+      = r * ∑' n : ℕ, a n * (n : ℝ) ^ (-x) * g ((n : ℝ) ^ (-x)) := by
+    rw [← tsum_mul_left]
+    exact tsum_congr fun n ↦ by ring
+  rw [functional, functional, hkey]
+  ring
+
+/-- The Karamata functional is monotone in `g`. -/
+@[category API, AMS 11]
+theorem functional_mono (ha : ∀ n, 0 ≤ a n) {x : ℝ} (hx : 0 < x)
+    (hsum : Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {g h : ℝ → ℝ} {M M' : ℝ}
+    (hg : ∀ u ∈ Set.Icc (0 : ℝ) 1, |g u| ≤ M) (hh : ∀ u ∈ Set.Icc (0 : ℝ) 1, |h u| ≤ M')
+    (hgh : ∀ u ∈ Set.Icc (0 : ℝ) 1, g u ≤ h u) :
+    functional a x g ≤ functional a x h := by
+  rw [functional, functional]
+  refine mul_le_mul_of_nonneg_left ?_ hx.le
+  refine (summable_term ha hx hsum hg).tsum_le_tsum (fun n ↦ ?_) (summable_term ha hx hsum hh)
+  have h1 : 0 ≤ a n * (n : ℝ) ^ (-x) :=
+    mul_nonneg (ha n) (Real.rpow_nonneg (Nat.cast_nonneg n) _)
+  exact mul_le_mul_of_nonneg_left (hgh _ (rpow_neg_mem_Icc hx n)) h1
+
+/-- A uniform bound for `g` on `[0,1]` gives a bound for the Karamata functional. -/
+@[category API, AMS 11]
+theorem abs_functional_le (ha : ∀ n, 0 ≤ a n) {x : ℝ} (hx : 0 < x)
+    (hsum : Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {g : ℝ → ℝ} {M : ℝ}
+    (hg : ∀ u ∈ Set.Icc (0 : ℝ) 1, |g u| ≤ M) :
+    |functional a x g| ≤ M * (x * series a x) := by
+  have hM : 0 ≤ M := le_trans (abs_nonneg _) (hg 1 ⟨zero_le_one, le_refl 1⟩)
+  rw [functional, abs_mul, abs_of_nonneg hx.le, series, ← mul_assoc, mul_comm M x, mul_assoc]
+  refine mul_le_mul_of_nonneg_left ?_ hx.le
+  have habs : Summable (fun n : ℕ ↦ ‖a n * (n : ℝ) ^ (-x) * g ((n : ℝ) ^ (-x))‖) :=
+    (summable_term ha hx hsum hg).abs
+  calc |∑' n : ℕ, a n * (n : ℝ) ^ (-x) * g ((n : ℝ) ^ (-x))|
+      ≤ ∑' n : ℕ, ‖a n * (n : ℝ) ^ (-x) * g ((n : ℝ) ^ (-x))‖ := norm_tsum_le_tsum_norm habs
+    _ ≤ ∑' n : ℕ, M * (a n * (n : ℝ) ^ (-x)) := by
+        refine habs.tsum_le_tsum (fun n ↦ ?_) (hsum.mul_left M)
+        have h1 : 0 ≤ a n * (n : ℝ) ^ (-x) :=
+          mul_nonneg (ha n) (Real.rpow_nonneg (Nat.cast_nonneg n) _)
+        rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg h1, mul_comm M]
+        exact mul_le_mul_of_nonneg_left (hg _ (rpow_neg_mem_Icc hx n)) h1
+    _ = M * ∑' n : ℕ, a n * (n : ℝ) ^ (-x) := tsum_mul_left
+
 end Karamata
