@@ -225,4 +225,91 @@ theorem tendsto_sum_primeWeight_cos {t : ℝ} (ht : t ≠ 0) :
   ring
 
 
+/-! ### The sharp resonance defect -/
+
+/--
+The pointwise resonance inequality for a `±1` value `g`:
+$$1 - g\cos\theta - \tfrac14\bigl(1 - \cos 2\theta\bigr) = \tfrac12(\cos\theta - g)^2 \ge 0.$$
+The constant `1/4` is optimal (take `\cos\theta = g`... no: take `\cos\theta = 0`).
+-/
+@[category API, AMS 11]
+theorem quarter_one_sub_cos_two_le {g θ : ℝ} (hg : g = 1 ∨ g = -1) :
+    (1 - Real.cos (2 * θ)) / 4 ≤ 1 - g * Real.cos θ := by
+  have h := Real.cos_two_mul θ
+  rcases hg with rfl | rfl <;> nlinarith [sq_nonneg (Real.cos θ - 1), sq_nonneg (Real.cos θ + 1)]
+
+/--
+**The untwisted resonance defect is asymptotically full.**  For `t ≠ 0`,
+$$\sum_{p \le N} \frac{\log p}{p}\bigl(1 - \cos(t\log p)\bigr) \sim \log N.$$
+-/
+@[category API, AMS 11]
+theorem tendsto_sum_primeWeight_one_sub_cos_div_log {t : ℝ} (ht : t ≠ 0) :
+    Tendsto (fun N : ℕ ↦ (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+      Real.log p / p * (1 - Real.cos (t * Real.log p))) / Real.log N) atTop (𝓝 1) := by
+  classical
+  have hlog : Tendsto (fun N : ℕ ↦ Real.log N) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have hM : Tendsto (fun N : ℕ ↦ (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+      Real.log p / p) / Real.log N) atTop (𝓝 1) := by
+    have hz : Tendsto (fun N : ℕ ↦ (Real.log 4 + 8) / Real.log N) atTop (𝓝 0) :=
+      Tendsto.div_atTop tendsto_const_nhds hlog
+    have h0 : Tendsto (fun N : ℕ ↦ (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+        Real.log p / p) / Real.log N - 1) atTop (𝓝 0) := by
+      refine squeeze_zero_norm' ?_ hz
+      filter_upwards [eventually_ge_atTop 2] with N hN
+      have hlogpos : 0 < Real.log N := Real.log_pos (by exact_mod_cast hN)
+      have hme := Mertens.abs_sum_log_prime_div_sub_log_le (N := N) (by omega)
+      rw [Real.norm_eq_abs, div_sub_one (ne_of_gt hlogpos), abs_div, abs_of_pos hlogpos,
+        div_le_div_iff_of_pos_right hlogpos]
+      exact hme
+    simpa using h0.add (tendsto_const_nhds (x := (1 : ℝ)))
+  have hsub := hM.sub (tendsto_sum_primeWeight_cos ht)
+  rw [sub_zero] at hsub
+  refine hsub.congr fun N ↦ ?_
+  rw [← sub_div, ← Finset.sum_sub_distrib]
+  exact congrArg (· / Real.log N) (Finset.sum_congr rfl fun p _ ↦ by ring)
+
+/--
+**The sharp resonance defect for `f`.**  For a `±1`-valued multiplicative `f` and `t ≠ 0`,
+$$\sum_{p \le N} \frac{\log p}{p}\bigl(1 - f(p)\cos(t\log p)\bigr) \ge \frac{\log N}{8}
+  \qquad (N \text{ large}).$$
+
+The pointwise bound `Wirsing.quarter_one_sub_cos_two_le` reduces this to the untwisted defect
+at `2t`, which is `\log N(1 + o(1))` by `Wirsing.tendsto_sum_primeWeight_one_sub_cos_div_log`.
+This replaces the quantitative `\log N/16 - C_t` of
+`Wirsing.exists_sum_primeWeight_one_sub_mul_cos_ge` by a bound with no additive constant and
+twice the density.
+-/
+@[category API, AMS 11]
+theorem eventually_sum_primeWeight_one_sub_mul_cos_ge (f : ℕ → ℝ)
+    (hf : IsPMOneMultiplicative f) {t : ℝ} (ht : t ≠ 0) :
+    ∀ᶠ N : ℕ in atTop, Real.log N / 8 ≤ ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+      Real.log p / p * (1 - f p * Real.cos (t * Real.log p)) := by
+  classical
+  have h2t : 2 * t ≠ 0 := by simpa using ht
+  have hlim := tendsto_sum_primeWeight_one_sub_cos_div_log h2t
+  have hev := hlim.eventually (eventually_gt_nhds (by norm_num : (1 : ℝ) / 2 < 1))
+  filter_upwards [hev, eventually_ge_atTop 2] with N hN hN2
+  have hlogpos : 0 < Real.log N := Real.log_pos (by exact_mod_cast hN2)
+  have hhalf : Real.log N / 2 ≤ ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+      Real.log p / p * (1 - Real.cos (2 * t * Real.log p)) := by
+    have := (lt_div_iff₀ hlogpos).1 hN
+    linarith
+  have hstep : ∀ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+      Real.log p / p * (1 - Real.cos (2 * t * Real.log p)) / 4
+        ≤ Real.log p / p * (1 - f p * Real.cos (t * Real.log p)) := by
+    intro p hp
+    obtain ⟨hpIcc, hpp⟩ := Finset.mem_filter.1 hp
+    have hpR : (1 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hpp.one_lt.le
+    have hwnn : 0 ≤ Real.log p / p := by positivity
+    have hq := quarter_one_sub_cos_two_le (g := f p) (θ := t * Real.log p)
+      (hf.pmOne p hpp.pos)
+    have hcos : Real.cos (2 * (t * Real.log p)) = Real.cos (2 * t * Real.log p) := by
+      ring_nf
+    rw [hcos] at hq
+    nlinarith [hq, hwnn]
+  have hsum := Finset.sum_le_sum hstep
+  rw [← Finset.sum_div] at hsum
+  linarith
+
 end Wirsing
