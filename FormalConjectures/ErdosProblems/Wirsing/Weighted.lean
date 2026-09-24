@@ -50,6 +50,71 @@ open scoped Topology
 
 namespace Wirsing
 
+/-- The real part of `n^{-y-it}` for `n ≠ 0`:
+$$\mathrm{Re}\,n^{-y-it} = n^{-y}\cos(t\log n).$$ -/
+@[category API, AMS 11]
+theorem re_natCast_cpow_neg {n : ℕ} (hn : n ≠ 0) (y t : ℝ) :
+    ((n : ℂ) ^ (-((y : ℂ) + (t : ℂ) * I))).re = (n : ℝ) ^ (-y) * Real.cos (t * Real.log n) := by
+  have hpos : (0 : ℝ) < (n : ℝ) := by positivity
+  have hne : ((n : ℕ) : ℂ) ≠ 0 := by exact_mod_cast hn
+  set L := Real.log (n : ℝ) with hL
+  have hcast : ((n : ℕ) : ℂ) = ((n : ℝ) : ℂ) := by push_cast; ring
+  have hlog : Complex.log ((n : ℕ) : ℂ) = (L : ℂ) := by
+    rw [hcast, hL, Complex.ofReal_log hpos.le]
+  have hcpow : ((n : ℕ) : ℂ) ^ (-((y : ℂ) + (t : ℂ) * I))
+      = Complex.exp (((-(L * y) : ℝ) : ℂ) + ((-(L * t) : ℝ) : ℂ) * I) := by
+    rw [Complex.cpow_def_of_ne_zero hne, hlog]
+    push_cast
+    ring_nf
+  have hexp : (n : ℝ) ^ (-y) = Real.exp (-(L * y)) := by
+    rw [Real.rpow_def_of_pos hpos, hL]; ring_nf
+  rw [hcpow]
+  simp only [Complex.exp_re, Complex.add_re, Complex.add_im, Complex.ofReal_re,
+    Complex.ofReal_im, Complex.mul_re, Complex.mul_im, Complex.I_re, Complex.I_im,
+    mul_zero, sub_zero, mul_one, zero_add, add_zero]
+  rw [← hexp, show -(L * t) = -(t * L) by ring, Real.cos_neg, hL]
+
+/-- `LFunctionTrivChar 1 = riemannZeta`: the trivial character mod `1` has `ζ` as its
+`L`-function. -/
+@[category API, AMS 11]
+theorem lFunctionTrivChar_one_eq : DirichletCharacter.LFunctionTrivChar 1 = riemannZeta :=
+  DirichletCharacter.LFunction_modOne_eq
+
+/--
+**The pole of `-ζ'/ζ` is simple, and the rest is continuous up to the `1`-line.**
+There is a `G` continuous on `\{re s ≥ 1\}` with
+$$\sum_n \frac{\Lambda(n)}{n^s} = \frac{1}{s-1} + G(s) \qquad (re\,s > 1).$$
+
+This is the packaging of mathlib's
+`DirichletCharacter.continuousOn_neg_logDeriv_LFunctionTrivChar₁` at level `1`, and it is
+where `riemannZeta_ne_zero_of_one_le_re` enters: `G` is continuous exactly away from the zeros
+of `ζ`, and there are none with `re s ≥ 1`.
+-/
+@[category API, AMS 11]
+theorem exists_continuousOn_lSeries_vonMangoldt_sub :
+    ∃ G : ℂ → ℂ, ContinuousOn G {s : ℂ | 1 ≤ s.re} ∧
+      ∀ s : ℂ, 1 < s.re →
+        LSeries (fun n ↦ (ArithmeticFunction.vonMangoldt n : ℂ)) s = 1 / (s - 1) + G s := by
+  refine ⟨fun s ↦ -deriv (DirichletCharacter.LFunctionTrivChar₁ 1) s /
+    DirichletCharacter.LFunctionTrivChar₁ 1 s, ?_, ?_⟩
+  · refine (DirichletCharacter.continuousOn_neg_logDeriv_LFunctionTrivChar₁ 1).mono fun s hs ↦ ?_
+    exact Or.inr (by rw [lFunctionTrivChar_one_eq]; exact riemannZeta_ne_zero_of_one_le_re hs)
+  · intro s hs
+    have hs1 : s ≠ 1 := fun h ↦ by simp [h] at hs
+    have hsub : s - 1 ≠ 0 := sub_ne_zero_of_ne hs1
+    have hz : riemannZeta s ≠ 0 := riemannZeta_ne_zero_of_one_le_re hs.le
+    have hval : DirichletCharacter.LFunctionTrivChar₁ 1 s = (s - 1) * riemannZeta s := by
+      rw [DirichletCharacter.LFunctionTrivChar₁, Function.update_of_ne hs1,
+        lFunctionTrivChar_one_eq]
+    have hderiv : deriv (DirichletCharacter.LFunctionTrivChar₁ 1) s
+        = (s - 1) * deriv riemannZeta s + riemannZeta s := by
+      rw [DirichletCharacter.deriv_LFunctionTrivChar₁_apply_of_ne_one 1 hs1,
+        lFunctionTrivChar_one_eq]
+    rw [ArithmeticFunction.LSeries_vonMangoldt_eq_deriv_riemannZeta_div hs]
+    simp only [hderiv, hval]
+    field_simp
+    ring
+
 /--
 **The twisted von Mangoldt sum on the `1`-line.**  For `t ≠ 0`,
 $$\sum_n \frac{\Lambda(n)}{n^{1+x}}\bigl(1 - \cos(t\log n)\bigr) \ge \frac{1}{x} - C_t
@@ -67,7 +132,7 @@ genuinely needed; `Wirsing.not_summable_one_sub_cos` needed only continuity.
 @[category API, AMS 11]
 theorem exists_tsum_vonMangoldt_twisted_ge {t : ℝ} (ht : t ≠ 0) :
     ∃ C : ℝ, ∀ x : ℝ, 0 < x → x ≤ 1 →
-      1 / x - C ≤ ∑' n : ℕ, ArithmeticFunction.vonMangoldt n / (n : ℝ) ^ (1 + x) *
+      1 / x - C ≤ ∑' n : ℕ, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
         (1 - Real.cos (t * Real.log n)) := by
   sorry
 

@@ -51,6 +51,26 @@ The place where real-valuedness enters is now pinned down and machine-checked: `
 *sign*, so `f(p)² = 1`, so divergence at `2t` transfers to divergence at `t`.  For
 `f(n) = n^{iθ}` this fails at `t = θ`, which is the counterexample the crux must exclude.
 
+### Landed after the review pass (lap 7, `Wirsing/Weighted.lean`)
+
+* `re_natCast_cpow_neg` — `Re(n^{-y-it}) = n^{-y}\cos(t\log n)` for `n ≠ 0`.
+* `lFunctionTrivChar_one_eq` — `LFunctionTrivChar 1 = riemannZeta`.
+* **`exists_continuousOn_lSeries_vonMangoldt_sub`** — `∃ G` continuous on `{re s ≥ 1}` with
+  `∑_n Λ(n)n^{-s} = 1/(s-1) + G(s)` for `re s > 1`.  This is mathlib's
+  `continuousOn_neg_logDeriv_LFunctionTrivChar₁` at level `1`, and it is where
+  `riemannZeta_ne_zero_of_one_le_re` enters the development.
+* `exists_sum_primeWeight_one_sub_mul_cos_ge` — the `f`-transfer (proved).
+
+Still open in `Wirsing/Weighted.lean`:
+
+* `exists_tsum_vonMangoldt_twisted_ge` — take real parts of the display above at `s = 1+x`
+  and `s = 1+x+it`, subtract, and bound `G` on the two compact segments
+  `[1,2]`, `[1+it, 2+it]` with `IsCompact.exists_bound_of_continuousOn`.  The `1/(s-1)` terms
+  give `1/x` and `Re(1/(x+it)) ≤ 1/(2|t|)`.
+* `exists_sum_primeWeight_one_sub_cos_ge` — Abel summation at `x = 1/\log N` against
+  `Mertens.abs_sum_vonMangoldt_div_sub_log_le`; the tail `∑_{n>N}Λ(n)n^{-1-x}` is
+  `e^{-1}\log N + O(1)`, so `(1 - 2/e)\log N > \log N/4` survives.
+
 ### The route from here
 
 The crux `Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero` is still open and is still
