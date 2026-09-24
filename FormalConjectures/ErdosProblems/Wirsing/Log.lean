@@ -1279,4 +1279,67 @@ theorem abs_logMean_mul_log_le_of_forall (hf : IsPMOneMultiplicative f) {N : ℕ
   rw [abs_mul, abs_of_nonneg hlog] at habs
   linarith [hD]
 
+open scoped Classical in
+/-- The bad-prime profile
+$$\sum_{p \le N,\ f(p) = -1} \frac{\log p}{p}\bigl(1 + \log\lfloor N/p\rfloor\bigr),$$
+the mass that the defect weight `1 + f(p)` of the engine identity removes. -/
+noncomputable def badProfile (f : ℕ → ℝ) (N : ℕ) : ℝ :=
+  ∑ p ∈ (Icc 1 N).filter (fun p ↦ p.Prime ∧ f p = -1),
+    Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ))
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem sum_one_sub_eq_two_mul_badProfile (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * ((1 - f p) * (1 + Real.log ((N / p : ℕ) : ℝ))))
+      = 2 * badProfile f N := by
+  have hstep : ∀ p ∈ (Icc 1 N).filter Nat.Prime,
+      Real.log p / p * ((1 - f p) * (1 + Real.log ((N / p : ℕ) : ℝ)))
+        = if f p = -1 then 2 * (Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ))) else 0 := by
+    intro p hp
+    have hp1 : 1 ≤ p := (mem_Icc.1 (mem_filter.1 hp).1).1
+    rcases hf.pmOne p hp1 with h | h
+    · rw [h, if_neg (by norm_num)]
+      ring
+    · rw [h, if_pos rfl]
+      ring
+  rw [Finset.sum_congr rfl hstep, ← Finset.sum_filter, badProfile, Finset.filter_filter,
+    Finset.mul_sum]
+
+open scoped Classical in
+/--
+**The Gronwall step.**  If `|L(M)| ≤ α(1 + log M)` for every `M ≤ N`, then
+
+    |L(N)| log N ≤ α (log N)² - 2α · badProfile f N + O((1 + α)(1 + log N)).
+
+The `α (log N)²` term is exactly the trivial bound: the whole gain is the bad-prime profile
+`badProfile f N`, which the hypothesis `∑_{f(p) = -1} 1/p = ∞` forces to grow.
+-/
+@[category API, AMS 11]
+theorem abs_logMean_mul_log_le_of_profile (hf : IsPMOneMultiplicative f) {N : ℕ} {α : ℝ}
+    (hα : 0 ≤ α) (hbd : ∀ M ≤ N, |logMean f M| ≤ α * (1 + Real.log M)) :
+    |logMean f N| * Real.log N
+      ≤ α * Real.log N ^ 2 - 2 * α * badProfile f N
+        + (2 * α * (11 + Real.log 4) + (27 + 2 * Real.log 4)) * (1 + Real.log N) := by
+  classical
+  have hmain := abs_logMean_mul_log_le_of_forall f hf (fun M ↦ α * (1 + Real.log M)) hbd
+  have hterm : ∀ p ∈ (Icc 1 N).filter Nat.Prime,
+      Real.log p / p * ((1 + f p) * (α * (1 + Real.log ((N / p : ℕ) : ℝ))))
+        = 2 * α * (Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ)))
+          - α * (Real.log p / p * ((1 - f p) * (1 + Real.log ((N / p : ℕ) : ℝ)))) :=
+    fun p _ ↦ by ring
+  have hsplit : (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * ((1 + f p) * (α * (1 + Real.log ((N / p : ℕ) : ℝ)))))
+      = 2 * α * (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+            Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ)))
+        - α * (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+            Real.log p / p * ((1 - f p) * (1 + Real.log ((N / p : ℕ) : ℝ)))) := by
+    rw [Finset.sum_congr rfl hterm, Finset.sum_sub_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+  rw [hsplit, sum_one_sub_eq_two_mul_badProfile f hf N] at hmain
+  have hprof := sum_primeWeight_mul_profile_le N
+  have hlogN : 0 ≤ 1 + Real.log (N : ℝ) := by
+    have := Real.log_natCast_nonneg N
+    linarith
+  nlinarith [hmain, hprof, hα, hlogN]
+
 end Wirsing
