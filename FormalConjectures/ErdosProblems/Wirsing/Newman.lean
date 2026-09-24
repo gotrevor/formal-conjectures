@@ -127,11 +127,11 @@ theorem sum_one_div_succ_eq_harmonic_sub {N : ℕ} (hN : 1 ≤ N) :
 
 /--
 **Sharp Mertens from the two Newman inputs.**  If `ψ(N)/N → 1` and the error series
-`\sum_m (ψ(m) - m)/(m(m+1))` converges, then
+`\sum_m (ψ(m) - m)/(m(m+1))` has convergent partial sums, with limit `S`, then
 $$\sum_{n \le N}\frac{\Lambda(n)}{n} = \log N - E + o(1),
   \qquad E = -\gamma - \sum_m \frac{ψ(m) - m}{m(m+1)} .$$
 
-Both hypotheses come from `Newman.tendsto_integral_of_analyticOn`; the summability is the
+Both hypotheses come from `Newman.tendsto_integral_of_analyticOn`; the convergence is the
 *direct* output of the analytic theorem and does not wait on `ψ(x) \sim x`.  Everything else
 here is `Newman.sum_div_eq_abel` plus mathlib's
 `Real.tendsto_harmonic_sub_log`.
@@ -139,7 +139,8 @@ here is `Newman.sum_div_eq_abel` plus mathlib's
 @[category API, AMS 11]
 theorem exists_tendsto_sum_vonMangoldt_div_sub_log
     (hpsi : Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N) atTop (𝓝 1))
-    (hsum : Summable (fun m : ℕ ↦ (Chebyshev.psi m - m) / (m * (m + 1)))) :
+    {S : ℝ} (hsum : Tendsto (fun N : ℕ ↦ ∑ m ∈ Finset.range N,
+      (Chebyshev.psi m - m) / ((m : ℝ) * (m + 1))) atTop (𝓝 S)) :
     ∃ E : ℝ, Tendsto (fun N : ℕ ↦
         (∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / n) - Real.log N)
       atTop (𝓝 (-E)) := by
@@ -163,16 +164,15 @@ theorem exists_tendsto_sum_vonMangoldt_div_sub_log
     have hbot : ∑ m ∈ Finset.Ico 0 1, g m = 0 := by simp [hg0]
     rw [hIco, Finset.range_eq_Ico]
     linarith [hcons, hbot]
-  have htail : Tendsto (fun N : ℕ ↦ ∑ m ∈ Finset.range N, g m) atTop (𝓝 (∑' m, g m)) :=
-    hsum.hasSum.tendsto_sum_nat
+  have htail : Tendsto (fun N : ℕ ↦ ∑ m ∈ Finset.range N, g m) atTop (𝓝 S) := hsum
   have hharm := Real.tendsto_harmonic_sub_log
-  refine ⟨-(Real.eulerMascheroniConstant + ∑' m, g m), ?_⟩
+  refine ⟨-(Real.eulerMascheroniConstant + S), ?_⟩
   have hlim : Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N + ((harmonic N : ℝ) - Real.log N) - 1
       + ∑ m ∈ Finset.range N, g m) atTop
-      (𝓝 (1 + Real.eulerMascheroniConstant - 1 + ∑' m, g m)) :=
+      (𝓝 (1 + Real.eulerMascheroniConstant - 1 + S)) :=
     ((hpsi.add hharm).sub_const 1).add htail
-  rw [show -(-(Real.eulerMascheroniConstant + ∑' m, g m))
-      = 1 + Real.eulerMascheroniConstant - 1 + ∑' m, g m by ring]
+  rw [show -(-(Real.eulerMascheroniConstant + S))
+      = 1 + Real.eulerMascheroniConstant - 1 + S by ring]
   refine hlim.congr' ?_
   filter_upwards [eventually_ge_atTop 1] with N hN
   have habel := sum_div_eq_abel (fun n ↦ ArithmeticFunction.vonMangoldt n) hN
@@ -191,19 +191,27 @@ theorem exists_tendsto_sum_vonMangoldt_div_sub_log
   ring
 
 /--
-**Newman's convergent integral, in discrete form.**  The error series of Chebyshev's `ψ`
-against the main term converges:
-$$\sum_{m}\frac{\psi(m) - m}{m(m+1)} < \infty .$$
+**Newman's convergent integral, in discrete form.**  The partial sums of the error series of
+Chebyshev's `ψ` against the main term converge:
+$$\sum_{m < N}\frac{\psi(m) - m}{m(m+1)} \longrightarrow L .$$
 
 This is the *direct* output of `Newman.tendsto_integral_of_analyticOn` applied to
 `F(t) = \psi(e^t)e^{-t} - 1` — the analytic theorem proves the convergence of
 `\int_0^\infty F`, which is this series up to the change of variable `t = \log m` — and it
 comes **before** `\psi(x) \sim x`, which is deduced from it by the monotonicity of `ψ`.
-Separated out here so that everything downstream of the two Newman inputs is proved.
+
+The conclusion is the convergence of the *ordered* partial sums, not `Summable`.  The two are
+not the same here: `Summable` over `ℕ` in `ℝ` is unconditional, hence absolute, convergence,
+and `\sum_m |\psi(m) - m|/(m(m+1)) < \infty` is a statement about the size of the error term
+in the prime number theorem that no contour argument gives (it is not known
+unconditionally).  Newman's theorem gives exactly the improper integral, i.e. the limit of the
+ordered partial sums, and that is all the endgame
+`Newman.tendsto_chebyshevPsi_nat_div_atTop_one` consumes.
 -/
 @[category API, AMS 11]
-theorem summable_psi_sub_div :
-    Summable (fun m : ℕ ↦ (Chebyshev.psi m - m) / (m * (m + 1))) := by
+theorem exists_tendsto_sum_psiErr :
+    ∃ L : ℝ, Tendsto (fun N : ℕ ↦ ∑ m ∈ Finset.range N,
+      (Chebyshev.psi m - m) / ((m : ℝ) * (m + 1))) atTop (𝓝 L) := by
   sorry
 
 /-! ### The Prime Number Theorem from the convergent series -/
@@ -333,13 +341,12 @@ theorem tendsto_chebyshevPsi_nat_div_atTop_one :
     Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N) atTop (𝓝 1) := by
   classical
   set g : ℕ → ℝ := fun m ↦ (Chebyshev.psi m - m) / (m * (m + 1)) with hg
-  have hsum : Summable g := summable_psi_sub_div
+  obtain ⟨L, hS⟩ : ∃ L : ℝ, Tendsto (fun K ↦ ∑ m ∈ Finset.range K, g m) atTop (𝓝 L) :=
+    exists_tendsto_sum_psiErr
   -- the Cauchy criterion for blocks
   have hcauchy : ∀ δ : ℝ, 0 < δ → ∃ N₀ : ℕ, ∀ n K : ℕ, N₀ ≤ n → n ≤ K →
       |∑ m ∈ Finset.Ico n K, g m| < δ := by
     intro δ hδ
-    have hS : Tendsto (fun K ↦ ∑ m ∈ Finset.range K, g m) atTop (𝓝 (∑' m, g m)) :=
-      hsum.hasSum.tendsto_sum_nat
     obtain ⟨N₀, hN₀⟩ := (Metric.tendsto_atTop.1 hS) (δ / 2) (by linarith)
     refine ⟨N₀, fun n K hn hnK ↦ ?_⟩
     have h1 := hN₀ n hn
@@ -350,8 +357,7 @@ theorem tendsto_chebyshevPsi_nat_div_atTop_one :
       rw [Finset.range_eq_Ico, Finset.range_eq_Ico,
         Finset.sum_Ico_consecutive g (Nat.zero_le n) hnK]
     have hrw : ∑ m ∈ Finset.Ico n K, g m
-        = (∑ m ∈ Finset.range K, g m - ∑' m, g m)
-          - (∑ m ∈ Finset.range n, g m - ∑' m, g m) := by linarith
+        = (∑ m ∈ Finset.range K, g m - L) - (∑ m ∈ Finset.range n, g m - L) := by linarith
     obtain ⟨h1a, h1b⟩ := abs_lt.1 h1
     obtain ⟨h2a, h2b⟩ := abs_lt.1 h2
     rw [hrw, abs_lt]
@@ -452,8 +458,9 @@ theorem exists_tendsto_sum_log_prime_div_sub_log :
     ∃ E : ℝ, Tendsto (fun N : ℕ ↦ (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
       Real.log p / p) - Real.log N) atTop (𝓝 (-E)) := by
   classical
+  obtain ⟨S, hS⟩ := exists_tendsto_sum_psiErr
   obtain ⟨E, hE⟩ := exists_tendsto_sum_vonMangoldt_div_sub_log
-    tendsto_chebyshevPsi_nat_div_atTop_one summable_psi_sub_div
+    tendsto_chebyshevPsi_nat_div_atTop_one hS
   -- the proper prime powers
   set D : ℕ → ℝ := fun N ↦ ∑ d ∈ (Finset.Icc 1 N).filter (fun d ↦ ¬ d.Prime),
     ArithmeticFunction.vonMangoldt d / d with hD
