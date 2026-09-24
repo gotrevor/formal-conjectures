@@ -130,6 +130,84 @@ theorem tendsto_badPrimeSum_atTop_of_not_summable (hf : IsPMOneMultiplicative f)
   exact (Filter.Tendsto.const_mul_atTop (r := (2 : ℝ)⁻¹) (by norm_num) h2).congr
     fun N ↦ by ring
 
+open scoped Classical in
+/--
+For `n ≤ N`, every prime factor of `n` is at most `N`, so `ω_E n` counts the divisors of `n`
+among the primes of `E` up to `N`.
+-/
+@[category API, AMS 11]
+theorem omegaBad_eq_card_filter_badPrimesLE {n N : ℕ} (hn : 1 ≤ n) (hnN : n ≤ N) :
+    omegaBad f n = #{p ∈ badPrimesLE f N | p ∣ n} := by
+  rw [omegaBad, badPrimesLE, Finset.filter_filter]
+  congr 1
+  ext p
+  simp only [Finset.mem_filter, Nat.mem_primeFactors, Finset.mem_range, Nat.lt_succ_iff]
+  constructor
+  · rintro ⟨⟨hp, hdvd, -⟩, hfp⟩
+    exact ⟨(Nat.le_of_dvd (by omega) hdvd).trans hnN, ⟨hp, hfp⟩, hdvd⟩
+  · rintro ⟨-, ⟨hp, hfp⟩, hdvd⟩
+    exact ⟨⟨hp, hdvd, by omega⟩, hfp⟩
+
+open scoped Classical in
+/-- Double counting: `∑_{n ≤ N} ω_E(n) = ∑_{p ∈ E, p ≤ N} ⌊N/p⌋`. -/
+@[category API, AMS 11]
+theorem sum_omegaBad_eq (N : ℕ) :
+    ∑ n ∈ Icc 1 N, omegaBad f n = ∑ p ∈ badPrimesLE f N, N / p := by
+  have h1 : ∀ n ∈ Icc 1 N, omegaBad f n = ∑ p ∈ badPrimesLE f N, if p ∣ n then 1 else 0 := by
+    intro n hn
+    simp only [Finset.mem_Icc] at hn
+    rw [omegaBad_eq_card_filter_badPrimesLE f hn.1 hn.2, Finset.card_filter]
+  rw [Finset.sum_congr rfl h1, Finset.sum_comm]
+  refine Finset.sum_congr rfl fun p _ ↦ ?_
+  have hIcc : Finset.Icc 1 N = Finset.Ioc 0 N := by
+    ext x; simp only [Finset.mem_Icc, Finset.mem_Ioc]; omega
+  rw [hIcc, ← Nat.Ioc_filter_dvd_card_eq_div, Finset.card_filter]
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem mem_badPrimesLE_iff {p N : ℕ} :
+    p ∈ badPrimesLE f N ↔ p ≤ N ∧ p.Prime ∧ f p = -1 := by
+  rw [badPrimesLE]
+  simp
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem sum_omegaBad_cast (N : ℕ) :
+    ∑ n ∈ Icc 1 N, (omegaBad f n : ℝ) = ∑ p ∈ badPrimesLE f N, ((N / p : ℕ) : ℝ) := by
+  rw [← Nat.cast_sum, ← Nat.cast_sum, sum_omegaBad_eq f N]
+
+open scoped Classical in
+/-- `N · E(N)` is an upper bound for `∑_{n ≤ N} ω_E(n)`. -/
+@[category API, AMS 11]
+theorem sum_omegaBad_le (N : ℕ) :
+    ∑ n ∈ Icc 1 N, (omegaBad f n : ℝ) ≤ N * badPrimeSum f N := by
+  rw [sum_omegaBad_cast, badPrimeSum, Finset.mul_sum]
+  refine Finset.sum_le_sum fun p hp ↦ ?_
+  have hp0 : 0 < p := (mem_badPrimesLE_iff f |>.1 hp).2.1.pos
+  calc ((N / p : ℕ) : ℝ) ≤ (N : ℝ) / p := Nat.cast_div_le
+    _ = N * (1 / p) := by ring
+
+open scoped Classical in
+/-- `N · E(N)` exceeds `∑_{n ≤ N} ω_E(n)` by at most the number of primes involved. -/
+@[category API, AMS 11]
+theorem le_sum_omegaBad (N : ℕ) :
+    N * badPrimeSum f N - #(badPrimesLE f N) ≤ ∑ n ∈ Icc 1 N, (omegaBad f n : ℝ) := by
+  rw [sum_omegaBad_cast, badPrimeSum, Finset.mul_sum, sub_le_iff_le_add,
+    Finset.card_eq_sum_ones (badPrimesLE f N), Nat.cast_sum, ← Finset.sum_add_distrib]
+  refine Finset.sum_le_sum fun p hp ↦ ?_
+  have hp0 : 0 < p := (mem_badPrimesLE_iff f |>.1 hp).2.1.pos
+  have hpR : (0 : ℝ) < p := by exact_mod_cast hp0
+  have hltN : N < (N / p + 1) * p := by
+    have h1 := Nat.div_add_mod N p
+    have h2 := Nat.mod_lt N hp0
+    calc N = p * (N / p) + N % p := h1.symm
+      _ < p * (N / p) + p := by omega
+      _ = (N / p + 1) * p := by ring
+  have hlt : (N : ℝ) < ((N / p : ℕ) + 1 : ℝ) * p := by exact_mod_cast hltN
+  rw [mul_one_div, div_le_iff₀ hpR]
+  push_cast
+  nlinarith [hlt]
+
 /--
 The Turán–Kubilius inequality for the prime set `E = {p : f p = -1}`:
 `∑_{n ≤ N} (ω_E n - E(N))² ≪ N (E(N) + 1)`.
