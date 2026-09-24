@@ -58,6 +58,32 @@ of ratio `1 + A/2` — and a `{±1}`-valued multiplicative function that is loca
 eventually `1`, contradicting `hdiv`.  A cheap version of the finish uses only the ratios
 `k² : k(k+1) : (k+1)²`.  `PENDING_WORK.md` has the full argument and the ordered next attack.
 
+## The crux, restated (end of lap 6)
+
+`Main.lean` now carries the single open statement
+
+    Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero (hf : IsPMOneMultiplicative f) :
+      Tendsto (fun N ↦ mean f N - logMean f N / Real.log N) atTop (𝓝 0)
+
+— [Hi86]'s `S(x) ~ (x/log x) L(x)`, with `hdiv` factored out (it is used only to produce
+`L(N) = o(log N)`).  `tendsto_mean_atTop_zero_of_logMean` is two lines from it.  An exact
+Abel identity worth knowing, not yet in the repo: `S(N) = N L(N) - ∫_1^N L(t) dt`, i.e.
+`σ(N) = L(N) - (1/N)∫_1^N L`, so the crux says the *local* increments of `L` over bounded
+multiplicative ranges average to `L(N)/log N`.
+
+**Aristotle**: project `c58edc97-baa0-461a-8a5e-c2bdf336b92d` was submitted at the end of
+this lap with a self-contained mathlib-only statement of the crux (`/tmp/.../ar/Crux.lean`).
+Check it with `aristotle show`; verify any returned proof in-kernel with `#print axioms`
+before trusting it.  Nothing else is in flight.
+
+## Open questions that decide the route (also in `ON-LINE-REQUEST.md`)
+
+1. Hildebrand's actual proof of the asymptotic, and where real-valuedness enters.
+2. Is `∑_{p ≤ x} log p/p = log x - E + o(1)` elementary, or PNT-equivalent?  Every attempt
+   this lap to localise the rigidity argument to a bounded multiplicative window reduced to
+   exactly this: the repo's Mertens error is the absolute constant `log 4 + 8 ≈ 9.4`, so it
+   says nothing about windows of ratio below `e^{19}`.
+
 ## Build
 
     lake --wfail build 'FormalConjectures.ErdosProblems.Wirsing.Wintner'
