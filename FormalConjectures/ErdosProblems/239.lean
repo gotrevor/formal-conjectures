@@ -16,6 +16,7 @@ limitations under the License.
 module
 
 public import FormalConjecturesUtil
+public import FormalConjectures.ErdosProblems.Wirsing.Basic
 
 /-!
 # Erdős Problem 239
@@ -48,6 +49,7 @@ theorem erdos_239 :
     (∀ m n, m.Coprime n → f (m * n) = f m * f n) ∧
     f 1 = 1 →
     ∃ L, Tendsto (fun N ↦ (∑ n ∈ Finset.Icc 1 N, f n) / N) atTop (𝓝 L) := by
-  sorry
+  refine ⟨fun _ f h ↦ ?_, fun _ ↦ trivial⟩
+  exact Wirsing.exists_hasMeanValue ⟨h.1, h.2.1, h.2.2⟩
 
 end Erdos239
