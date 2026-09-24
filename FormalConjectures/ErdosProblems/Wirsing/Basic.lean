@@ -65,36 +65,4 @@ def HasMeanValue (f : ℕ → ℝ) (L : ℝ) : Prop := Tendsto (mean f) atTop (�
 /-- The terms of the pretentious distance series $\sum_p (1 - f(p))/p$. -/
 noncomputable def pretentiousSeries (f : ℕ → ℝ) (p : Nat.Primes) : ℝ := (1 - f p) / (p : ℕ)
 
-/--
-The divergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p = \infty$ then the mean
-value of `f` is `0`.
-
-This is the hard half of the theorem; it is the content of [Wi67], with an elementary proof
-in [Hi86].
--/
-@[category API, AMS 11]
-theorem hasMeanValue_zero_of_not_summable {f : ℕ → ℝ} (hf : IsPMOneMultiplicative f)
-    (h : ¬ Summable (pretentiousSeries f)) : HasMeanValue f 0 := by
-  sorry
-
-/--
-The convergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p < \infty$ then `f` has a
-mean value.
-
-For a `±1`-valued `f` this case is elementary: the convolution `g = f * μ` satisfies
-$\sum_n |g(n)|/n < \infty$, so Wintner's mean value theorem applies.
--/
-@[category API, AMS 11]
-theorem exists_hasMeanValue_of_summable {f : ℕ → ℝ} (hf : IsPMOneMultiplicative f)
-    (h : Summable (pretentiousSeries f)) : ∃ L, HasMeanValue f L := by
-  sorry
-
-/-- Wirsing's mean value theorem for `±1`-valued multiplicative functions. -/
-@[category API, AMS 11]
-theorem exists_hasMeanValue {f : ℕ → ℝ} (hf : IsPMOneMultiplicative f) :
-    ∃ L, HasMeanValue f L := by
-  by_cases h : Summable (pretentiousSeries f)
-  · exact exists_hasMeanValue_of_summable hf h
-  · exact ⟨0, hasMeanValue_zero_of_not_summable hf h⟩
-
 end Wirsing

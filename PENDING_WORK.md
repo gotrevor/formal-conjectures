@@ -2,13 +2,18 @@
 
 Headline: `Erdos239.erdos_239` in `FormalConjectures/ErdosProblems/239.lean`.
 It is now reduced to `Wirsing.exists_hasMeanValue` in
-`FormalConjectures/ErdosProblems/Wirsing/Basic.lean`.
+`FormalConjectures/ErdosProblems/Wirsing/Main.lean`.
+
+`Basic.lean` holds the definitions, `Identity.lean` and `OmegaE.lean` are **sorry-free**, and
+`Main.lean` holds the only two remaining obligations.
 
 ## Open obligations in `src/`
 
-1. `Wirsing.hasMeanValue_zero_of_not_summable` — **THE CRUX.**
-   If `∑_p (1 - f p)/p = ∞` then the mean value is `0`.
-   This is Wirsing's 1967 theorem (elementary proof: Hildebrand, Bull. LMS 18 (1986) 147–152).
+1. `Wirsing.tendsto_mean_atTop_zero_of_badPrimeSum_atTop` — **THE CRUX**, in its
+   irreducible form.  Given `E(N) → ∞` and the (proved) functional relation, show
+   `σ(N) → 0`.  Everything else in the divergent case is proved:
+   `hasMeanValue_zero_of_not_summable` is now a two-line consequence of this lemma and
+   `tendsto_badPrimeSum_atTop_of_not_summable`.
 2. `Wirsing.exists_hasMeanValue_of_summable` — the convergent case.
    Elementary for `±1`-valued `f`: `g = f * μ` has `∑_n |g n|/n < ∞`, so Wintner's mean
    value theorem applies. Not the crux, but a genuine multi-week chunk.
