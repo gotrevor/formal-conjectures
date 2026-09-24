@@ -540,4 +540,171 @@ theorem functional_testFun (ha0 : a 0 = 0) {θ x : ℝ} (hθ : 0 < θ) (hx : 0 <
     field_simp
   rw [functional, tsum_eq_sum hzero, Finset.sum_congr rfl heq]
 
+/-! ### The pinch -/
+
+/-- `\log(θ+η) - \log θ \le η/θ`. -/
+@[category API, AMS 11]
+theorem log_add_sub_le {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) :
+    Real.log (θ + η) - Real.log θ ≤ η / θ := by
+  have h1 : Real.log (θ + η) - Real.log θ = Real.log ((θ + η) / θ) := by
+    rw [Real.log_div (by linarith) (ne_of_gt hθ)]
+  rw [h1]
+  have := Real.log_le_sub_one_of_pos (x := (θ + η) / θ) (by positivity)
+  have h2 : (θ + η) / θ - 1 = η / θ := by field_simp; ring
+  linarith
+
+/-- `\log θ - \log(θ-η) \le 2η/θ` when `η ≤ θ/2`. -/
+@[category API, AMS 11]
+theorem log_sub_sub_le {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) (h : η ≤ θ / 2) :
+    Real.log θ - Real.log (θ - η) ≤ 2 * η / θ := by
+  have hd : 0 < θ - η := by linarith
+  have h1 : Real.log θ - Real.log (θ - η) = Real.log (θ / (θ - η)) := by
+    rw [Real.log_div (ne_of_gt hθ) (ne_of_gt hd)]
+  rw [h1]
+  have h2 := Real.log_le_sub_one_of_pos (x := θ / (θ - η)) (by positivity)
+  have h3 : θ / (θ - η) - 1 = η / (θ - η) := by field_simp; ring
+  have h4 : η / (θ - η) ≤ 2 * η / θ := by
+    rw [div_le_div_iff₀ hd hθ]
+    nlinarith
+  linarith
+
+/-- The test function is bounded by `1/θ` on `[0,1]`. -/
+@[category API, AMS 11]
+theorem abs_testFun_le {θ : ℝ} (hθ : 0 < θ) {u : ℝ} (_hu : u ∈ Set.Icc (0 : ℝ) 1) :
+    |testFun θ u| ≤ 1 / θ := by
+  rcases lt_or_ge u θ with h | h
+  · simp only [testFun, if_neg (not_le.2 h), abs_zero]
+    positivity
+  · have hupos : 0 < u := lt_of_lt_of_le hθ h
+    rw [testFun, if_pos h, abs_of_nonneg (by positivity)]
+    exact one_div_le_one_div_of_le hθ h
+
+/--
+**Karamata's pinch.**  `Λ_x(\mathrm{testFun}\ θ) → c\cdot(-\log θ)`.
+
+The test function is squeezed between the two continuous brackets, whose Karamata limits are
+`c\int_0^1` of them, and those integrals converge to `-\log θ` as the bracket width `η → 0`.
+-/
+@[category API, AMS 11]
+theorem tendsto_functional_testFun (ha : ∀ n, 0 ≤ a n) (ha0 : a 0 = 0)
+    (hsum : ∀ x : ℝ, 0 < x → Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {c : ℝ}
+    (hlim : Tendsto (fun x ↦ x * series a x) (𝓝[>] (0 : ℝ)) (𝓝 c))
+    {θ : ℝ} (hθ0 : 0 < θ) (hθ1 : θ < 1) :
+    Tendsto (fun x ↦ functional a x (testFun θ)) (𝓝[>] (0 : ℝ))
+      (𝓝 (c * -Real.log θ)) := by
+  have hc0 : 0 ≤ c := by
+    refine ge_of_tendsto hlim ?_
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    have hs : 0 ≤ series a x :=
+      tsum_nonneg fun n ↦ mul_nonneg (ha n) (Real.rpow_nonneg (Nat.cast_nonneg n) _)
+    exact mul_nonneg (le_of_lt hx) hs
+  refine Metric.tendsto_nhds.2 fun ε hε ↦ ?_
+  set L := c * -Real.log θ with hL
+  -- choose the bracket width
+  set η := min (min (θ / 4) ((1 - θ) / 2)) (ε * θ / (4 * (c + 1))) with hηdef
+  have hη : 0 < η := by
+    refine lt_min (lt_min (by positivity) (by linarith)) (by positivity)
+  have hη4 : η ≤ θ / 4 := le_trans (min_le_left _ _) (min_le_left _ _)
+  have hη1 : θ + η ≤ 1 := by
+    have : η ≤ (1 - θ) / 2 := le_trans (min_le_left _ _) (min_le_right _ _)
+    linarith
+  have hηε : η ≤ ε * θ / (4 * (c + 1)) := min_le_right _ _
+  have hηθ : η < θ / 2 := by linarith
+  -- the key numerical consequence: `c·η/θ ≤ ε/4`
+  have hkey : c * (η / θ) ≤ ε / 4 := by
+    have hc1 : (0 : ℝ) < 4 * (c + 1) := by positivity
+    have hmul : η * (4 * (c + 1)) ≤ ε * θ := (le_div_iff₀ hc1).1 hηε
+    rw [mul_div_assoc', div_le_div_iff₀ hθ0 (by norm_num : (0 : ℝ) < 4)]
+    nlinarith [hη.le, hc0]
+  -- integral bounds
+  have hIL : c * -Real.log (θ + η) ≤ c * ∫ u in (0 : ℝ)..1, bracketLow θ η u :=
+    mul_le_mul_of_nonneg_left (integral_bracketLow_ge hθ0 hη hη1) hc0
+  have hIH : c * (∫ u in (0 : ℝ)..1, bracketHigh θ η u) ≤ c * -Real.log (θ - η) :=
+    mul_le_mul_of_nonneg_left (integral_bracketHigh_le hθ0 hη hηθ hθ1.le) hc0
+  have hAL : L - ε / 4 ≤ c * -Real.log (θ + η) := by
+    have hd := log_add_sub_le hθ0 hη
+    have hmul := mul_le_mul_of_nonneg_left hd hc0
+    have hexp := mul_sub c (Real.log (θ + η)) (Real.log θ)
+    rw [hL]
+    simp only [mul_neg]
+    linarith
+  have hAH : c * -Real.log (θ - η) ≤ L + ε / 2 := by
+    have hd := log_sub_sub_le hθ0 hη (by linarith)
+    have hmul := mul_le_mul_of_nonneg_left hd hc0
+    have hexp := mul_sub c (Real.log θ) (Real.log (θ - η))
+    have hdiv : c * (2 * η / θ) = 2 * (c * (η / θ)) := by ring
+    rw [hL]
+    simp only [mul_neg]
+    linarith
+  -- the two bracket limits
+  have hbL := tendsto_functional_continuousOn ha ha0 hsum hlim
+    (g := bracketLow θ η) (continuous_bracketLow hθ0 hη).continuousOn
+  have hbH := tendsto_functional_continuousOn ha ha0 hsum hlim
+    (g := bracketHigh θ η) (continuous_bracketHigh hθ0 hη).continuousOn
+  have hevL := Metric.tendsto_nhds.1 hbL (ε / 4) (by positivity)
+  have hevH := Metric.tendsto_nhds.1 hbH (ε / 4) (by positivity)
+  filter_upwards [hevL, hevH, self_mem_nhdsWithin] with x hxL hxH hx
+  have hxpos : (0 : ℝ) < x := hx
+  rw [Real.dist_eq] at hxL hxH ⊢
+  have hmL : functional a x (bracketLow θ η) ≤ functional a x (testFun θ) :=
+    functional_mono ha hxpos (hsum x hxpos) (M := 2 / θ) (M' := 1 / θ)
+      (fun u _ ↦ abs_bracketLow_le hθ0 u) (fun u hu ↦ abs_testFun_le hθ0 hu)
+      (fun u _ ↦ bracketLow_le_testFun hθ0 hη u)
+  have hmH : functional a x (testFun θ) ≤ functional a x (bracketHigh θ η) :=
+    functional_mono ha hxpos (hsum x hxpos) (M := 1 / θ) (M' := 2 / θ)
+      (fun u hu ↦ abs_testFun_le hθ0 hu) (fun u _ ↦ abs_bracketHigh_le hθ0 u)
+      (fun u _ ↦ testFun_le_bracketHigh hθ0 hη u)
+  have h1 := abs_lt.1 hxL
+  have h2 := abs_lt.1 hxH
+  rw [abs_lt]
+  constructor
+  · linarith [h1.1, hIL, hAL, hmL]
+  · linarith [h2.2, hIH, hAH, hmH]
+
+/--
+**Karamata's Tauberian theorem** (`x`-form).  If `a_n ≥ 0` and `x S(x) → c` as `x → 0⁺`, then
+`x\sum_{n \le e^{1/x}} a_n → c`.
+-/
+@[category API, AMS 11]
+theorem tendsto_partialSum (ha : ∀ n, 0 ≤ a n) (ha0 : a 0 = 0)
+    (hsum : ∀ x : ℝ, 0 < x → Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {c : ℝ}
+    (hlim : Tendsto (fun x ↦ x * series a x) (𝓝[>] (0 : ℝ)) (𝓝 c)) :
+    Tendsto (fun x ↦ x * ∑ n ∈ Finset.Icc 1 ⌊Real.exp (1 / x)⌋₊, a n)
+      (𝓝[>] (0 : ℝ)) (𝓝 c) := by
+  set θ := Real.exp (-1) with hθ
+  have hθ0 : 0 < θ := Real.exp_pos _
+  have hθ1 : θ < 1 := by rw [hθ]; exact Real.exp_lt_one_iff.2 (by norm_num)
+  have hlog : c * -Real.log θ = c := by rw [hθ, Real.log_exp]; ring
+  have hmain := tendsto_functional_testFun ha ha0 hsum hlim hθ0 hθ1
+  rw [hlog] at hmain
+  refine hmain.congr' ?_
+  filter_upwards [self_mem_nhdsWithin] with x hx
+  have hxpos : (0 : ℝ) < x := hx
+  have hinv : 1 / θ = Real.exp 1 := by
+    rw [hθ, Real.exp_neg]; simp
+  have hpow : (1 / θ) ^ (1 / x) = Real.exp (1 / x) := by
+    rw [hinv, Real.exp_one_rpow]
+  rw [functional_testFun ha0 hθ0 hxpos, hpow]
+
+/--
+**Karamata's Tauberian theorem** (`V`-form).  `(\sum_{n \le e^V} a_n)/V → c` as `V → ∞`.
+-/
+@[category API, AMS 11]
+theorem tendsto_partialSum_div (ha : ∀ n, 0 ≤ a n) (ha0 : a 0 = 0)
+    (hsum : ∀ x : ℝ, 0 < x → Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {c : ℝ}
+    (hlim : Tendsto (fun x ↦ x * series a x) (𝓝[>] (0 : ℝ)) (𝓝 c)) :
+    Tendsto (fun V ↦ (∑ n ∈ Finset.Icc 1 ⌊Real.exp V⌋₊, a n) / V) atTop (𝓝 c) := by
+  have hcomp : Tendsto (fun V : ℝ ↦ 1 / V) atTop (𝓝[>] (0 : ℝ)) := by
+    refine tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within _ ?_ ?_
+    · simpa [one_div] using tendsto_inv_atTop_zero
+    · filter_upwards [eventually_gt_atTop (0 : ℝ)] with V hV
+      show (0 : ℝ) < 1 / V
+      positivity
+  have := (tendsto_partialSum ha ha0 hsum hlim).comp hcomp
+  refine this.congr' ?_
+  filter_upwards [eventually_gt_atTop (0 : ℝ)] with V hV
+  have h1 : 1 / (1 / V) = V := by field_simp
+  simp only [Function.comp_apply, h1]
+  ring
+
 end Karamata
