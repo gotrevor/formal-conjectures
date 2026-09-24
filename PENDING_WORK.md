@@ -1,5 +1,81 @@
 # PENDING WORK — Erdős 239
 
+## LAP 8 (2026-09-24): `Wirsing/Weighted.lean` is sorry-free; the crux needs ONE Tauberian theorem
+
+### Proved this lap (all axiom-clean: `propext, Classical.choice, Quot.sound`)
+
+`Wirsing/Weighted.lean` has **no remaining `sorry`**.  New declarations:
+
+* `exists_abs_tsum_vonMangoldt_twisted_sub_le` — for `t ≠ 0` and `0 < x ≤ 1`,
+  `|∑_n Λ(n)n^{-(1+x)}(1 - cos(t log n)) - 1/x| ≤ C_t`.  **Two-sided.**  Proof: take real
+  parts of `∑_n Λ(n)n^{-s} = 1/(s-1) + G(s)` at `s = 1+x` and `s = 1+x+it` and subtract;
+  `G` is bounded on the two compact segments; `Re 1/(x+it) = x/(x²+t²) ∈ [0, 1/(2|t|)]`.
+  This is where `riemannZeta_ne_zero_of_one_le_re` enters the development.
+* `exists_tsum_vonMangoldt_twisted_ge`, `exists_tsum_vonMangoldt_twisted_le` — the two halves.
+* `exists_tsum_vonMangoldt_le` — the untwisted companion `∑_n Λ(n)n^{-(1+x)} ≤ 1/x + C`.
+* `summable_vonMangoldt_rpow`, `summable_vonMangoldt_rpow_cos`.
+* `sum_Ioc_add_sum_Ioc`, `sum_range_sum_Ioc` — consecutive-block decomposition of a sum.
+* `sum_range_exp_ge`, `sum_range_exp_ge_32` — `∑_{i<m} e^{-c(i+1)/m} ≥ (m/c)e^{-c/m}(1-e^{-c})`.
+* `sum_vonMangoldt_rpow_head_ge` — **Mertens' first theorem in geometric blocks**: with
+  `x = c/\log N`, `∑_{n≤N}Λ(n)n^{-1-x} ≥ (\log N/m - 2B)∑_{i<m}e^{-c(i+1)/m}`, `B = \log 4+4`.
+  The `i`-th block is `N^{i/m} < n ≤ N^{(i+1)/m}`.
+* **`exists_sum_primeWeight_one_sub_cos_ge`** — for `t ≠ 0`,
+  `∑_{p≤N}(\log p/p)(1 - \cos(t\log p)) ≥ \log N/4 - C_t`.
+* **`exists_sum_primeWeight_one_sub_mul_cos_ge`** (was already proved, now unconditional) —
+  the `f`-version, `≥ \log N/16 - C_t`.
+
+**How the sharp cutoff was reached without Abel summation.**  Earlier laps assumed the tail
+`∑_{n>N}Λ(n)n^{-1-x}` needs partial summation against Mertens.  It does not: the *untwisted*
+series has a matching **upper** bound `1/x + O(1)`, so
+`tail = total - head ≤ (1/x + O(1)) - head`, and the head is bounded below by a finite
+`m`-block Riemann sum.  With `c = 2`, `m = 32` (so `e^{-c/m} ≥ 15/16` and `1-e^{-c} ≥ 6/7`,
+using `e² > 7`) the surviving prime part is `≥ (17/56)\log N - O(1) > \log N/4`.  No integrals,
+no infinite block sums, no Abel summation.
+
+### THE ROUTE-DECISIVE FINDING OF THIS LAP: Karamata, not Wiener–Ikehara
+
+The two-sided bound says exactly that the **Laplace–Stieltjes transform** of
+
+    D_t(v) := ∑_{n ≤ e^v} (Λ(n)/n)(1 - cos(t log n))            (nondecreasing in v!)
+
+satisfies `∫_0^∞ e^{-xv} dD_t(v) = 1/x + O_t(1) ~ 1/x` as `x → 0⁺`.  `D_t` is nondecreasing
+because every term is `≥ 0`.  **Karamata's Tauberian theorem** for monotone functions
+therefore gives
+
+    D_t(v) ~ v,      i.e.   ∑_{p ≤ N} (log p/p) cos(t log p) = o(log N)   for each fixed t ≠ 0,
+
+after subtracting Mertens (`∑_{n≤e^v}Λ(n)/n = v + O(1)`) and dropping proper prime powers
+(`Mertens.sum_vonMangoldt_div_nonprime_le`).
+
+That estimate is **precisely** the one lap 6 identified as the PNT-strength blocker:
+
+> "the `2/π` resonance-defect computation, which needs `∑_p p^{iθ}\log p/p = o(\log x)`,
+> i.e. `ζ(1 + iθ) ≠ 0`."
+
+So the PNT-strength input the headline provably needs is **not** a Wiener–Ikehara/Newman
+tauberian theorem and **not** the Erdős–Selberg elementary PNT.  It is *Karamata's* tauberian
+theorem for monotone functions, which is elementary (Weierstrass approximation of `1_{[0,1]}`
+by polynomials in `e^{-v}`, applied to the measure `dD_t`), self-contained, and much smaller
+than either alternative.  Mathlib has **no** `Karamata` (grepped v4.33.1 this lap).
+
+### NEXT (the concrete target)
+
+1. **`FormalConjecturesForMathlib/Analysis/Karamata.lean`** (new, must be sorry-free):
+   if `D : ℝ → ℝ` is nondecreasing, `D 0 = 0`, and `x ∫_0^∞ e^{-xv} D(v) dv → c` as `x → 0⁺`,
+   then `D(v)/v → c`.  (The integrated form avoids Stieltjes measures: integrate by parts
+   once, `∫ e^{-xv} dD = x∫ e^{-xv}D(v)dv`, and the hypothesis becomes a statement about the
+   ordinary Laplace transform of `D`.)  Proof: Weierstrass on `[0,1]` in the variable
+   `e^{-v}`, plus monotonicity to upgrade weak convergence to pointwise.
+2. Apply it to `D_t` to get `Wirsing.tendsto_sum_primeWeight_cos` (`= o(log N)`).
+3. Feed that into the route-C resonance computation in `Wirsing/Rigidity.lean`.  The current
+   quantitative bound (`\log N/16`) may already suffice there; step 2 makes the defect `1 -
+   o(1)` rather than `1/16`, which is what the `2/π` computation of lap 6 wanted.
+
+The crux `Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero` in `Wirsing/Main.lean` is the
+only `sorry` left in `src/`.
+
+---
+
 ## LAP 7 (2026-09-24): the analytic input is in mathlib, and the uniformity is PROVED
 
 ### The correction

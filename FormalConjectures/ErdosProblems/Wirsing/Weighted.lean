@@ -179,10 +179,10 @@ This is the first place in the development where the **non-vanishing** of `ζ` o
 genuinely needed; `Wirsing.not_summable_one_sub_cos` needed only continuity.
 -/
 @[category API, AMS 11]
-theorem exists_tsum_vonMangoldt_twisted_ge {t : ℝ} (ht : t ≠ 0) :
+theorem exists_abs_tsum_vonMangoldt_twisted_sub_le {t : ℝ} (ht : t ≠ 0) :
     ∃ C : ℝ, ∀ x : ℝ, 0 < x → x ≤ 1 →
-      1 / x - C ≤ ∑' n : ℕ, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
-        (1 - Real.cos (t * Real.log n)) := by
+      |(∑' n : ℕ, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
+        (1 - Real.cos (t * Real.log n))) - 1 / x| ≤ C := by
   obtain ⟨G, hGc, hGeq⟩ := exists_continuousOn_lSeries_vonMangoldt_sub
   -- `G` is bounded on each of the two compact segments `{1 + x + iτ : 0 ≤ x ≤ 1}`.
   have hbound : ∀ τ : ℝ, ∃ M : ℝ, ∀ x ∈ Set.Icc (0 : ℝ) 1,
@@ -261,17 +261,47 @@ theorem exists_tsum_vonMangoldt_twisted_ge {t : ℝ} (ht : t ≠ 0) :
   have hpolele : x / (x ^ 2 + t ^ 2) ≤ 1 / (2 * |t|) := by
     rw [div_le_div_iff₀ (by positivity) (by positivity)]
     nlinarith [sq_nonneg (x - |t|), sq_abs t]
-  have hG0 : -M₀ ≤ (G (s 0)).re := by
-    have := hM₀ x hx0
+  have hG0 : |(G (s 0)).re| ≤ M₀ := by
     have h2 := Complex.abs_re_le_norm (G (((1 + x : ℝ) : ℂ) + ((0 : ℝ) : ℂ) * I))
-    have : |(G (s 0)).re| ≤ M₀ := le_trans (by simpa [hs] using h2) (by simpa [hs] using hM₀ x hx0)
-    linarith [neg_abs_le (G (s 0)).re]
-  have hGt : (G (s t)).re ≤ M₁ := by
+    exact le_trans (by simpa [hs] using h2) (by simpa [hs] using hM₀ x hx0)
+  have hGt : |(G (s t)).re| ≤ M₁ := by
     have h2 := Complex.abs_re_le_norm (G (((1 + x : ℝ) : ℂ) + (t : ℂ) * I))
-    have : |(G (s t)).re| ≤ M₁ := le_trans (by simpa [hs] using h2) (by simpa [hs] using hM₁ x hx0)
-    linarith [le_abs_self (G (s t)).re]
-  rw [hsplit, hval, hval, hpole0, hpolet]
-  linarith
+    exact le_trans (by simpa [hs] using h2) (by simpa [hs] using hM₁ x hx0)
+  have hnn : 0 ≤ x / (x ^ 2 + t ^ 2) := by positivity
+  rw [hsplit, hval, hval, hpole0, hpolet, abs_le]
+  constructor <;>
+    [linarith [neg_abs_le (G (s 0)).re, le_abs_self (G (s t)).re];
+     linarith [le_abs_self (G (s 0)).re, neg_abs_le (G (s t)).re]]
+
+/--
+**The twisted von Mangoldt sum on the `1`-line, lower bound.**  For `t ≠ 0`,
+$$\sum_n \frac{\Lambda(n)}{n^{1+x}}\bigl(1 - \cos(t\log n)\bigr) \ge \frac{1}{x} - C_t
+  \qquad (0 < x \le 1).$$
+-/
+@[category API, AMS 11]
+theorem exists_tsum_vonMangoldt_twisted_ge {t : ℝ} (ht : t ≠ 0) :
+    ∃ C : ℝ, ∀ x : ℝ, 0 < x → x ≤ 1 →
+      1 / x - C ≤ ∑' n : ℕ, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
+        (1 - Real.cos (t * Real.log n)) := by
+  obtain ⟨C, hC⟩ := exists_abs_tsum_vonMangoldt_twisted_sub_le ht
+  exact ⟨C, fun x hx hx1 ↦ by linarith [(abs_le.1 (hC x hx hx1)).1]⟩
+
+/--
+**The twisted von Mangoldt sum on the `1`-line, upper bound.**  For `t ≠ 0`,
+$$\sum_n \frac{\Lambda(n)}{n^{1+x}}\bigl(1 - \cos(t\log n)\bigr) \le \frac{1}{x} + C_t
+  \qquad (0 < x \le 1).$$
+
+With the lower bound this says the Laplace transform of the nondecreasing function
+`v \mapsto \sum_{n \le e^v}\frac{\Lambda(n)}{n}(1 - \cos(t\log n))` is `1/x + O_t(1)`, which is
+the hypothesis of Karamata's Tauberian theorem.
+-/
+@[category API, AMS 11]
+theorem exists_tsum_vonMangoldt_twisted_le {t : ℝ} (ht : t ≠ 0) :
+    ∃ C : ℝ, ∀ x : ℝ, 0 < x → x ≤ 1 →
+      (∑' n : ℕ, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
+        (1 - Real.cos (t * Real.log n))) ≤ 1 / x + C := by
+  obtain ⟨C, hC⟩ := exists_abs_tsum_vonMangoldt_twisted_sub_le ht
+  exact ⟨C, fun x hx hx1 ↦ by linarith [(abs_le.1 (hC x hx hx1)).2]⟩
 
 /-- Splitting a sum over `Ioc a c` at an intermediate point `b`. -/
 @[category API, AMS 11]
