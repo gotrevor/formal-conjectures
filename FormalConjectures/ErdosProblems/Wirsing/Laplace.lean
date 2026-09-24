@@ -1158,6 +1158,81 @@ theorem norm_sub_integral_le_rect {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t
   rw [hgoal]
   linarith [hmain, hstep, hrw]
 
+/-! ### From the estimate to the limit -/
+
+/-- A rectangle is compact. -/
+@[category API, AMS 30]
+theorem isCompact_rect (a b c d : ℝ) : IsCompact (rect a b c d) :=
+  isCompact_uIcc.reProdIm isCompact_uIcc
+
+/-- Shrinking the left edge shrinks the rectangle. -/
+@[category API, AMS 30]
+theorem rect_mono_left {δ δ₀ R : ℝ} (hδ : 0 < δ) (hδδ : δ ≤ δ₀) (hδR : δ₀ ≤ R) :
+    rect (-δ) R (-R) R ⊆ rect (-δ₀) R (-R) R := by
+  intro z hz
+  obtain ⟨h1, h2⟩ := mem_rect_iff.1 hz
+  refine mem_rect_iff.2 ⟨?_, h2⟩
+  rw [Set.uIcc_of_le (by linarith)] at h1
+  rw [Set.uIcc_of_le (by linarith)]
+  exact ⟨by linarith [h1.1], h1.2⟩
+
+/--
+**The uniform bound that lets `δ → 0` with `M` fixed.**  If `G` is analytic on a neighbourhood
+of the closed right half plane then for every `R > 0` there are `δ₀ > 0` and `M` such that the
+rectangle `[-\delta_0, R] \times [-R, R]` lies in the domain of analyticity and `\|G\| \le M`
+on it.  Every smaller `\delta` then reuses the *same* `M`.
+
+The point of `\delta_0`: `\{iy : |y| \le R\}` is compact and contained in the open set where
+`G` is analytic, so a uniform thickening of it stays inside.
+-/
+@[category API, AMS 30]
+theorem exists_bound_rect {G : ℂ → ℂ} (hG : AnalyticOnNhd ℂ G {z : ℂ | 0 ≤ z.re})
+    {R : ℝ} (hR : 0 < R) :
+    ∃ δ₀ M : ℝ, 0 < δ₀ ∧ δ₀ ≤ R ∧ rect (-δ₀) R (-R) R ⊆ {z : ℂ | AnalyticAt ℂ G z} ∧
+      ∀ z ∈ rect (-δ₀) R (-R) R, ‖G z‖ ≤ M := by
+  set U : Set ℂ := {z : ℂ | AnalyticAt ℂ G z} with hUdef
+  have hU : IsOpen U := isOpen_analyticAt ℂ G
+  have hK : IsCompact (rect 0 R (-R) R) := isCompact_rect _ _ _ _
+  have hKU : rect 0 R (-R) R ⊆ U := by
+    intro z hz
+    obtain ⟨h1, -⟩ := mem_rect_iff.1 hz
+    rw [Set.uIcc_of_le hR.le] at h1
+    exact hG z h1.1
+  obtain ⟨ε, hε, hεU⟩ := hK.exists_thickening_subset_open hU hKU
+  set δ₀ : ℝ := min (ε / 2) R with hδ₀def
+  have hδ₀ : 0 < δ₀ := lt_min (by linarith) hR
+  have hδ₀R : δ₀ ≤ R := min_le_right _ _
+  have hsub : rect (-δ₀) R (-R) R ⊆ U := by
+    intro z hz
+    obtain ⟨h1, h2⟩ := mem_rect_iff.1 hz
+    rw [Set.uIcc_of_le (by linarith)] at h1
+    refine hεU ?_
+    set c : ℝ := z.re - max z.re 0 with hc
+    have hcabs : |c| ≤ δ₀ := by
+      rcases le_total 0 z.re with h | h
+      · rw [hc, max_eq_left h]
+        simp [hδ₀.le]
+      · rw [hc, max_eq_right h]
+        rw [abs_of_nonpos (by simpa using h)]
+        simp only [sub_zero]
+        linarith [h1.1]
+    refine Metric.mem_thickening_iff.2 ⟨z - (c : ℂ), ?_, ?_⟩
+    · refine mem_rect_iff.2 ⟨?_, ?_⟩
+      · have hre : (z - (c : ℂ)).re = max z.re 0 := by simp [hc]
+        rw [hre, Set.uIcc_of_le hR.le]
+        exact ⟨le_max_right _ _, max_le h1.2 hR.le⟩
+      · simpa using h2
+    · have hd : dist z (z - (c : ℂ)) = |c| := by
+        rw [dist_eq_norm]; simp
+      rw [hd]
+      calc |c| ≤ δ₀ := hcabs
+        _ ≤ ε / 2 := min_le_left _ _
+        _ < ε := by linarith
+  have hcont : ContinuousOn G (rect (-δ₀) R (-R) R) := fun z hz ↦
+    ((hsub hz).continuousAt).continuousWithinAt
+  obtain ⟨M, hM⟩ := (isCompact_rect (-δ₀) R (-R) R).exists_bound_of_continuousOn hcont
+  exact ⟨δ₀, M, hδ₀, hδ₀R, hsub, hM⟩
+
 /--
 **Newman's analytic theorem.**  A bounded, locally integrable `F : [0,∞) → ℝ` whose Laplace
 transform continues analytically to the closed half plane has a convergent improper integral,
@@ -1179,6 +1254,78 @@ theorem tendsto_integral_of_analyticOn {F : ℝ → ℝ} {C : ℝ}
     (hGeq : ∀ z : ℂ, 0 < z.re →
       G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ))) :
     Tendsto (fun T : ℝ ↦ ∫ t in Set.Ioc (0 : ℝ) T, F t) atTop (𝓝 (G 0).re) := by
-  sorry
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hU : IsOpen {z : ℂ | AnalyticAt ℂ G z} := isOpen_analyticAt ℂ G
+  have hGd : DifferentiableOn ℂ G {z : ℂ | AnalyticAt ℂ G z} := fun z hz ↦
+    hz.differentiableAt.differentiableWithinAt
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  -- choose `R` so that the `C/R` term is small
+  set R : ℝ := 1 + 15 * C / ε with hRdef
+  have hR : 0 < R := by
+    have : 0 ≤ 15 * C / ε := by positivity
+    linarith
+  have hRb : 5 * C / R < ε / 3 := by
+    rw [div_lt_iff₀ hR, hRdef]
+    have : ε / 3 * (1 + 15 * C / ε) = ε / 3 + 5 * C := by field_simp; ring
+    rw [this]
+    linarith
+  -- the uniform bound on the rectangle
+  obtain ⟨δ₀, M, hδ₀, hδ₀R, hsub₀, hM₀⟩ := exists_bound_rect hG hR
+  have h0rect : (0 : ℂ) ∈ rect (-δ₀) R (-R) R := by
+    refine mem_rect_iff.2 ⟨?_, ?_⟩
+    · rw [Set.uIcc_of_le (by linarith)]
+      exact ⟨by simpa using hδ₀.le, by simpa using hR.le⟩
+    · rw [Set.uIcc_of_le (by linarith)]
+      exact ⟨by simpa using hR.le, by simpa using hR.le⟩
+  have hM0 : 0 ≤ M := le_trans (norm_nonneg _) (hM₀ 0 h0rect)
+  -- choose `δ` so that the `Mδ/R` term is small
+  set d : ℝ := ε * R / (6 * (M + 1)) with hddef
+  have hd0 : 0 < d := by positivity
+  set δ : ℝ := min δ₀ d with hδdef
+  have hδ : 0 < δ := lt_min hδ₀ hd0
+  have hδδ₀ : δ ≤ δ₀ := min_le_left _ _
+  have hδR : δ ≤ R := le_trans hδδ₀ hδ₀R
+  have hδb : 2 * M * δ / R < ε / 3 := by
+    have h1 : 2 * M * δ / R ≤ 2 * M * d / R := by
+      gcongr
+      exact min_le_right _ _
+    have h2 : 2 * M * d / R = M * ε / (3 * (M + 1)) := by
+      rw [hddef]; field_simp; ring
+    have h3 : M * ε / (3 * (M + 1)) < ε / 3 := by
+      rw [div_lt_div_iff₀ (by linarith) (by norm_num)]
+      nlinarith
+    linarith [h2 ▸ h1]
+  -- the rectangle at `δ` still sits inside the domain, with the same bound
+  have hmono : rect (-δ) R (-R) R ⊆ rect (-δ₀) R (-R) R := rect_mono_left hδ hδδ₀ hδ₀R
+  -- choose `T`
+  set K : ℝ := R * M * (1 / δ + 2 / R) with hKdef
+  have hKt : Tendsto (fun T : ℝ ↦ K * Real.exp (-(δ * T))) atTop (𝓝 0) := by
+    have h1 : Tendsto (fun T : ℝ ↦ -(δ * T)) atTop atBot :=
+      tendsto_neg_atTop_atBot.comp (Filter.Tendsto.const_mul_atTop hδ tendsto_id)
+    have h2 : Tendsto (fun T : ℝ ↦ Real.exp (-(δ * T))) atTop (𝓝 0) :=
+      Real.tendsto_exp_atBot.comp h1
+    simpa using h2.const_mul K
+  obtain ⟨T₀, hT₀⟩ := (hKt.eventually (gt_mem_nhds (show (0 : ℝ) < ε / 3 by linarith))).exists_forall_of_atTop
+  refine ⟨max T₀ 0, fun T hT ↦ ?_⟩
+  have hT0 : 0 ≤ T := le_trans (le_max_right _ _) hT
+  have hTT₀ : T₀ ≤ T := le_trans (le_max_left _ _) hT
+  have hkey := norm_sub_integral_le_rect hFb hFi hU hGd hGeq hR hδ hδR hT0
+    (subset_trans hmono hsub₀) (fun z hz ↦ hM₀ z (hmono hz))
+  have hreal : (∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ))
+      = ((∫ t in Set.Ioc (0 : ℝ) T, F t : ℝ) : ℂ) := integral_complex_ofReal
+  rw [hreal] at hkey
+  have hre : |(∫ t in Set.Ioc (0 : ℝ) T, F t) - (G 0).re|
+      ≤ ‖G 0 - ((∫ t in Set.Ioc (0 : ℝ) T, F t : ℝ) : ℂ)‖ := by
+    have := Complex.abs_re_le_norm (G 0 - ((∫ t in Set.Ioc (0 : ℝ) T, F t : ℝ) : ℂ))
+    simp only [Complex.sub_re, Complex.ofReal_re] at this
+    rwa [abs_sub_comm]
+  have hsplit : (2 * M * δ + 5 * C) / R = 2 * M * δ / R + 5 * C / R := by ring
+  have hlast : R * M * Real.exp (-(δ * T)) * (1 / δ + 2 / R) = K * Real.exp (-(δ * T)) := by
+    rw [hKdef]; ring
+  have hTb : K * Real.exp (-(δ * T)) < ε / 3 := hT₀ T hTT₀
+  rw [Real.dist_eq]
+  rw [hsplit, hlast] at hkey
+  linarith
 
 end Newman
