@@ -17,6 +17,7 @@ module
 
 public import FormalConjecturesUtil
 public import FormalConjectures.ErdosProblems.Wirsing.General
+public import FormalConjectures.ErdosProblems.Wirsing.Log
 
 /-!
 # Wirsing's mean value theorem: assembly
@@ -42,28 +43,52 @@ namespace Wirsing
 variable (f : ℕ → ℝ)
 
 /--
-The remaining analytic core of the divergent case.
+**Halász in logarithmic form.**  If the bad primes have divergent reciprocal sum then the
+logarithmic average is `o(log N)`:
+$$L(N) = \sum_{n \le N} \frac{f(n)}{n} = o(\log N).$$
 
-Everything else in the `ω_E` route is proved.  What is left is purely a statement about the
-bounded sequence `σ(N) = mean f N`, given
+Attack (see `PENDING_WORK.md`).  The engine identity
+`Wirsing.abs_logMean_mul_log_sub_defect_le` reads
+`L(N)\log N = ∑_{p ≤ N} (\log p/p)(1 + f p) L(⌊N/p⌋) + O(\log N)`, and the defect weight
+`1 + f(p)` is supported off the bad primes.  Writing `ℓ(u) = L(e^u)` and
+`r(u) = ∑_{bad p ≤ e^u} \log p / p`, the trivial bound `|L(M)| ≤ 1 + \log M` fed back through
+the identity yields the Gronwall inequality
+`Φ'(u)(u + 2R₂(u)/u) ≤ 2Φ(u) + O(u)` for `Φ(u) = ∫_0^u |ℓ|`, `R₂(u) = ∫_0^u r`, hence
+`|ℓ(u)| ≪ u \exp(-4∫^u R₂(v)/v³ dv)`.  The hypothesis `∑_{bad p} 1/p = ∞` is exactly
+`∫^∞ r(v)/v² dv = ∞`, which forces that integral to diverge, so the bound is `o(u)`.
+-/
+@[category API, AMS 11]
+theorem tendsto_logMean_div_log_atTop_zero (hf : IsPMOneMultiplicative f)
+    (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
+    Tendsto (fun N : ℕ ↦ logMean f N / Real.log N) atTop (𝓝 0) := by
+  sorry
 
-* `E(N) → ∞` (hypothesis `hdiv`), and
-* the functional relation `Wirsing.exists_functional_relation`:
-  `|σ(N)·E(N) + ∑_{p ∈ E, p ≤ N} σ(⌊N/p⌋)/p| ≤ 3(√(E(N)+1) + 1)`,
+/--
+**The Tauberian step.**  The logarithmic average being `o(log N)` forces the mean value to
+vanish.
 
-namely that these force `σ(N) → 0`.  Equivalently, after dividing by `E(N)`,
-`σ(N) + ⟨σ(⌊N/p⌋)⟩_E → 0` where `⟨·⟩_E` is the probability average with weights `1/p`.
+This is not formal: `L(N) - mean f N = ∑_{n < N} mean f n / (n+1)`, so the hypothesis only
+says that the logarithmic average of `σ = mean f` vanishes, with cancellation allowed.  The
+extra input is the functional relation `Wirsing.abs_mean_mul_log_sub_sum_prime_le`,
+`σ(N)\log N = ∑_{p ≤ N} (\log p/p) f(p) σ(⌊N/p⌋) + O(1)`, together with the fact that `σ` is
+Lipschitz in `\log N`.
+-/
+@[category API, AMS 11]
+theorem tendsto_mean_atTop_zero_of_logMean (hf : IsPMOneMultiplicative f)
+    (h : Tendsto (fun N : ℕ ↦ logMean f N / Real.log N) atTop (𝓝 0)) :
+    Tendsto (mean f) atTop (𝓝 0) := by
+  sorry
 
-This is the Halász/Wirsing content and is left open.  See `PENDING_WORK.md` for the analysis:
-the heuristic `σ(e^u) = A cos(τ u)` forces `1 + ⟨p^{-iτ}⟩ = 0`, which unique factorisation
-rules out for every real `τ` as soon as `E` has at least two elements; the naive `limsup`
-argument only gives `A ≤ A`.
+/--
+The analytic core of the divergent case: `E(N) → ∞` forces `mean f N → 0`.
+
+It is now the composition of the logarithmic Halász bound and the Tauberian step.
 -/
 @[category API, AMS 11]
 theorem tendsto_mean_atTop_zero_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
     (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
-    Tendsto (mean f) atTop (𝓝 0) := by
-  sorry
+    Tendsto (mean f) atTop (𝓝 0) :=
+  tendsto_mean_atTop_zero_of_logMean f hf (tendsto_logMean_div_log_atTop_zero f hf hdiv)
 
 /--
 The divergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p = \infty$ then the mean
