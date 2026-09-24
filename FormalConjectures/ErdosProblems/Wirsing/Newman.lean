@@ -425,6 +425,47 @@ theorem norm_trunc_mul_kernel_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t|
         positivity
     _ = 2 * C / R ^ 2 := hfin
 
+/-! ### Abel summation against the harmonic weight -/
+
+/--
+**Abel summation for the weight `1/n`,** in purely discrete form.  With
+`A(N) = \sum_{n \le N} a_n`,
+$$\sum_{n \le N}\frac{a_n}{n} = \frac{A(N)}{N} + \sum_{m < N}\frac{A(m)}{m(m+1)} .$$
+
+This is the bridge from Chebyshev's `ψ` to the Mertens sum `\sum_{n \le N}\Lambda(n)/n`,
+and it replaces the usual `\int_1^x \psi(t)/t^2\,dt` by a series, which avoids all
+integration bookkeeping: the telescoping identity `1/n = 1/N + \sum_{n \le m < N}
+(1/m - 1/(m+1))` is exact.
+
+Applied with `a = Λ` and `A = ψ`, the main term is
+`\sum_{m < N} 1/(m+1) = \log N + γ - 1 + o(1)` and the error is
+`\sum_{m < N}(ψ(m) - m)/(m(m+1))`, whose convergence is precisely what Newman's analytic
+theorem delivers.
+-/
+@[category API, AMS 11 40]
+theorem sum_div_eq_abel (a : ℕ → ℝ) {N : ℕ} (hN : 1 ≤ N) :
+    ∑ n ∈ Finset.Icc 1 N, a n / n
+      = (∑ n ∈ Finset.Icc 1 N, a n) / N
+        + ∑ m ∈ Finset.Icc 1 (N - 1), (∑ n ∈ Finset.Icc 1 m, a n) / (m * (m + 1)) := by
+  induction N, hN using Nat.le_induction with
+  | base => simp
+  | succ n hn ih =>
+    have hn0 : (0 : ℝ) < n := by exact_mod_cast hn
+    have hn1 : (0 : ℝ) < (n : ℝ) + 1 := by linarith
+    have hsucc : ∀ g : ℕ → ℝ, ∑ k ∈ Finset.Icc 1 (n + 1), g k
+        = (∑ k ∈ Finset.Icc 1 n, g k) + g (n + 1) :=
+      fun g ↦ Finset.sum_Icc_succ_top (by omega) g
+    have htail : ∑ m ∈ Finset.Icc 1 (n + 1 - 1), (∑ k ∈ Finset.Icc 1 m, a k) / (m * (m + 1))
+        = (∑ m ∈ Finset.Icc 1 (n - 1), (∑ k ∈ Finset.Icc 1 m, a k) / (m * (m + 1)))
+          + (∑ k ∈ Finset.Icc 1 n, a k) / (n * (n + 1)) := by
+      rw [show n + 1 - 1 = n from by omega, show n = (n - 1) + 1 from by omega,
+        Finset.sum_Icc_succ_top (by omega)]
+      simp [show n - 1 + 1 = n from by omega]
+    rw [hsucc (fun k ↦ a k / k), ih, hsucc a, htail]
+    push_cast
+    field_simp
+    ring
+
 /-! ### The Cauchy value of the Newman kernel -/
 
 open Metric in
