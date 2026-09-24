@@ -106,6 +106,32 @@ is the decomposition, with four disclosed `sorry`s:
 Attack `Newman.tendsto_integral_of_analyticOn` first: everything else is bookkeeping on top
 of it, and it is the only step whose feasibility is in doubt.
 
+### ROUTE CORRECTION: run the collapse over INTEGERS, not primes — the PNT gate lifts
+
+The PNT gate above is a gate on the *prime* window count.  It disappears if the character
+collapse is run over integers, because the harmonic weight of a multiplicative window is
+elementary and **sharp**: `Wirsing.abs_harmonicSum_sub_sub_log_le` (proved this lap) gives
+$$\Bigl|\sum_{M < n \le N}\frac1n - \log\frac NM\Bigr| \le \frac1M,$$
+an error that tends to `0`, where Mertens' first theorem for primes has an irreducible `O(1)`.
+So every multiplicative window of fixed ratio `c > 1` carries harmonic weight `\log c + o(1)`,
+bounded away from `0`, with no PNT.
+
+The rigidity relation `σ(⌊N/n⌋) ≈ sAf(n)` holds for integers `n`, not only primes, once the
+propagation step is done (`Wirsing.sum_bad_weight_le_step` is its one-step form).  So the
+chain should be **reordered**: propagate to integers first, then collapse.  The collapse over
+integers needs two coprime good integers `n, m` in one window — `n` and `n+1` serve, and a
+window of ratio `c` contains `≈ (c-1)M` integers — and then `f(nm) = f(n)f(m)` by
+multiplicativity on coprimes, while the window step forces `f(n) = f(m)`, giving `f(nm) = 1`.
+Note the collapse cannot be applied to `f(n^2)` directly: `IsPMOneMultiplicative` is
+multiplicative only on *coprime* arguments, so `f(n^2)` is unconstrained.  The squaring happens
+in the character `c`, not in `f`.
+
+**Where does the PNT strength go then?**  Into the propagation step.  That is expected and is
+not a contradiction: Hildebrand's proof is elementary, and an elementary PNT exists, so an
+elementary chain simply reproves PNT along the way — which is precisely what the Erdős-style
+rigidity machinery is.  `Wirsing/Newman.lean` stays as the analytic fallback if propagation
+stalls; its two `2C/R^2` arc estimates are proved and are the whole quantitative content.
+
 ### NEXT (the concrete remaining chain)
 
 With `A = \limsup|σ| > 0` assumed for contradiction, `δ` small, `N` near-extremal, `s` its
