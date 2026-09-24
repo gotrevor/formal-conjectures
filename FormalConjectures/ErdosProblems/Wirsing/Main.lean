@@ -66,56 +66,42 @@ theorem tendsto_logMean_div_log_atTop_zero (hf : IsPMOneMultiplicative f)
   simp only [Function.comp_apply, abs_div, abs_of_nonneg hlog, le_refl]
 
 /--
-**The Hildebrand asymptotic**, the whole of the remaining crux:
-$$\sum_{n \le x} f(n) \sim \frac{x}{\log x}\sum_{n \le x}\frac{f(n)}{n},
-  \qquad\text{that is}\qquad \sigma(N) - \frac{L(N)}{\log N} \to 0.$$
+**The divergent case, as a single statement.**  If the bad primes have divergent reciprocal
+sum then the mean value is `0`.
 
-Equivalently, the mean value is asymptotically equal to its own logarithmic average.  This is
-the displayed relation of [Hi86] (with `τ = 1`, as the case `f = 1` shows), and it is the
-only statement still missing: combined with
-`Wirsing.tendsto_logMean_div_log_atTop_zero` it gives the divergent case at once.
+This is the whole of the remaining crux.  Earlier laps stated it as the unconditional
+Hildebrand asymptotic `\sigma(N) - L(N)/\log N \to 0`; that statement is strictly stronger
+than the headline needs, and lap 10's deficit-budget argument refuted the only route to it
+that the repository had.  The divergence hypothesis is put back where Wirsing and Halász use
+it.
 
-It is **false for complex `f`**: for `f(n) = n^{iθ}` one has `L(N) = O(1)` while
-`σ(N) \approx N^{iθ}/(1 + iθ)` does not tend to `0`.  So `f` real-valued must be used, and it
-is a hypothesis here even though it is not needed for either of the two relations that the
-proof starts from.  No divergence hypothesis is needed.
+**What the crux says, in the log variable.**  Partial summation gives
+`L(N) = \int_1^N \sigma(t)\,dt/t + \sigma(N)`, so with `u = \log N` and `F(u) = \sigma(e^u)`
+the Hildebrand asymptotic is exactly
+$$F(u) - \frac1u\int_0^u F(v)\,dv \to 0 :$$
+a bounded function agrees with its own logarithmic average.  That is false for a general
+bounded `F` — take `F(u) = \cos u` — and the counterexample is precisely `f(n) = n^{i\theta}`,
+which is why real-valuedness has to enter.  So the crux is a non-oscillation statement at
+every frequency `\theta`, and `Wirsing.tendsto_logMean_div_log_atTop_zero` supplies the
+logarithmic average: under `hdiv` it is `o(\log N)`, i.e. the average side already tends to
+`0` and only `F(u) \to 0` is left.
 
-The state of the attack is in `PENDING_WORK.md`.  In outline: with `A = \limsup|σ| > 0` and
-`N` near-extremal, `Wirsing.sum_deficit_le` forces the functional relation at `N` to be an
-equality term by term, whence `σ(\lfloor N/n\rfloor) \approx sAf(n)` along the quotients
-(`Wirsing.mean_quotient_near_extremal`, `Wirsing.sum_bad_weight_le_step`); the log-Lipschitz
-bound `Wirsing.abs_mean_sub_mean_le` then makes `f` constant on multiplicative windows
-(`Wirsing.eq_of_mean_quotient_close`).  What is missing is a pair of good elements in one
-window with different values of `f`.
--/
-@[category API, AMS 11]
-theorem tendsto_mean_sub_logMean_div_log_atTop_zero (hf : IsPMOneMultiplicative f) :
-    Tendsto (fun N : ℕ ↦ mean f N - logMean f N / Real.log N) atTop (𝓝 0) := by
-  sorry
+**The two inputs that are now proved.**  Non-pretentiousness at frequency `\theta = 0` is the
+hypothesis `hdiv` itself.  At `\theta \ne 0` it is
+`Wirsing.eventually_sum_primeWeight_one_sub_mul_cos_ge`
+(`\sum_{p \le N}(\log p/p)(1 - f(p)\cos(\theta\log p)) \ge \log N/8`), made uniform on compact
+ranges of `\theta` by `Wirsing.exists_forall_primeDefect_ge`.  The quantitative prime input
+that every such argument needs — a multiplicative window of fixed ratio carries prime weight
+bounded away from `0` — is `Newman.tendsto_sum_log_prime_div_window`, proved from the
+prime number theorem in `Wirsing/Newman.lean`.
 
-/--
-**The Tauberian step.**  The logarithmic average being `o(\log N)` forces the mean value to
-vanish.  It is now a one-line consequence of the Hildebrand asymptotic, and no longer needs
-the divergence hypothesis: that is used only to produce `h`.
--/
-@[category API, AMS 11]
-theorem tendsto_mean_atTop_zero_of_logMean (hf : IsPMOneMultiplicative f)
-    (h : Tendsto (fun N : ℕ ↦ logMean f N / Real.log N) atTop (𝓝 0)) :
-    Tendsto (mean f) atTop (𝓝 0) := by
-  have hsum := (tendsto_mean_sub_logMean_div_log_atTop_zero f hf).add h
-  rw [add_zero] at hsum
-  exact hsum.congr fun N ↦ by ring
-
-/--
-The analytic core of the divergent case: `E(N) → ∞` forces `mean f N → 0`.
-
-It is now the composition of the logarithmic Halász bound and the Tauberian step.
+The state of the attack is in `PENDING_WORK.md`.
 -/
 @[category API, AMS 11]
 theorem tendsto_mean_atTop_zero_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
     (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
-    Tendsto (mean f) atTop (𝓝 0) :=
-  tendsto_mean_atTop_zero_of_logMean f hf (tendsto_logMean_div_log_atTop_zero f hf hdiv)
+    Tendsto (mean f) atTop (𝓝 0) := by
+  sorry
 
 /--
 The divergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p = \infty$ then the mean

@@ -1,5 +1,65 @@
 # PENDING WORK — Erdős 239
 
+## Lap 12 (2026-09-24) — PNT IS PROVED; the crux is restated as the divergent case
+
+### Landed: the whole Newman chain, axiom-clean
+
+`Newman.tendsto_integral_of_analyticOn` (Newman's analytic theorem, lap 11's directive),
+`Newman.exists_tendsto_sum_psiErr`, `Newman.tendsto_chebyshevPsi_div_atTop_one` (PNT),
+`Newman.exists_tendsto_sum_log_prime_div_sub_log` (sharp Mertens) and
+`Newman.tendsto_sum_log_prime_div_window` all have
+`#print axioms = [propext, Classical.choice, Quot.sound]`.  New supporting results:
+`Newman.exists_analyticOnNhd_lSeries_vonMangoldt_sub` (the analytic, not merely continuous,
+form of `-\zeta'/\zeta` minus its pole), `Newman.integral_cexp_neg_mul_Ioi`,
+`Newman.integral_psi_exp_eq` (the Laplace transform of `\psi(e^t)`),
+`Newman.integral_psi_step` and `Newman.integral_newman_eq` (the integral as a partial sum),
+`Newman.isCompact_rect`, `Newman.exists_bound_rect`.
+
+**Correction made this lap.**  The old `Newman.summable_psi_sub_div` asserted `Summable`,
+which over `ℝ` is *absolute* convergence of `\sum_m(\psi(m)-m)/(m(m+1))` — a statement about
+the PNT error term that no contour argument gives and that is not known unconditionally.  It
+is replaced by `Newman.exists_tendsto_sum_psiErr`, the convergence of the *ordered* partial
+sums, which is what the improper integral delivers and all that the endgame uses.
+
+### The crux is now the divergent case, with `hdiv` restored
+
+`Wirsing.tendsto_mean_atTop_zero_of_badPrimeSum_atTop` is the only `sorry` in `src/`.  The
+unconditional Hildebrand asymptotic `\sigma(N) - L(N)/\log N \to 0` is no longer stated:
+the headline needs only the divergent case, and lap 10 refuted the repository's only route to
+the unconditional form.
+
+**The reformulation that should drive the next laps.**  Partial summation gives
+`L(N) = \int_1^N \sigma(t)\,dt/t + \sigma(N)`, so in the log variable `u = \log N`,
+`F(u) = \sigma(e^u)`, the Hildebrand asymptotic is exactly
+
+    F(u) - (1/u)∫_0^u F(v) dv → 0,
+
+"a bounded function equals its own logarithmic average".  This is **false** for a general
+bounded `F` (`F(u) = \cos u`), and the counterexample is `f(n) = n^{i\theta}` — which is
+where, and only where, real-valuedness enters.  So the crux is a *non-oscillation at every
+frequency* statement, i.e. Halász.  Under `hdiv` the averaged side already tends to `0`
+(`Wirsing.tendsto_logMean_div_log_atTop_zero`, proved), so what is left is `F(u) \to 0`.
+
+### Inputs now available for the Halász route (all proved)
+
+* frequency `0`: the hypothesis `hdiv` itself;
+* frequency `\theta \ne 0`: `Wirsing.eventually_sum_primeWeight_one_sub_mul_cos_ge`, uniform
+  on compact `\theta`-ranges by `Wirsing.exists_forall_primeDefect_ge`;
+* the window count: `Newman.tendsto_sum_log_prime_div_window` (needs PNT — now proved);
+* the rigidity/window machinery of `Rigidity.lean`, `Character.lean`, `Extremal.lean`.
+
+### Next
+
+1. **Read [Hi86].**  Requested in `ON-LINE-REQUEST.md` with a direct PDF link.  The search
+   snippet says the key lemma compares `(1/x)\sum_{n\le x}f(n)` with a *weighted* sum for
+   `1 \le w \le \sqrt x`; that weight is the missing mechanism, since the repository's
+   rigidity route to full harmonic weight is refuted (lap 10).
+2. Failing that, run the Halász route: the large-values/Parseval step for
+   `\sum_{n\le x}f(n)n^{-s}` on `\mathrm{Re}\,s = 1`, with the two non-pretentiousness
+   inputs above.  `Uniform.lean` and `PrimeCos.lean` exist for exactly this.
+
+---
+
 ## Lap 10 (2026-09-24) — the deficit budget, and where PNT is unavoidable
 
 ### REFUTED: "propagate rigidity from primes to integers by induction on `Ω(k)`"
