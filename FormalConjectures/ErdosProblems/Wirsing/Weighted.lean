@@ -376,7 +376,6 @@ theorem sum_vonMangoldt_rpow_head_ge {m : ℕ} (hm : 0 < m) {c : ℝ} (hc : 0 < 
       have hnn : (0 : ℝ) ≤ (ArithmeticFunction.vonMangoldt n : ℝ) :=
         ArithmeticFunction.vonMangoldt_nonneg
       rw [hsplit]
-      push_cast
       calc (ArithmeticFunction.vonMangoldt n : ℝ) / n * Real.exp (-(c * ((i : ℝ) + 1) / m))
           ≤ (ArithmeticFunction.vonMangoldt n : ℝ) / n * (n : ℝ) ^ (-x) := by
             gcongr
