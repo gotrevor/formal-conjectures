@@ -1380,6 +1380,170 @@ theorem abs_logMean_mul_log_le_of_forall_lt (hf : IsPMOneMultiplicative f) {N : 
   exact Nat.div_lt_self (by omega) hpp.one_lt
 
 open scoped Classical in
+/-- Mertens' first theorem with a negative error, in the form used here:
+`∑_{p ≤ k} log p / p ≤ log k` for `k ≥ 10 ^ 10`. -/
+@[category API, AMS 11]
+theorem sum_primeWeight_le_log {k : ℕ} (hk : 10 ^ 10 ≤ k) :
+    ∑ j ∈ Icc 1 k, primeWeight j ≤ Real.log k := by
+  classical
+  have hkR : ((10 : ℝ) ^ 10) ≤ (k : ℝ) := by exact_mod_cast hk
+  have hmain := Mertens.sum_log_prime_div_le_log hkR
+  have hfloor : Ioc 0 ⌊(k : ℝ)⌋₊ = Icc 1 k := by
+    rw [Nat.floor_natCast]
+    rfl
+  rw [hfloor] at hmain
+  have hrw := sum_primeWeight_mul (fun _ ↦ (1 : ℝ)) k
+  simp only [mul_one] at hrw
+  rw [hrw]
+  exact hmain
+
+open scoped Classical in
+/-- The uniform bound `∑_{p ≤ k} log p / p ≤ log k + (log 4 + 8) · 10 ^ 10 / k`, which is the
+sharp bound for `k ≥ 10 ^ 10` and the crude one below it. -/
+@[category API, AMS 11]
+theorem sum_primeWeight_le_log_add {k : ℕ} (hk : 1 ≤ k) :
+    ∑ j ∈ Icc 1 k, primeWeight j ≤ Real.log k + (Real.log 4 + 8) * (10 ^ 10 / (k : ℝ)) := by
+  classical
+  have hkR : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+  have hc : (0 : ℝ) ≤ Real.log 4 + 8 := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    linarith
+  rcases Nat.lt_or_ge k (10 ^ 10) with hlt | hge
+  · have hcrude := Mertens.abs_sum_log_prime_div_sub_log_le hk
+    have hrw := sum_primeWeight_mul (fun _ ↦ (1 : ℝ)) k
+    simp only [mul_one] at hrw
+    have hratio : (1 : ℝ) ≤ 10 ^ 10 / (k : ℝ) := by
+      rw [le_div_iff₀ (by linarith)]
+      have : (k : ℝ) ≤ 10 ^ 10 := by exact_mod_cast hlt.le
+      linarith
+    rw [hrw]
+    have := (abs_le.1 hcrude).2
+    nlinarith [hc, hratio]
+  · have hsharp := sum_primeWeight_le_log hge
+    have hnn : (0 : ℝ) ≤ (Real.log 4 + 8) * (10 ^ 10 / (k : ℝ)) := by positivity
+    linarith
+
+open scoped Classical in
+/--
+**The sharp profile sum.**  With the negative-error form of Mertens' theorem,
+$$\sum_{p \le N} \frac{\log p}{p}\log\lfloor N/p\rfloor \le \tfrac12 (\log N)^2 + O(1),$$
+with **no** `log N` term.  That is what the marginal Gronwall induction needs: the two
+`(log N)²` terms cancel identically, so any surviving multiple of `log N` would destroy it.
+
+Abel summation turns the left side into `∑_{k < N} A(k)(\log(k+1) - \log k)` with
+`A(k) = ∑_{p ≤ k} \log p/p`, where the term `A(N)\log N` cancels; `A(k) ≤ \log k` then
+reduces it to `∑_k \log k / k ≤ (\log N)^2/2 + O(1)`.
+-/
+@[category API, AMS 11]
+theorem sum_primeWeight_mul_log_div_le (N : ℕ) :
+    (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * Real.log ((N / p : ℕ) : ℝ))
+      ≤ Real.log N ^ 2 / 2 + 2 * 10 ^ 11 := by
+  classical
+  set c := Real.log 4 + 8 with hc
+  have hcle : c ≤ (9.4 : ℝ) := by
+    have h : Real.log 4 = 2 * Real.log 2 := by
+      rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.log_pow]; push_cast; ring
+    have := Real.log_two_lt_d9
+    rw [hc, h]
+    linarith
+  have hcnn : (0 : ℝ) ≤ c := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    rw [hc]; linarith
+  -- pass to the `primeWeight` form and drop the floor
+  have hstep1 : (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * Real.log ((N / p : ℕ) : ℝ))
+      ≤ ∑ k ∈ Icc 1 N, primeWeight k * (Real.log N - Real.log k) := by
+    rw [← sum_primeWeight_mul (fun k ↦ Real.log ((N / k : ℕ) : ℝ)) N]
+    refine Finset.sum_le_sum fun k hk ↦ ?_
+    have hk1 : 1 ≤ k := (mem_Icc.1 hk).1
+    have hkN : k ≤ N := (mem_Icc.1 hk).2
+    have hwnn : 0 ≤ primeWeight k := by
+      simp only [primeWeight]
+      split_ifs with hp
+      · have : (1 : ℝ) ≤ k := by exact_mod_cast hp.one_lt.le
+        exact div_nonneg (Real.log_nonneg this) (by linarith)
+      · exact le_rfl
+    refine mul_le_mul_of_nonneg_left ?_ hwnn
+    have hkR : (0 : ℝ) < k := by exact_mod_cast hk1
+    have hNpos : (0 : ℝ) < (N : ℝ) := by exact_mod_cast lt_of_lt_of_le hk1 hkN
+    have hdiv : ((N / k : ℕ) : ℝ) ≤ (N : ℝ) / k := Nat.cast_div_le
+    have hdpos : 1 ≤ N / k := (Nat.one_le_div_iff (by omega)).2 hkN
+    have hdposR : (0 : ℝ) < ((N / k : ℕ) : ℝ) := by
+      have : (1 : ℝ) ≤ ((N / k : ℕ) : ℝ) := by exact_mod_cast hdpos
+      linarith
+    have := Real.log_le_log hdposR hdiv
+    rwa [Real.log_div (ne_of_gt hNpos) (ne_of_gt hkR)] at this
+  -- Abel: the `A(N) log N` terms cancel
+  have habel := sum_Icc_by_parts primeWeight (fun k ↦ Real.log k) N
+  have hstep2 : (∑ k ∈ Icc 1 N, primeWeight k * (Real.log N - Real.log k))
+      = ∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, primeWeight j)
+          * (Real.log ((k : ℕ) + 1 : ℕ) - Real.log k) := by
+    have hsplit : (∑ k ∈ Icc 1 N, primeWeight k * (Real.log N - Real.log k))
+        = (∑ k ∈ Icc 1 N, primeWeight k) * Real.log N
+          - ∑ k ∈ Icc 1 N, primeWeight k * Real.log k := by
+      rw [Finset.sum_mul, ← Finset.sum_sub_distrib]
+      exact Finset.sum_congr rfl fun k _ ↦ by ring
+    rw [hsplit, habel]
+    push_cast
+    ring
+  -- bound each Abel term
+  have hstep3 : (∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, primeWeight j)
+        * (Real.log ((k : ℕ) + 1 : ℕ) - Real.log k))
+      ≤ ∑ k ∈ Ico 1 N, (Real.log k / k + c * 10 ^ 10 / (k : ℝ) ^ 2) := by
+    refine Finset.sum_le_sum fun k hk ↦ ?_
+    have hk1 : 1 ≤ k := (mem_Ico.1 hk).1
+    have hkR : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk1
+    have hPbd := sum_primeWeight_le_log_add (k := k) hk1
+    have hPnn : 0 ≤ ∑ j ∈ Icc 1 k, primeWeight j := by
+      refine Finset.sum_nonneg fun j _ ↦ ?_
+      simp only [primeWeight]
+      split_ifs with hp
+      · have : (1 : ℝ) ≤ j := by exact_mod_cast hp.one_lt.le
+        exact div_nonneg (Real.log_nonneg this) (by positivity)
+      · exact le_rfl
+    have hdelta_nn : 0 ≤ Real.log ((k : ℕ) + 1 : ℕ) - Real.log k := by
+      have : Real.log (k : ℝ) ≤ Real.log ((k + 1 : ℕ) : ℝ) := log_natCast_mono (by omega)
+      push_cast at this ⊢
+      linarith
+    have hdelta : Real.log ((k : ℕ) + 1 : ℕ) - Real.log k ≤ 1 / (k : ℝ) := by
+      have h1 : Real.log (((k : ℝ) + 1) / k) ≤ ((k : ℝ) + 1) / k - 1 :=
+        Real.log_le_sub_one_of_pos (by positivity)
+      have h2 : Real.log (((k : ℝ) + 1) / k) = Real.log ((k : ℝ) + 1) - Real.log k :=
+        Real.log_div (by positivity) (by positivity)
+      have h3 : ((k : ℝ) + 1) / k - 1 = 1 / (k : ℝ) := by
+        field_simp
+        ring
+      rw [h2] at h1
+      push_cast
+      linarith [h1, h3.le, h3.ge]
+    have hlognn : 0 ≤ Real.log (k : ℝ) := Real.log_nonneg hkR
+    calc (∑ j ∈ Icc 1 k, primeWeight j) * (Real.log ((k : ℕ) + 1 : ℕ) - Real.log k)
+        ≤ (Real.log k + c * (10 ^ 10 / (k : ℝ))) * (1 / (k : ℝ)) := by
+          refine mul_le_mul hPbd hdelta hdelta_nn ?_
+          have : (0 : ℝ) ≤ c * (10 ^ 10 / (k : ℝ)) := by positivity
+          linarith
+    _ = Real.log k / k + c * 10 ^ 10 / (k : ℝ) ^ 2 := by field_simp
+  -- sum up
+  have hsum1 : (∑ k ∈ Ico 1 N, Real.log k / k) ≤ Real.log N ^ 2 / 2 + 2 := by
+    refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_) (sum_log_div_le_sq_log N)
+    · exact Finset.Ico_subset_Icc_self
+    · intro j hj _
+      have hj1 : 1 ≤ j := (mem_Icc.1 hj).1
+      have : (1 : ℝ) ≤ j := by exact_mod_cast hj1
+      exact div_nonneg (Real.log_nonneg this) (by linarith)
+  have hsum2 : (∑ k ∈ Ico 1 N, c * 10 ^ 10 / (k : ℝ) ^ 2) ≤ c * 10 ^ 10 * 2 := by
+    have hrw : ∀ k : ℕ, c * 10 ^ 10 / (k : ℝ) ^ 2 = (c * 10 ^ 10) * (1 / (k : ℝ) ^ 2) :=
+      fun k ↦ by ring
+    rw [Finset.sum_congr rfl fun k _ ↦ hrw k, ← Finset.mul_sum]
+    refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+    refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg Finset.Ico_subset_Icc_self ?_)
+      (sum_one_div_sq_le N)
+    intro j _ _
+    positivity
+  rw [Finset.sum_add_distrib] at hstep3
+  have hfinal : c * 10 ^ 10 * 2 + 2 ≤ 2 * 10 ^ 11 := by nlinarith [hcle, hcnn]
+  linarith [hstep1, hstep2.le, hstep2.ge, hstep3, hsum1, hsum2]
+
+open scoped Classical in
 /-- The bad-prime profile
 $$\sum_{p \le N,\ f(p) = -1} \frac{\log p}{p}\bigl(1 + \log\lfloor N/p\rfloor\bigr),$$
 the mass that the defect weight `1 + f(p)` of the engine identity removes. -/
