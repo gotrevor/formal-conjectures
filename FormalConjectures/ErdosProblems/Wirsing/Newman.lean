@@ -580,7 +580,138 @@ ordered partial sums, and that is all the endgame
 theorem exists_tendsto_sum_psiErr :
     ∃ L : ℝ, Tendsto (fun N : ℕ ↦ ∑ m ∈ Finset.range N,
       (Chebyshev.psi m - m) / ((m : ℝ) * (m + 1))) atTop (𝓝 L) := by
-  sorry
+  obtain ⟨Φ, hΦa, hΦeq⟩ := exists_analyticOnNhd_lSeries_vonMangoldt_sub
+  set F : ℝ → ℝ := fun t ↦ Chebyshev.psi (Real.exp t) * Real.exp (-t) - 1 with hF
+  set G : ℂ → ℂ := fun z ↦ (Φ (z + 1) - 1) / (z + 1) with hG
+  -- `F` is bounded
+  have hpsib : ∀ t : ℝ, 0 ≤ Chebyshev.psi (Real.exp t) * Real.exp (-t) ∧
+      Chebyshev.psi (Real.exp t) * Real.exp (-t) ≤ Real.log 4 + 4 := by
+    intro t
+    have hpos : (0 : ℝ) < Real.exp t := Real.exp_pos t
+    have h1 : 0 ≤ Chebyshev.psi (Real.exp t) := Chebyshev.psi_nonneg _
+    refine ⟨mul_nonneg h1 (Real.exp_pos _).le, ?_⟩
+    have h2 := Chebyshev.psi_le_const_mul_self (x := Real.exp t) hpos.le
+    have h3 : Real.exp (-t) = (Real.exp t)⁻¹ := by rw [Real.exp_neg]
+    rw [h3, inv_eq_one_div, mul_one_div, div_le_iff₀ hpos]
+    exact h2
+  have hFb' : ∀ t : ℝ, |Chebyshev.psi (Real.exp t) * Real.exp (-t)| ≤ Real.log 4 + 4 := by
+    intro t
+    rw [abs_of_nonneg (hpsib t).1]
+    exact (hpsib t).2
+  have hl4 : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+  have hFb : ∀ t : ℝ, |F t| ≤ Real.log 4 + 5 := by
+    intro t
+    have h := hpsib t
+    rw [hF]
+    simp only
+    rw [abs_le]
+    exact ⟨by linarith [h.1], by linarith [h.2]⟩
+  -- `F` is locally integrable
+  have hmono : Monotone (fun t : ℝ ↦ Chebyshev.psi (Real.exp t)) := fun a b hab ↦
+    Chebyshev.psi_mono (Real.exp_le_exp.2 hab)
+  have hprodLI : MeasureTheory.LocallyIntegrable
+      (fun t : ℝ ↦ Chebyshev.psi (Real.exp t) * Real.exp (-t)) := by
+    rw [MeasureTheory.locallyIntegrable_iff]
+    intro k hk
+    have h1 : MeasureTheory.IntegrableOn (fun t : ℝ ↦ Chebyshev.psi (Real.exp t)) k :=
+      hmono.locallyIntegrable.integrableOn_isCompact hk
+    exact h1.mul_continuousOn_of_subset (by fun_prop) hk.isClosed.measurableSet hk
+      Set.Subset.rfl
+  have hFi : MeasureTheory.LocallyIntegrable F :=
+    hprodLI.sub (MeasureTheory.locallyIntegrable_const 1)
+  -- `G` is analytic on the closed right half plane
+  have hmem : ∀ z : ℂ, 0 ≤ z.re → (z + 1) ∈ {s : ℂ | 1 ≤ s.re} := by
+    intro z hz
+    have hre : (z + 1).re = z.re + 1 := by simp
+    show (1 : ℝ) ≤ (z + 1).re
+    rw [hre]
+    linarith
+  have hne : ∀ z : ℂ, 0 ≤ z.re → z + 1 ≠ 0 := by
+    intro z hz h
+    have := congrArg Complex.re h
+    simp only [Complex.add_re, Complex.one_re, Complex.zero_re] at this
+    linarith
+  have hGa : AnalyticOnNhd ℂ G {z : ℂ | 0 ≤ z.re} := by
+    intro z hz
+    have hshift : AnalyticAt ℂ (fun w : ℂ ↦ w + 1) z := analyticAt_id.add analyticAt_const
+    have hcomp : AnalyticAt ℂ (fun w : ℂ ↦ Φ (w + 1)) z := by
+      have hΦz : AnalyticAt ℂ Φ (z + 1) := hΦa _ (hmem z hz)
+      simpa [Function.comp_def] using hΦz.comp_of_eq hshift rfl
+    exact (hcomp.sub analyticAt_const).div hshift (hne z hz)
+  -- the Laplace transform of `F`
+  have hGeq : ∀ z : ℂ, 0 < z.re →
+      G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)) := by
+    intro z hz
+    have hz0 : z ≠ 0 := by
+      intro h; rw [h] at hz; simp at hz
+    have hz1 : z + 1 ≠ 0 := hne z hz.le
+    have hz1re : 1 < (z + 1).re := by
+      simp only [Complex.add_re, Complex.one_re]; linarith
+    have hint1 : MeasureTheory.IntegrableOn
+        (fun t : ℝ ↦ ((Chebyshev.psi (Real.exp t) * Real.exp (-t) : ℝ) : ℂ) *
+          Complex.exp (-z * (t : ℂ))) (Set.Ioi (0 : ℝ)) :=
+      Newman.integrableOn_laplace hFb' hprodLI hz
+    have hint2 : MeasureTheory.IntegrableOn
+        (fun t : ℝ ↦ Complex.exp (-z * (t : ℂ))) (Set.Ioi (0 : ℝ)) := by
+      have := Newman.integrableOn_laplace (F := fun _ : ℝ ↦ (1 : ℝ)) (C := 1)
+        (fun t ↦ by norm_num) (MeasureTheory.locallyIntegrable_const 1) hz (a := (0 : ℝ))
+      simpa using this
+    have hsplit : ∀ t : ℝ, (F t : ℂ) * Complex.exp (-z * (t : ℂ))
+        = ((Chebyshev.psi (Real.exp t) * Real.exp (-t) : ℝ) : ℂ) * Complex.exp (-z * (t : ℂ))
+          - Complex.exp (-z * (t : ℂ)) := by
+      intro t
+      rw [hF]
+      push_cast
+      ring
+    rw [MeasureTheory.setIntegral_congr_fun measurableSet_Ioi (fun t _ ↦ hsplit t),
+      MeasureTheory.integral_sub hint1 hint2, Newman.integral_cexp_neg_mul_Ioi hz 0]
+    have hrw : ∀ t : ℝ,
+        ((Chebyshev.psi (Real.exp t) * Real.exp (-t) : ℝ) : ℂ) * Complex.exp (-z * (t : ℂ))
+          = (Chebyshev.psi (Real.exp t) : ℂ) * Complex.exp (-(z + 1) * (t : ℂ)) := by
+      intro t
+      rw [Complex.ofReal_mul, Complex.ofReal_exp, mul_assoc, ← Complex.exp_add]
+      push_cast
+      ring_nf
+    rw [MeasureTheory.setIntegral_congr_fun measurableSet_Ioi (fun t _ ↦ hrw t),
+      integral_psi_exp_eq hz1re, hΦeq (z + 1) hz1re]
+    rw [hG]
+    simp only
+    rw [show z + 1 - 1 = z by ring]
+    simp only [Complex.exp_zero, Complex.ofReal_zero, mul_zero]
+    field_simp
+    ring
+  -- Newman's theorem
+  have hlim := Newman.tendsto_integral_of_analyticOn hFb hFi hGa hGeq
+  -- along `T = \log(N+1)`
+  have hlog : Tendsto (fun N : ℕ ↦ Real.log ((N : ℝ) + 1)) atTop atTop :=
+    Real.tendsto_log_atTop.comp (tendsto_atTop_add_const_right _ 1 tendsto_natCast_atTop_atTop)
+  have hcomp := hlim.comp hlog
+  have hIoc : ∀ N : ℕ, (∫ t in Set.Ioc (0 : ℝ) (Real.log ((N : ℝ) + 1)), F t)
+      = (∑ m ∈ Finset.range (N + 1), (Chebyshev.psi m - m) / ((m : ℝ) * ((m : ℝ) + 1)))
+        + ((harmonic (N + 1) : ℝ) - 1 - Real.log ((N : ℝ) + 1)) := by
+    intro N
+    have hle : (0 : ℝ) ≤ Real.log ((N : ℝ) + 1) :=
+      Real.log_nonneg (by have : (0 : ℝ) ≤ (N : ℝ) := Nat.cast_nonneg N; linarith)
+    rw [← intervalIntegral.integral_of_le hle]
+    exact integral_newman_eq N
+  have hharm : Tendsto (fun N : ℕ ↦ (harmonic (N + 1) : ℝ) - Real.log ((N : ℝ) + 1)) atTop
+      (𝓝 Real.eulerMascheroniConstant) := by
+    have h := Real.tendsto_harmonic_sub_log.comp (Filter.tendsto_add_atTop_nat 1)
+    refine h.congr fun N ↦ ?_
+    simp only [Function.comp_apply]
+    push_cast
+    ring_nf
+  refine ⟨(G 0).re - Real.eulerMascheroniConstant + 1, ?_⟩
+  rw [← Filter.tendsto_add_atTop_iff_nat 1]
+  have hmain : Tendsto (fun N : ℕ ↦ ∑ m ∈ Finset.range (N + 1),
+      (Chebyshev.psi m - m) / ((m : ℝ) * ((m : ℝ) + 1))) atTop
+      (𝓝 ((G 0).re - Real.eulerMascheroniConstant + 1)) := by
+    have hdiff := (hcomp.sub hharm).add_const 1
+    refine hdiff.congr fun N ↦ ?_
+    simp only [Function.comp_apply]
+    rw [hIoc N]
+    ring
+  exact hmain
 
 /-! ### The Prime Number Theorem from the convergent series -/
 
