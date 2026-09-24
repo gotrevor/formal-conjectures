@@ -43,25 +43,42 @@ namespace Wirsing
 variable (f : ℕ → ℝ)
 
 /--
+**Halász in logarithmic form, reduced to the recursive profile.**  What is left of the
+divergent case is that `Wirsing.logProfile` — the solution of the induction step of route C
+taken with equality — is `o(log N)`.
+
+All the number theory is discharged: `Wirsing.abs_logMean_le_logProfile` gives
+`|L(N)| ≤ ψ(N)` by strong induction from the engine identity, and the hypothesis enters
+through `Wirsing.mul_badLogSum_le_badProfile`, which makes the defect
+`2ψ · badProfile f N` in the recursion grow.  See `PENDING_WORK.md` for the ODE
+`u ψ(u) = 2Ψ(u) - 2∫_0^u ψ(u - v)\,dr(v) + Cu` and for the refuted step-function bootstrap.
+-/
+@[category API, AMS 11]
+theorem tendsto_logProfile_div_log_atTop_zero (hf : IsPMOneMultiplicative f)
+    (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
+    Tendsto (fun N : ℕ ↦ logProfile f N / Real.log N) atTop (𝓝 0) := by
+  sorry
+
+/--
 **Halász in logarithmic form.**  If the bad primes have divergent reciprocal sum then the
 logarithmic average is `o(log N)`:
 $$L(N) = \sum_{n \le N} \frac{f(n)}{n} = o(\log N).$$
-
-Attack (see `PENDING_WORK.md`).  The engine identity
-`Wirsing.abs_logMean_mul_log_sub_defect_le` reads
-`L(N)\log N = ∑_{p ≤ N} (\log p/p)(1 + f p) L(⌊N/p⌋) + O(\log N)`, and the defect weight
-`1 + f(p)` is supported off the bad primes.  Writing `ℓ(u) = L(e^u)` and
-`r(u) = ∑_{bad p ≤ e^u} \log p / p`, the trivial bound `|L(M)| ≤ 1 + \log M` fed back through
-the identity yields the Gronwall inequality
-`Φ'(u)(u + 2R₂(u)/u) ≤ 2Φ(u) + O(u)` for `Φ(u) = ∫_0^u |ℓ|`, `R₂(u) = ∫_0^u r`, hence
-`|ℓ(u)| ≪ u \exp(-4∫^u R₂(v)/v³ dv)`.  The hypothesis `∑_{bad p} 1/p = ∞` is exactly
-`∫^∞ r(v)/v² dv = ∞`, which forces that integral to diverge, so the bound is `o(u)`.
 -/
 @[category API, AMS 11]
 theorem tendsto_logMean_div_log_atTop_zero (hf : IsPMOneMultiplicative f)
     (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
     Tendsto (fun N : ℕ ↦ logMean f N / Real.log N) atTop (𝓝 0) := by
-  sorry
+  have hprof := tendsto_logProfile_div_log_atTop_zero f hf hdiv
+  rw [tendsto_zero_iff_abs_tendsto_zero]
+  refine squeeze_zero' (Eventually.of_forall fun N ↦ abs_nonneg _) ?_ hprof
+  filter_upwards [eventually_ge_atTop 2] with N hN
+  have hlogpos : 0 < Real.log (N : ℝ) := by
+    have h2 : (2 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+    have := Real.log_le_log (show (0:ℝ) < 2 by norm_num) h2
+    have hlog2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
+    linarith
+  simp only [Function.comp_apply, abs_div, abs_of_pos hlogpos]
+  exact div_le_div_of_nonneg_right (abs_logMean_le_logProfile f hf N) hlogpos.le
 
 /--
 **The Tauberian step.**  The logarithmic average being `o(log N)` forces the mean value to

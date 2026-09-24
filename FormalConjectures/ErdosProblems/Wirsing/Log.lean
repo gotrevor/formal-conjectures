@@ -1247,7 +1247,7 @@ This is the inequality that the Gronwall iteration for
 -/
 @[category API, AMS 11]
 theorem abs_logMean_mul_log_le_of_forall (hf : IsPMOneMultiplicative f) {N : ℕ} (φ : ℕ → ℝ)
-    (hφ : ∀ M ≤ N, |logMean f M| ≤ φ M) :
+    (hφ : ∀ p ∈ (Icc 1 N).filter Nat.Prime, |logMean f (N / p)| ≤ φ (N / p)) :
     |logMean f N| * Real.log N
       ≤ (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * ((1 + f p) * φ (N / p)))
         + (27 + 2 * Real.log 4) * (1 + Real.log N) := by
@@ -1266,8 +1266,7 @@ theorem abs_logMean_mul_log_le_of_forall (hf : IsPMOneMultiplicative f) {N : ℕ
       div_nonneg (Real.log_nonneg hpR) (by positivity)
     have hfp := hf.pmOne p hp1
     have hsnn : 0 ≤ 1 + f p := by rcases hfp with h | h <;> rw [h] <;> norm_num
-    have hdiv : N / p ≤ N := Nat.div_le_self _ _
-    have hle : |logMean f (N / p)| ≤ φ (N / p) := hφ _ hdiv
+    have hle : |logMean f (N / p)| ≤ φ (N / p) := hφ p hp
     rw [abs_mul, abs_of_nonneg hwnn, abs_mul, abs_of_nonneg hsnn]
     exact mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hle hsnn) hwnn
   have habs : |logMean f N * Real.log N| ≤
@@ -1278,6 +1277,28 @@ theorem abs_logMean_mul_log_le_of_forall (hf : IsPMOneMultiplicative f) {N : ℕ
     linarith
   rw [abs_mul, abs_of_nonneg hlog] at habs
   linarith [hD]
+
+/-- `abs_logMean_mul_log_le_of_forall` with the hypothesis in the form `∀ M ≤ N`. -/
+@[category API, AMS 11]
+theorem abs_logMean_mul_log_le_of_forall_le (hf : IsPMOneMultiplicative f) {N : ℕ} (φ : ℕ → ℝ)
+    (hφ : ∀ M ≤ N, |logMean f M| ≤ φ M) :
+    |logMean f N| * Real.log N
+      ≤ (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * ((1 + f p) * φ (N / p)))
+        + (27 + 2 * Real.log 4) * (1 + Real.log N) :=
+  abs_logMean_mul_log_le_of_forall f hf φ fun _ _ ↦ hφ _ (Nat.div_le_self _ _)
+
+/-- `abs_logMean_mul_log_le_of_forall` with the hypothesis only for smaller arguments, the
+form needed by a strong induction. -/
+@[category API, AMS 11]
+theorem abs_logMean_mul_log_le_of_forall_lt (hf : IsPMOneMultiplicative f) {N : ℕ} (hN : 1 ≤ N)
+    (φ : ℕ → ℝ) (hφ : ∀ M < N, |logMean f M| ≤ φ M) :
+    |logMean f N| * Real.log N
+      ≤ (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * ((1 + f p) * φ (N / p)))
+        + (27 + 2 * Real.log 4) * (1 + Real.log N) := by
+  classical
+  refine abs_logMean_mul_log_le_of_forall f hf φ fun p hp ↦ hφ _ ?_
+  have hpp : p.Prime := (mem_filter.1 hp).2
+  exact Nat.div_lt_self (by omega) hpp.one_lt
 
 open scoped Classical in
 /-- The bad-prime profile
@@ -1322,7 +1343,7 @@ theorem abs_logMean_mul_log_le_of_profile (hf : IsPMOneMultiplicative f) {N : �
       ≤ α * Real.log N ^ 2 - 2 * α * badProfile f N
         + (2 * α * (11 + Real.log 4) + (27 + 2 * Real.log 4)) * (1 + Real.log N) := by
   classical
-  have hmain := abs_logMean_mul_log_le_of_forall f hf (fun M ↦ α * (1 + Real.log M)) hbd
+  have hmain := abs_logMean_mul_log_le_of_forall_le f hf (fun M ↦ α * (1 + Real.log M)) hbd
   have hterm : ∀ p ∈ (Icc 1 N).filter Nat.Prime,
       Real.log p / p * ((1 + f p) * (α * (1 + Real.log ((N / p : ℕ) : ℝ))))
         = 2 * α * (Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ)))
@@ -1481,5 +1502,59 @@ theorem abs_logMean_le_of_profile (hf : IsPMOneMultiplicative f) {N K : ℕ} {α
           + 2 * (2 * α * (11 + Real.log 4) + (27 + 2 * Real.log 4))) * Real.log N := by
     nlinarith [hstep, hlow, hα, hrnn, hlogNpos, hC]
   exact le_of_mul_le_mul_right (by linarith [hkey]) hlogNpos
+
+open scoped Classical in
+/--
+**The recursive profile.**  `logProfile f N` is defined by strong recursion so that it
+satisfies the induction step of route C with equality:
+`ψ(N) log N = ∑_{p ≤ N} (log p/p)(1 + f p) ψ(⌊N/p⌋) + (27 + 2 log 4)(1 + log N)`.
+
+By `Wirsing.abs_logMean_le_logProfile` it dominates `|L(N)|`, so
+`Wirsing.tendsto_logMean_div_log_atTop_zero` reduces to the purely analytic statement
+`ψ(N) = o(log N)`.
+-/
+noncomputable def logProfile (f : ℕ → ℝ) (N : ℕ) : ℝ :=
+  if hN : N ≤ 1 then 1
+  else ((∑ p ∈ ((Icc 1 N).filter Nat.Prime).attach,
+        Real.log (p : ℕ) / ((p : ℕ) : ℝ) * ((1 + f (p : ℕ)) * logProfile f (N / (p : ℕ))))
+      + (27 + 2 * Real.log 4) * (1 + Real.log N)) / Real.log N
+  decreasing_by
+    have hpp : ((p : ℕ)).Prime := (Finset.mem_filter.1 p.2).2
+    exact Nat.div_lt_self (by omega) hpp.one_lt
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem logProfile_of_one_lt {N : ℕ} (hN : 1 < N) :
+    logProfile f N = ((∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * ((1 + f p) * logProfile f (N / p)))
+      + (27 + 2 * Real.log 4) * (1 + Real.log N)) / Real.log N := by
+  rw [logProfile, dif_neg (by omega)]
+  congr 2
+  exact Finset.sum_attach ((Icc 1 N).filter Nat.Prime)
+    (fun p ↦ Real.log p / p * ((1 + f p) * logProfile f (N / p)))
+
+open scoped Classical in
+/-- The recursive profile dominates the logarithmic average. -/
+@[category API, AMS 11]
+theorem abs_logMean_le_logProfile (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |logMean f N| ≤ logProfile f N := by
+  classical
+  induction N using Nat.strong_induction_on with
+  | _ N ih =>
+    rcases Nat.lt_or_ge N 2 with hN | hN
+    · rw [logProfile, dif_pos (by omega)]
+      interval_cases N
+      · simp [logMean]
+      · simp [logMean, hf.map_one]
+    · have hN1 : 1 < N := by omega
+      have hlogpos : 0 < Real.log (N : ℝ) := by
+        have h2 : (2 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+        have := Real.log_le_log (show (0:ℝ) < 2 by norm_num) h2
+        have hlog2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
+        linarith
+      have hstep := abs_logMean_mul_log_le_of_forall_lt f hf (by omega : 1 ≤ N)
+        (logProfile f) (fun M hM ↦ ih M hM)
+      rw [logProfile_of_one_lt f hN1, le_div_iff₀ hlogpos]
+      exact hstep
 
 end Wirsing
