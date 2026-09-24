@@ -105,6 +105,153 @@ theorem tendsto_chebyshevPsi_div_atTop_one :
     Tendsto (fun x : ℝ ↦ Chebyshev.psi x / x) atTop (𝓝 1) := by
   sorry
 
+/-! ### Abel summation against the harmonic weight -/
+
+/--
+**Abel summation for the weight `1/n`,** in purely discrete form.  With
+`A(N) = \sum_{n \le N} a_n`,
+$$\sum_{n \le N}\frac{a_n}{n} = \frac{A(N)}{N} + \sum_{m < N}\frac{A(m)}{m(m+1)} .$$
+
+This is the bridge from Chebyshev's `ψ` to the Mertens sum `\sum_{n \le N}\Lambda(n)/n`,
+and it replaces the usual `\int_1^x \psi(t)/t^2\,dt` by a series, which avoids all
+integration bookkeeping: the telescoping identity `1/n = 1/N + \sum_{n \le m < N}
+(1/m - 1/(m+1))` is exact.
+
+Applied with `a = Λ` and `A = ψ`, the main term is
+`\sum_{m < N} 1/(m+1) = \log N + γ - 1 + o(1)` and the error is
+`\sum_{m < N}(ψ(m) - m)/(m(m+1))`, whose convergence is precisely what Newman's analytic
+theorem delivers.
+-/
+@[category API, AMS 11 40]
+theorem sum_div_eq_abel (a : ℕ → ℝ) {N : ℕ} (hN : 1 ≤ N) :
+    ∑ n ∈ Finset.Icc 1 N, a n / n
+      = (∑ n ∈ Finset.Icc 1 N, a n) / N
+        + ∑ m ∈ Finset.Icc 1 (N - 1), (∑ n ∈ Finset.Icc 1 m, a n) / (m * (m + 1)) := by
+  induction N, hN using Nat.le_induction with
+  | base => simp
+  | succ n hn ih =>
+    have hn0 : (0 : ℝ) < n := by exact_mod_cast hn
+    have hn1 : (0 : ℝ) < (n : ℝ) + 1 := by linarith
+    have hsucc : ∀ g : ℕ → ℝ, ∑ k ∈ Finset.Icc 1 (n + 1), g k
+        = (∑ k ∈ Finset.Icc 1 n, g k) + g (n + 1) :=
+      fun g ↦ Finset.sum_Icc_succ_top (by omega) g
+    have htail : ∑ m ∈ Finset.Icc 1 (n + 1 - 1), (∑ k ∈ Finset.Icc 1 m, a k) / (m * (m + 1))
+        = (∑ m ∈ Finset.Icc 1 (n - 1), (∑ k ∈ Finset.Icc 1 m, a k) / (m * (m + 1)))
+          + (∑ k ∈ Finset.Icc 1 n, a k) / (n * (n + 1)) := by
+      rw [show n + 1 - 1 = n from by omega, show n = (n - 1) + 1 from by omega,
+        Finset.sum_Icc_succ_top (by omega)]
+      simp [show n - 1 + 1 = n from by omega]
+    rw [hsucc (fun k ↦ a k / k), ih, hsucc a, htail]
+    push_cast
+    field_simp
+    ring
+
+/-- `\sum_{1 \le m < N} 1/(m+1) = H_N - 1`. -/
+@[category API, AMS 11]
+theorem sum_one_div_succ_eq_harmonic_sub {N : ℕ} (hN : 1 ≤ N) :
+    ∑ m ∈ Finset.Icc 1 (N - 1), (1 : ℝ) / (m + 1) = (harmonic N : ℝ) - 1 := by
+  induction N, hN using Nat.le_induction with
+  | base => simp
+  | succ n hn ih =>
+    have hstep : ∑ m ∈ Finset.Icc 1 (n + 1 - 1), (1 : ℝ) / (m + 1)
+        = (∑ m ∈ Finset.Icc 1 (n - 1), (1 : ℝ) / (m + 1)) + 1 / ((n : ℝ) + 1) := by
+      rw [show n + 1 - 1 = n from by omega, show n = (n - 1) + 1 from by omega,
+        Finset.sum_Icc_succ_top (by omega)]
+      simp [show n - 1 + 1 = n from by omega]
+    rw [hstep, ih, harmonic_succ]
+    push_cast
+    ring
+
+/--
+**Sharp Mertens from the two Newman inputs.**  If `ψ(N)/N → 1` and the error series
+`\sum_m (ψ(m) - m)/(m(m+1))` converges, then
+$$\sum_{n \le N}\frac{\Lambda(n)}{n} = \log N - E + o(1),
+  \qquad E = -\gamma - \sum_m \frac{ψ(m) - m}{m(m+1)} .$$
+
+Both hypotheses come from `Newman.tendsto_integral_of_analyticOn`; the summability is the
+*direct* output of the analytic theorem and does not wait on `ψ(x) \sim x`.  Everything else
+here is `Newman.sum_div_eq_abel` plus mathlib's
+`Real.tendsto_harmonic_sub_log`.
+-/
+@[category API, AMS 11]
+theorem exists_tendsto_sum_vonMangoldt_div_sub_log
+    (hpsi : Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N) atTop (𝓝 1))
+    (hsum : Summable (fun m : ℕ ↦ (Chebyshev.psi m - m) / (m * (m + 1)))) :
+    ∃ E : ℝ, Tendsto (fun N : ℕ ↦
+        (∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / n) - Real.log N)
+      atTop (𝓝 (-E)) := by
+  classical
+  set g : ℕ → ℝ := fun m ↦ (Chebyshev.psi m - m) / (m * (m + 1)) with hg
+  -- `ψ` is the partial sum of `Λ`
+  have hpsiSum : ∀ m : ℕ, Chebyshev.psi m = ∑ n ∈ Finset.Icc 1 m,
+      ArithmeticFunction.vonMangoldt n := by
+    intro m
+    rw [Chebyshev.psi, Nat.floor_natCast]
+    rfl
+  -- the tail series, indexed by `range`
+  have hg0 : g 0 = 0 := by simp [hg]
+  have hrange : ∀ N : ℕ, 1 ≤ N → ∑ m ∈ Finset.Icc 1 (N - 1), g m = ∑ m ∈ Finset.range N, g m := by
+    intro N hN
+    have hIco : Finset.Icc 1 (N - 1) = Finset.Ico 1 N := by
+      ext k
+      simp only [Finset.mem_Icc, Finset.mem_Ico]
+      omega
+    have hcons := Finset.sum_Ico_consecutive g (Nat.zero_le 1) hN
+    have hbot : ∑ m ∈ Finset.Ico 0 1, g m = 0 := by simp [hg0]
+    rw [hIco, Finset.range_eq_Ico]
+    linarith [hcons, hbot]
+  have htail : Tendsto (fun N : ℕ ↦ ∑ m ∈ Finset.range N, g m) atTop (𝓝 (∑' m, g m)) :=
+    hsum.hasSum.tendsto_sum_nat
+  have hharm := Real.tendsto_harmonic_sub_log
+  refine ⟨-(Real.eulerMascheroniConstant + ∑' m, g m), ?_⟩
+  have hlim : Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N + ((harmonic N : ℝ) - Real.log N) - 1
+      + ∑ m ∈ Finset.range N, g m) atTop
+      (𝓝 (1 + Real.eulerMascheroniConstant - 1 + ∑' m, g m)) :=
+    ((hpsi.add hharm).sub_const 1).add htail
+  rw [show -(-(Real.eulerMascheroniConstant + ∑' m, g m))
+      = 1 + Real.eulerMascheroniConstant - 1 + ∑' m, g m by ring]
+  refine hlim.congr' ?_
+  filter_upwards [eventually_ge_atTop 1] with N hN
+  have habel := sum_div_eq_abel (fun n ↦ ArithmeticFunction.vonMangoldt n) hN
+  have hsplit : ∀ m ∈ Finset.Icc 1 (N - 1),
+      (∑ n ∈ Finset.Icc 1 m, ArithmeticFunction.vonMangoldt n) / ((m : ℝ) * (m + 1))
+        = 1 / ((m : ℝ) + 1) + g m := by
+    intro m hm
+    have hm1 : 1 ≤ m := (Finset.mem_Icc.1 hm).1
+    have hm0 : (0 : ℝ) < m := by exact_mod_cast hm1
+    have hm1' : (0 : ℝ) < (m : ℝ) + 1 := by linarith
+    rw [hg, ← hpsiSum m]
+    field_simp
+    ring
+  rw [habel, Finset.sum_congr rfl hsplit, Finset.sum_add_distrib,
+    sum_one_div_succ_eq_harmonic_sub hN, hrange N hN, ← hpsiSum N]
+  ring
+
+/--
+**Newman's convergent integral, in discrete form.**  The error series of Chebyshev's `ψ`
+against the main term converges:
+$$\sum_{m}\frac{\psi(m) - m}{m(m+1)} < \infty .$$
+
+This is the *direct* output of `Newman.tendsto_integral_of_analyticOn` applied to
+`F(t) = \psi(e^t)e^{-t} - 1` — the analytic theorem proves the convergence of
+`\int_0^\infty F`, which is this series up to the change of variable `t = \log m` — and it
+comes **before** `\psi(x) \sim x`, which is deduced from it by the monotonicity of `ψ`.
+Separated out here so that everything downstream of the two Newman inputs is proved.
+-/
+@[category API, AMS 11]
+theorem summable_psi_sub_div :
+    Summable (fun m : ℕ ↦ (Chebyshev.psi m - m) / (m * (m + 1))) := by
+  sorry
+
+/--
+**The Prime Number Theorem along the integers**, the form the Mertens reduction consumes.
+An immediate restriction of `Newman.tendsto_chebyshevPsi_div_atTop_one`.
+-/
+@[category API, AMS 11]
+theorem tendsto_chebyshevPsi_nat_div_atTop_one :
+    Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N) atTop (𝓝 1) :=
+  tendsto_chebyshevPsi_div_atTop_one.comp tendsto_natCast_atTop_atTop
+
 /--
 **Sharp Mertens.**  `\sum_{p \le N} \log p/p = \log N - E + o(1)` for a constant `E`.
 
@@ -118,7 +265,44 @@ fixed ratio `> 1` carries prime weight bounded away from `0`, which
 theorem exists_tendsto_sum_log_prime_div_sub_log :
     ∃ E : ℝ, Tendsto (fun N : ℕ ↦ (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
       Real.log p / p) - Real.log N) atTop (𝓝 (-E)) := by
-  sorry
+  classical
+  obtain ⟨E, hE⟩ := exists_tendsto_sum_vonMangoldt_div_sub_log
+    tendsto_chebyshevPsi_nat_div_atTop_one summable_psi_sub_div
+  -- the proper prime powers
+  set D : ℕ → ℝ := fun N ↦ ∑ d ∈ (Finset.Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+    ArithmeticFunction.vonMangoldt d / d with hD
+  have hDnn : ∀ N, 0 ≤ D N := fun N ↦
+    Finset.sum_nonneg fun d _ ↦ div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+  have hDmono : Monotone D := by
+    intro a b hab
+    refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_
+    · exact Finset.filter_subset_filter _ (Finset.Icc_subset_Icc_right hab)
+    · exact fun d _ _ ↦ div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+  have hDbdd : BddAbove (Set.range D) := by
+    refine ⟨4, ?_⟩
+    rintro x ⟨N, rfl⟩
+    exact Mertens.sum_vonMangoldt_div_nonprime_le N
+  have hDlim : Tendsto D atTop (𝓝 (⨆ N, D N)) := tendsto_atTop_ciSup hDmono hDbdd
+  -- splitting the von Mangoldt sum at the primes
+  have hsplit : ∀ N : ℕ, (∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, Real.log p / p)
+      = (∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / n) - D N := by
+    intro N
+    have h := Finset.sum_filter_add_sum_filter_not (Finset.Icc 1 N) Nat.Prime
+      (fun n ↦ ArithmeticFunction.vonMangoldt n / (n : ℝ))
+    have hprime : ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime,
+        ArithmeticFunction.vonMangoldt p / (p : ℝ)
+        = ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, Real.log p / p := by
+      refine Finset.sum_congr rfl fun p hp ↦ ?_
+      rw [ArithmeticFunction.vonMangoldt_apply_prime (Finset.mem_filter.1 hp).2]
+    rw [hD]
+    rw [hprime] at h
+    linarith [h]
+  refine ⟨E + ⨆ N, D N, ?_⟩
+  have hlim := hE.sub hDlim
+  rw [show -(E + ⨆ N, D N) = -E - ⨆ N, D N by ring]
+  refine hlim.congr fun N ↦ ?_
+  rw [hsplit N]
+  ring
 
 /--
 **Primes in short multiplicative windows.**  For every ratio `c > 1` the Mertens weight of the
@@ -424,128 +608,6 @@ theorem norm_trunc_mul_kernel_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t|
         refine mul_le_mul_of_nonneg_right hstep ?_
         positivity
     _ = 2 * C / R ^ 2 := hfin
-
-/-! ### Abel summation against the harmonic weight -/
-
-/--
-**Abel summation for the weight `1/n`,** in purely discrete form.  With
-`A(N) = \sum_{n \le N} a_n`,
-$$\sum_{n \le N}\frac{a_n}{n} = \frac{A(N)}{N} + \sum_{m < N}\frac{A(m)}{m(m+1)} .$$
-
-This is the bridge from Chebyshev's `ψ` to the Mertens sum `\sum_{n \le N}\Lambda(n)/n`,
-and it replaces the usual `\int_1^x \psi(t)/t^2\,dt` by a series, which avoids all
-integration bookkeeping: the telescoping identity `1/n = 1/N + \sum_{n \le m < N}
-(1/m - 1/(m+1))` is exact.
-
-Applied with `a = Λ` and `A = ψ`, the main term is
-`\sum_{m < N} 1/(m+1) = \log N + γ - 1 + o(1)` and the error is
-`\sum_{m < N}(ψ(m) - m)/(m(m+1))`, whose convergence is precisely what Newman's analytic
-theorem delivers.
--/
-@[category API, AMS 11 40]
-theorem sum_div_eq_abel (a : ℕ → ℝ) {N : ℕ} (hN : 1 ≤ N) :
-    ∑ n ∈ Finset.Icc 1 N, a n / n
-      = (∑ n ∈ Finset.Icc 1 N, a n) / N
-        + ∑ m ∈ Finset.Icc 1 (N - 1), (∑ n ∈ Finset.Icc 1 m, a n) / (m * (m + 1)) := by
-  induction N, hN using Nat.le_induction with
-  | base => simp
-  | succ n hn ih =>
-    have hn0 : (0 : ℝ) < n := by exact_mod_cast hn
-    have hn1 : (0 : ℝ) < (n : ℝ) + 1 := by linarith
-    have hsucc : ∀ g : ℕ → ℝ, ∑ k ∈ Finset.Icc 1 (n + 1), g k
-        = (∑ k ∈ Finset.Icc 1 n, g k) + g (n + 1) :=
-      fun g ↦ Finset.sum_Icc_succ_top (by omega) g
-    have htail : ∑ m ∈ Finset.Icc 1 (n + 1 - 1), (∑ k ∈ Finset.Icc 1 m, a k) / (m * (m + 1))
-        = (∑ m ∈ Finset.Icc 1 (n - 1), (∑ k ∈ Finset.Icc 1 m, a k) / (m * (m + 1)))
-          + (∑ k ∈ Finset.Icc 1 n, a k) / (n * (n + 1)) := by
-      rw [show n + 1 - 1 = n from by omega, show n = (n - 1) + 1 from by omega,
-        Finset.sum_Icc_succ_top (by omega)]
-      simp [show n - 1 + 1 = n from by omega]
-    rw [hsucc (fun k ↦ a k / k), ih, hsucc a, htail]
-    push_cast
-    field_simp
-    ring
-
-/-- `\sum_{1 \le m < N} 1/(m+1) = H_N - 1`. -/
-@[category API, AMS 11]
-theorem sum_one_div_succ_eq_harmonic_sub {N : ℕ} (hN : 1 ≤ N) :
-    ∑ m ∈ Finset.Icc 1 (N - 1), (1 : ℝ) / (m + 1) = (harmonic N : ℝ) - 1 := by
-  induction N, hN using Nat.le_induction with
-  | base => simp
-  | succ n hn ih =>
-    have hstep : ∑ m ∈ Finset.Icc 1 (n + 1 - 1), (1 : ℝ) / (m + 1)
-        = (∑ m ∈ Finset.Icc 1 (n - 1), (1 : ℝ) / (m + 1)) + 1 / ((n : ℝ) + 1) := by
-      rw [show n + 1 - 1 = n from by omega, show n = (n - 1) + 1 from by omega,
-        Finset.sum_Icc_succ_top (by omega)]
-      simp [show n - 1 + 1 = n from by omega]
-    rw [hstep, ih, harmonic_succ]
-    push_cast
-    ring
-
-/--
-**Sharp Mertens from the two Newman inputs.**  If `ψ(N)/N → 1` and the error series
-`\sum_m (ψ(m) - m)/(m(m+1))` converges, then
-$$\sum_{n \le N}\frac{\Lambda(n)}{n} = \log N - E + o(1),
-  \qquad E = -\gamma - \sum_m \frac{ψ(m) - m}{m(m+1)} .$$
-
-Both hypotheses come from `Newman.tendsto_integral_of_analyticOn`; the summability is the
-*direct* output of the analytic theorem and does not wait on `ψ(x) \sim x`.  Everything else
-here is `Newman.sum_div_eq_abel` plus mathlib's
-`Real.tendsto_harmonic_sub_log`.
--/
-@[category API, AMS 11]
-theorem exists_tendsto_sum_vonMangoldt_div_sub_log
-    (hpsi : Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N) atTop (𝓝 1))
-    (hsum : Summable (fun m : ℕ ↦ (Chebyshev.psi m - m) / (m * (m + 1)))) :
-    ∃ E : ℝ, Tendsto (fun N : ℕ ↦
-        (∑ n ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt n / n) - Real.log N)
-      atTop (𝓝 (-E)) := by
-  classical
-  set g : ℕ → ℝ := fun m ↦ (Chebyshev.psi m - m) / (m * (m + 1)) with hg
-  -- `ψ` is the partial sum of `Λ`
-  have hpsiSum : ∀ m : ℕ, Chebyshev.psi m = ∑ n ∈ Finset.Icc 1 m,
-      ArithmeticFunction.vonMangoldt n := by
-    intro m
-    rw [Chebyshev.psi, Nat.floor_natCast]
-    rfl
-  -- the tail series, indexed by `range`
-  have hg0 : g 0 = 0 := by simp [hg]
-  have hrange : ∀ N : ℕ, 1 ≤ N → ∑ m ∈ Finset.Icc 1 (N - 1), g m = ∑ m ∈ Finset.range N, g m := by
-    intro N hN
-    have hIco : Finset.Icc 1 (N - 1) = Finset.Ico 1 N := by
-      ext k
-      simp only [Finset.mem_Icc, Finset.mem_Ico]
-      omega
-    have hcons := Finset.sum_Ico_consecutive g (Nat.zero_le 1) hN
-    have hbot : ∑ m ∈ Finset.Ico 0 1, g m = 0 := by simp [hg0]
-    rw [hIco, Finset.range_eq_Ico]
-    linarith [hcons, hbot]
-  have htail : Tendsto (fun N : ℕ ↦ ∑ m ∈ Finset.range N, g m) atTop (𝓝 (∑' m, g m)) :=
-    hsum.hasSum.tendsto_sum_nat
-  have hharm := Real.tendsto_harmonic_sub_log
-  refine ⟨-(Real.eulerMascheroniConstant + ∑' m, g m), ?_⟩
-  have hlim : Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N + ((harmonic N : ℝ) - Real.log N) - 1
-      + ∑ m ∈ Finset.range N, g m) atTop
-      (𝓝 (1 + Real.eulerMascheroniConstant - 1 + ∑' m, g m)) :=
-    ((hpsi.add hharm).sub_const 1).add htail
-  rw [show -(-(Real.eulerMascheroniConstant + ∑' m, g m))
-      = 1 + Real.eulerMascheroniConstant - 1 + ∑' m, g m by ring]
-  refine hlim.congr' ?_
-  filter_upwards [eventually_ge_atTop 1] with N hN
-  have habel := sum_div_eq_abel (fun n ↦ ArithmeticFunction.vonMangoldt n) hN
-  have hsplit : ∀ m ∈ Finset.Icc 1 (N - 1),
-      (∑ n ∈ Finset.Icc 1 m, ArithmeticFunction.vonMangoldt n) / ((m : ℝ) * (m + 1))
-        = 1 / ((m : ℝ) + 1) + g m := by
-    intro m hm
-    have hm1 : 1 ≤ m := (Finset.mem_Icc.1 hm).1
-    have hm0 : (0 : ℝ) < m := by exact_mod_cast hm1
-    have hm1' : (0 : ℝ) < (m : ℝ) + 1 := by linarith
-    rw [hg, ← hpsiSum m]
-    field_simp
-    ring
-  rw [habel, Finset.sum_congr rfl hsplit, Finset.sum_add_distrib,
-    sum_one_div_succ_eq_harmonic_sub hN, hrange N hN, ← hpsiSum N]
-  ring
 
 /-! ### The Cauchy value of the Newman kernel -/
 
