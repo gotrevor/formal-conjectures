@@ -635,4 +635,66 @@ theorem abs_sum_div_mul_log_sub_sum_prime_le (hf : IsPMOneMultiplicative f) (N :
         _ ≤ _ := this
   _ ≤ 8 * (1 + Real.log N) := by linarith [h1, h2]
 
+/-- The harmonic partial sum `∑_{n ≤ N} 1/n`. -/
+noncomputable def harmonicSum (N : ℕ) : ℝ := ∑ n ∈ Icc 1 N, (1 : ℝ) / n
+
+@[category API, AMS 11]
+theorem harmonicSum_sub (M N : ℕ) (h : M ≤ N) :
+    harmonicSum N - harmonicSum M = ∑ n ∈ Ioc M N, (1 : ℝ) / n := by
+  rw [harmonicSum, harmonicSum, (by rfl : Icc 1 N = Ioc 0 N), (by rfl : Icc 1 M = Ioc 0 M),
+    ← Finset.sum_Ioc_consecutive _ (Nat.zero_le M) h]
+  ring
+
+/--
+`L` is Lipschitz on the logarithmic scale: `|L(N) - L(M)| ≤ ∑_{M < n ≤ N} 1/n`.
+This regularity is the reason route C works through the logarithmic average rather than
+through `mean f`, which has no such control.
+-/
+@[category API, AMS 11]
+theorem abs_logMean_sub_le (hf : IsPMOneMultiplicative f) {M N : ℕ} (h : M ≤ N) :
+    |logMean f N - logMean f M| ≤ harmonicSum N - harmonicSum M := by
+  have hsub : logMean f N - logMean f M = ∑ n ∈ Ioc M N, f n / n := by
+    rw [logMean, logMean, (by rfl : Icc 1 N = Ioc 0 N), (by rfl : Icc 1 M = Ioc 0 M),
+      ← Finset.sum_Ioc_consecutive _ (Nat.zero_le M) h]
+    ring
+  rw [hsub, harmonicSum_sub M N h]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  refine le_of_eq (Finset.sum_congr rfl fun n hn ↦ ?_)
+  have hn1 : 1 ≤ n := by
+    have := (Finset.mem_Ioc.1 hn).1
+    omega
+  have hnR : (0 : ℝ) < n := by exact_mod_cast hn1
+  rw [abs_div, abs_eq_one_of_one_le f hf hn1, abs_of_nonneg hnR.le]
+
+/--
+The total variation of `k ↦ L(⌊N/k⌋)` over `1 ≤ k < N` is at most `1 + log N`: the ranges
+`(⌊N/(k+1)⌋, ⌊N/k⌋]` are consecutive, so the bound telescopes.
+-/
+@[category API, AMS 11]
+theorem sum_abs_logMean_div_sub_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    ∑ k ∈ Ico 1 N, |logMean f (N / k) - logMean f (N / (k + 1))| ≤ 1 + Real.log N := by
+  have hterm : ∀ k ∈ Ico 1 N, |logMean f (N / k) - logMean f (N / (k + 1))|
+      ≤ harmonicSum (N / k) - harmonicSum (N / (k + 1)) := fun k hk ↦
+    abs_logMean_sub_le f hf (Nat.div_le_div_left (Nat.le_succ k)
+      (by have := (Finset.mem_Ico.1 hk).1; omega))
+  calc ∑ k ∈ Ico 1 N, |logMean f (N / k) - logMean f (N / (k + 1))|
+      ≤ ∑ k ∈ Ico 1 N, (harmonicSum (N / k) - harmonicSum (N / (k + 1))) :=
+        Finset.sum_le_sum hterm
+  _ = harmonicSum (N / 1) - harmonicSum (N / (1 + (N - 1))) := by
+        rw [Finset.sum_Ico_eq_sum_range]
+        have : ∀ i ∈ range (N - 1),
+            harmonicSum (N / (1 + i)) - harmonicSum (N / (1 + i + 1))
+              = (fun j ↦ harmonicSum (N / (1 + j))) i - (fun j ↦ harmonicSum (N / (1 + j))) (i + 1) := by
+          intro i _
+          simp only
+          congr 2
+        rw [Finset.sum_congr rfl this, Finset.sum_range_sub' (fun j ↦ harmonicSum (N / (1 + j)))]
+  _ ≤ 1 + Real.log N := by
+        have h1 : harmonicSum (N / 1) ≤ 1 + Real.log N := by
+          rw [Nat.div_one]
+          exact sum_one_div_le N
+        have h2 : 0 ≤ harmonicSum (N / (1 + (N - 1))) :=
+          Finset.sum_nonneg fun n _ ↦ by positivity
+        linarith
+
 end Wirsing
