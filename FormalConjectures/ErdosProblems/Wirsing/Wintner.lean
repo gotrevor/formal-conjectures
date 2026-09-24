@@ -341,4 +341,39 @@ theorem abs_wintnerCoeff_prime_pow_le (hf : IsPMOneMultiplicative f) {p k : ℕ}
   calc |f (p ^ k) - f (p ^ (k - 1))| ≤ |f (p ^ k)| + |f (p ^ (k - 1))| := abs_sub _ _
     _ = 2 := by rw [h1, h2]; norm_num
 
+open ArithmeticFunction in
+/-- **`g = f * μ` is multiplicative.** -/
+@[category API, AMS 11]
+theorem wintnerCoeff_mul_of_coprime (hf : IsPMOneMultiplicative f) {m n : ℕ}
+    (hmn : m.Coprime n) :
+    wintnerCoeff f (m * n) = wintnerCoeff f m * wintnerCoeff f n := by
+  classical
+  set F : ArithmeticFunction ℝ := ⟨fun k ↦ if k = 0 then 0 else f k, by simp⟩ with hF
+  have hFapp : ∀ k, k ≠ 0 → F k = f k := fun k hk ↦ by simp [hF, hk]
+  have hFmul : ArithmeticFunction.IsMultiplicative F := by
+    constructor
+    · rw [hFapp 1 (by omega), hf.map_one]
+    · intro a b hab
+      rcases Nat.eq_zero_or_pos a with rfl | ha
+      · rw [Nat.coprime_zero_left] at hab
+        subst hab
+        rw [Nat.zero_mul, hFapp 1 (by omega), hf.map_one, mul_one]
+      · rcases Nat.eq_zero_or_pos b with rfl | hb
+        · rw [Nat.coprime_zero_right] at hab
+          subst hab
+          rw [Nat.mul_zero, hFapp 1 (by omega), hf.map_one, one_mul]
+        · have hab0 : a * b ≠ 0 := by positivity
+          rw [hFapp _ hab0, hFapp _ (by omega), hFapp _ (by omega)]
+          exact hf.map_mul_of_coprime a b hab
+  have hgF : ∀ k, wintnerCoeff f k
+      = (((ArithmeticFunction.moebius : ArithmeticFunction ℤ) : ArithmeticFunction ℝ) * F) k := by
+    intro k
+    rw [wintnerCoeff, ArithmeticFunction.mul_apply]
+    refine Finset.sum_congr rfl fun x hx ↦ ?_
+    have hx2 : x.2 ≠ 0 :=
+      (Nat.pos_of_mem_divisors (Nat.snd_mem_divisors_of_mem_antidiagonal hx)).ne'
+    rw [hFapp _ hx2, ArithmeticFunction.intCoe_apply]
+  rw [hgF, hgF, hgF]
+  exact (ArithmeticFunction.isMultiplicative_moebius.intCast.mul hFmul).map_mul_of_coprime hmn
+
 end Wirsing
