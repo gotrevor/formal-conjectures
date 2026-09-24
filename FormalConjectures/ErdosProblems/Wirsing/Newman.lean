@@ -89,22 +89,6 @@ theorem tendsto_integral_of_analyticOn {F : ℝ → ℝ} {C : ℝ}
     Tendsto (fun T : ℝ ↦ ∫ t in Set.Ioc (0 : ℝ) T, F t) atTop (𝓝 (G 0).re) := by
   sorry
 
-/--
-**The Prime Number Theorem**, Chebyshev form: `ψ(x) \sim x`.
-
-Apply `Newman.tendsto_integral_of_analyticOn` to `F(t) = ψ(e^t)e^{-t} - 1`, which is bounded
-by `Chebyshev.psi_le_const_mul_self`.  Its Laplace transform on `re z > 0` is
-`-\frac{ζ'}{ζ}(z+1)/(z+1) - 1/z`, which
-`Wirsing.exists_continuousOn_lSeries_vonMangoldt_sub` already exhibits as analytic across
-`re z = 0` — that lemma is where `riemannZeta_ne_zero_of_one_le_re` entered the development.
-The convergence of `∫_0^∞ (ψ(e^t)e^{-t} - 1)\,dt` plus the monotonicity of `ψ` then forces
-`ψ(x)/x → 1`.
--/
-@[category research solved, AMS 11]
-theorem tendsto_chebyshevPsi_div_atTop_one :
-    Tendsto (fun x : ℝ ↦ Chebyshev.psi x / x) atTop (𝓝 1) := by
-  sorry
-
 /-! ### Abel summation against the harmonic weight -/
 
 /--
@@ -243,14 +227,237 @@ theorem summable_psi_sub_div :
     Summable (fun m : ℕ ↦ (Chebyshev.psi m - m) / (m * (m + 1))) := by
   sorry
 
+/-! ### The Prime Number Theorem from the convergent series -/
+
 /--
-**The Prime Number Theorem along the integers**, the form the Mertens reduction consumes.
-An immediate restriction of `Newman.tendsto_chebyshevPsi_div_atTop_one`.
+**The upper resonance bound.**  If `ψ(n) \ge (1+ε)n` then the Newman series has a block of
+consecutive terms just above `n` of total mass at least `ε^2/24`.
+
+For `n \le m \le n + εn/2` monotonicity of `ψ` gives `ψ(m) - m \ge (1+ε)n - (n + εn/2) = εn/2`,
+while `m(m+1) \le 6n^2`; there are more than `εn/2` such `m`.  The block mass does not depend
+on `n`, so only finitely many `n` can satisfy the hypothesis.
+-/
+@[category API, AMS 11]
+theorem sum_Ico_psiErr_ge {ε : ℝ} (hε0 : 0 < ε) (hε1 : ε ≤ 1) {n : ℕ} (hn : 1 ≤ n)
+    (h : (1 + ε) * n ≤ Chebyshev.psi n) :
+    ε ^ 2 / 24 ≤ ∑ m ∈ Finset.Ico n (n + ⌊ε * n / 2⌋₊ + 1),
+      (Chebyshev.psi m - m) / (m * (m + 1)) := by
+  set k : ℕ := ⌊ε * n / 2⌋₊ with hk
+  have hn1R : (1 : ℝ) ≤ n := by exact_mod_cast hn
+  have hn0 : (0 : ℝ) < n := by linarith
+  have hkle : (k : ℝ) ≤ ε * n / 2 := Nat.floor_le (by positivity)
+  have hklt : ε * n / 2 < (k : ℝ) + 1 := Nat.lt_floor_add_one _
+  have hterm : ∀ m ∈ Finset.Ico n (n + k + 1),
+      ε / (12 * n) ≤ (Chebyshev.psi m - m) / ((m : ℝ) * (m + 1)) := by
+    intro m hm
+    obtain ⟨hm1, hm2⟩ := Finset.mem_Ico.1 hm
+    have hmR1 : (n : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm1
+    have hmR2 : (m : ℝ) ≤ (n : ℝ) + k := by
+      have : m ≤ n + k := by omega
+      exact_mod_cast this
+    have hm0 : (0 : ℝ) < m := lt_of_lt_of_le hn0 hmR1
+    have hpsi : Chebyshev.psi n ≤ Chebyshev.psi m := Chebyshev.psi_mono hmR1
+    have hnum : ε * n / 2 ≤ Chebyshev.psi m - m := by
+      have : (m : ℝ) ≤ (n : ℝ) + ε * n / 2 := by linarith
+      linarith
+    have hden : (m : ℝ) * (m + 1) ≤ 6 * n ^ 2 := by
+      have h1 : (m : ℝ) ≤ 2 * n := by nlinarith
+      have h2 : (m : ℝ) + 1 ≤ 3 * n := by nlinarith
+      nlinarith
+    have hden0 : (0 : ℝ) < (m : ℝ) * (m + 1) := by positivity
+    have hnum0 : (0 : ℝ) ≤ Chebyshev.psi m - m := le_trans (by positivity) hnum
+    rw [div_le_div_iff₀ (by positivity) hden0]
+    nlinarith [mul_le_mul_of_nonneg_left hden hε0.le,
+      mul_le_mul_of_nonneg_right hnum (by positivity : (0:ℝ) ≤ 12 * (n : ℝ))]
+  have hcard : (Finset.Ico n (n + k + 1)).card = k + 1 := by
+    rw [Nat.card_Ico]; omega
+  have hsum := Finset.card_nsmul_le_sum (Finset.Ico n (n + k + 1))
+    (fun m ↦ (Chebyshev.psi m - m) / ((m : ℝ) * (m + 1))) (ε / (12 * n)) hterm
+  rw [hcard, nsmul_eq_mul] at hsum
+  refine le_trans ?_ hsum
+  have hpos : (0 : ℝ) < ε / (12 * n) := by positivity
+  push_cast
+  have key : ε ^ 2 / 24 = (ε * n / 2) * (ε / (12 * n)) := by
+    field_simp; ring
+  rw [key]
+  exact mul_le_mul_of_nonneg_right hklt.le hpos.le
+
+/--
+**The lower resonance bound.**  If `ψ(n) \le (1-ε)n` then the block of terms just below `n`
+has total mass at most `-ε^2/8`.  Mirror of `Newman.sum_Ico_psiErr_ge`.
+-/
+@[category API, AMS 11]
+theorem sum_Ico_psiErr_le {ε : ℝ} (hε0 : 0 < ε) (hε1 : ε ≤ 1) {n : ℕ} (hn : 2 ≤ n)
+    (h : Chebyshev.psi n ≤ (1 - ε) * n) :
+    ∑ m ∈ Finset.Ico (n - ⌊ε * n / 2⌋₊) (n + 1),
+      (Chebyshev.psi m - m) / (m * (m + 1)) ≤ -(ε ^ 2 / 8) := by
+  set k : ℕ := ⌊ε * n / 2⌋₊ with hk
+  have hn0 : (0 : ℝ) < n := by positivity
+  have hn2 : (2 : ℝ) ≤ n := by exact_mod_cast hn
+  have hkle : (k : ℝ) ≤ ε * n / 2 := Nat.floor_le (by positivity)
+  have hklt : ε * n / 2 < (k : ℝ) + 1 := Nat.lt_floor_add_one _
+  have hkn : 2 * k ≤ n := by
+    have : (2 : ℝ) * k ≤ n := by nlinarith
+    exact_mod_cast this
+  have hsubR : ((n - k : ℕ) : ℝ) = (n : ℝ) - k := by
+    have : k ≤ n := by omega
+    push_cast [this]
+    ring
+  have hterm : ∀ m ∈ Finset.Ico (n - k) (n + 1),
+      (Chebyshev.psi m - m) / ((m : ℝ) * (m + 1)) ≤ -(ε / (4 * n)) := by
+    intro m hm
+    obtain ⟨hm1, hm2⟩ := Finset.mem_Ico.1 hm
+    have hmn : m ≤ n := by omega
+    have hmR2 : (m : ℝ) ≤ (n : ℝ) := by exact_mod_cast hmn
+    have hmR1 : (n : ℝ) - k ≤ (m : ℝ) := by
+      rw [← hsubR]; exact_mod_cast hm1
+    have hm1' : 1 ≤ m := by omega
+    have hm0 : (0 : ℝ) < m := by exact_mod_cast hm1'
+    have hpsi : Chebyshev.psi m ≤ Chebyshev.psi n := Chebyshev.psi_mono hmR2
+    have hnum : Chebyshev.psi m - m ≤ -(ε * n / 2) := by
+      have : (n : ℝ) - ε * n / 2 ≤ (m : ℝ) := by linarith
+      linarith
+    have hden : (m : ℝ) * (m + 1) ≤ 2 * n ^ 2 := by nlinarith
+    have hden0 : (0 : ℝ) < (m : ℝ) * (m + 1) := by positivity
+    rw [div_le_iff₀ hden0]
+    have hkey : (ε / (4 * n)) * ((m : ℝ) * (m + 1)) ≤ ε * n / 2 := by
+      rw [div_mul_eq_mul_div, div_le_iff₀ (by positivity : (0:ℝ) < 4 * (n : ℝ))]
+      nlinarith
+    have hneg : -(ε / (4 * n)) * ((m : ℝ) * (m + 1))
+        = -((ε / (4 * n)) * ((m : ℝ) * (m + 1))) := by ring
+    rw [hneg]
+    linarith
+  have hcard : (Finset.Ico (n - k) (n + 1)).card = k + 1 := by
+    rw [Nat.card_Ico]; omega
+  have hsum := Finset.sum_le_card_nsmul (Finset.Ico (n - k) (n + 1))
+    (fun m ↦ (Chebyshev.psi m - m) / ((m : ℝ) * (m + 1))) (-(ε / (4 * n))) hterm
+  rw [hcard, nsmul_eq_mul] at hsum
+  refine hsum.trans ?_
+  have hpos : (0 : ℝ) < ε / (4 * n) := by positivity
+  push_cast
+  have key : -(ε ^ 2 / 8) = (ε * n / 2) * (-(ε / (4 * n))) := by
+    field_simp; ring
+  rw [key]
+  exact mul_le_mul_of_nonpos_right hklt.le (by linarith)
+
+/--
+**The Prime Number Theorem along the integers.**  `ψ(N)/N \to 1`.
+
+This is Zagier's endgame: the convergence of the Newman series
+(`Newman.summable_psi_sub_div`) makes its blocks of consecutive terms arbitrarily light,
+while `Newman.sum_Ico_psiErr_ge` and `Newman.sum_Ico_psiErr_le` show that a single `n` with
+`|ψ(n)/n - 1| \ge ε` forces a nearby block of mass `\ge ε^2/24`.  Only the monotonicity of
+`ψ` is used besides the convergence — no further analysis.
 -/
 @[category API, AMS 11]
 theorem tendsto_chebyshevPsi_nat_div_atTop_one :
-    Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N) atTop (𝓝 1) :=
-  tendsto_chebyshevPsi_div_atTop_one.comp tendsto_natCast_atTop_atTop
+    Tendsto (fun N : ℕ ↦ Chebyshev.psi N / N) atTop (𝓝 1) := by
+  classical
+  set g : ℕ → ℝ := fun m ↦ (Chebyshev.psi m - m) / (m * (m + 1)) with hg
+  have hsum : Summable g := summable_psi_sub_div
+  -- the Cauchy criterion for blocks
+  have hcauchy : ∀ δ : ℝ, 0 < δ → ∃ N₀ : ℕ, ∀ n K : ℕ, N₀ ≤ n → n ≤ K →
+      |∑ m ∈ Finset.Ico n K, g m| < δ := by
+    intro δ hδ
+    have hS : Tendsto (fun K ↦ ∑ m ∈ Finset.range K, g m) atTop (𝓝 (∑' m, g m)) :=
+      hsum.hasSum.tendsto_sum_nat
+    obtain ⟨N₀, hN₀⟩ := (Metric.tendsto_atTop.1 hS) (δ / 2) (by linarith)
+    refine ⟨N₀, fun n K hn hnK ↦ ?_⟩
+    have h1 := hN₀ n hn
+    have h2 := hN₀ K (le_trans hn hnK)
+    rw [Real.dist_eq] at h1 h2
+    have hsplit : ∑ m ∈ Finset.range n, g m + ∑ m ∈ Finset.Ico n K, g m
+        = ∑ m ∈ Finset.range K, g m := by
+      rw [Finset.range_eq_Ico, Finset.range_eq_Ico,
+        Finset.sum_Ico_consecutive g (Nat.zero_le n) hnK]
+    have hrw : ∑ m ∈ Finset.Ico n K, g m
+        = (∑ m ∈ Finset.range K, g m - ∑' m, g m)
+          - (∑ m ∈ Finset.range n, g m - ∑' m, g m) := by linarith
+    obtain ⟨h1a, h1b⟩ := abs_lt.1 h1
+    obtain ⟨h2a, h2b⟩ := abs_lt.1 h2
+    rw [hrw, abs_lt]
+    constructor <;> linarith
+  -- the conclusion
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  set e : ℝ := min ε 1 with he
+  have he0 : 0 < e := lt_min hε one_pos
+  have he1 : e ≤ 1 := min_le_right _ _
+  have heε : e ≤ ε := min_le_left _ _
+  obtain ⟨N₀, hN₀⟩ := hcauchy (e ^ 2 / 24) (by positivity)
+  refine ⟨max (2 * N₀ + 2) 2, fun n hn ↦ ?_⟩
+  have hn2 : 2 ≤ n := le_trans (le_max_right _ _) hn
+  have hnN : 2 * N₀ + 2 ≤ n := le_trans (le_max_left _ _) hn
+  have hn0 : (0 : ℝ) < n := by positivity
+  rw [Real.dist_eq]
+  have hnotup : ¬ ((1 + e) * n ≤ Chebyshev.psi n) := by
+    intro hup
+    have hge := sum_Ico_psiErr_ge he0 he1 (by omega : 1 ≤ n) hup
+    have hlt := hN₀ n (n + ⌊e * n / 2⌋₊ + 1) (by omega) (by omega)
+    rw [hg] at hlt
+    have := (abs_lt.1 hlt).2
+    linarith
+  have hnotdown : ¬ (Chebyshev.psi n ≤ (1 - e) * n) := by
+    intro hdown
+    set k : ℕ := ⌊e * n / 2⌋₊ with hk
+    have hkle : (k : ℝ) ≤ e * n / 2 := Nat.floor_le (by positivity)
+    have hn2R : (2 : ℝ) ≤ n := by exact_mod_cast hn2
+    have hkn : 2 * k ≤ n := by
+      have : (2 : ℝ) * k ≤ n := by nlinarith
+      exact_mod_cast this
+    have hN₀le : N₀ ≤ n - k := by omega
+    have hle := sum_Ico_psiErr_le he0 he1 hn2 hdown
+    have hlt := hN₀ (n - k) (n + 1) hN₀le (by omega)
+    rw [hg] at hlt
+    have := (abs_lt.1 hlt).1
+    have hpos : (0 : ℝ) < e ^ 2 := by positivity
+    linarith
+  have hup : Chebyshev.psi n < (1 + e) * n := lt_of_not_ge hnotup
+  have hdown : (1 - e) * n < Chebyshev.psi n := lt_of_not_ge hnotdown
+  have hrw : Chebyshev.psi n / n - 1 = (Chebyshev.psi n - n) / n := by
+    field_simp
+  refine lt_of_lt_of_le ?_ heε
+  rw [hrw, abs_lt]
+  constructor
+  · rw [lt_div_iff₀ hn0]; nlinarith
+  · rw [div_lt_iff₀ hn0]; nlinarith
+
+/--
+**The Prime Number Theorem**, Chebyshev form: `ψ(x) \sim x`.
+
+Immediate from `Newman.tendsto_chebyshevPsi_nat_div_atTop_one`, since `ψ` is constant on
+`[\lfloor x\rfloor, x)` and `\lfloor x\rfloor / x \to 1`.
+-/
+@[category research solved, AMS 11]
+theorem tendsto_chebyshevPsi_div_atTop_one :
+    Tendsto (fun x : ℝ ↦ Chebyshev.psi x / x) atTop (𝓝 1) := by
+  have h1 : Tendsto (fun x : ℝ ↦ Chebyshev.psi (⌊x⌋₊ : ℕ) / ((⌊x⌋₊ : ℕ) : ℝ)) atTop (𝓝 1) :=
+    tendsto_chebyshevPsi_nat_div_atTop_one.comp tendsto_nat_floor_atTop
+  have h2 : Tendsto (fun x : ℝ ↦ ((⌊x⌋₊ : ℝ)) / x) atTop (𝓝 1) := by
+    have hlb : ∀ᶠ x : ℝ in atTop, 1 - 1 / x ≤ ((⌊x⌋₊ : ℝ)) / x := by
+      filter_upwards [eventually_gt_atTop (0 : ℝ)] with x hx
+      have h := Nat.lt_floor_add_one x
+      rw [le_div_iff₀ hx]
+      field_simp
+      linarith
+    have hub : ∀ᶠ x : ℝ in atTop, ((⌊x⌋₊ : ℝ)) / x ≤ 1 := by
+      filter_upwards [eventually_gt_atTop (0 : ℝ)] with x hx
+      rw [div_le_one hx]
+      exact Nat.floor_le hx.le
+    have hlim : Tendsto (fun x : ℝ ↦ 1 - 1 / x) atTop (𝓝 1) := by
+      have h : Tendsto (fun x : ℝ ↦ (1 : ℝ) / x) atTop (𝓝 0) := by
+        simpa [one_div] using tendsto_inv_atTop_zero
+      simpa using (tendsto_const_nhds (x := (1 : ℝ)) (f := (atTop : Filter ℝ))).sub h
+    exact tendsto_of_tendsto_of_tendsto_of_le_of_le' hlim tendsto_const_nhds hlb hub
+  have hmul := h1.mul h2
+  rw [one_mul] at hmul
+  refine hmul.congr' ?_
+  filter_upwards [eventually_ge_atTop (1 : ℝ)] with x hx
+  have hx0 : (0 : ℝ) < x := by linarith
+  have hfl : (1 : ℕ) ≤ ⌊x⌋₊ := Nat.one_le_floor_iff x |>.2 hx
+  have hfl0 : (0 : ℝ) < ((⌊x⌋₊ : ℕ) : ℝ) := by exact_mod_cast hfl
+  rw [Chebyshev.psi_eq_psi_coe_floor x]
+  field_simp
 
 /--
 **Sharp Mertens.**  `\sum_{p \le N} \log p/p = \log N - E + o(1)` for a constant `E`.
