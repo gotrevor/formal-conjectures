@@ -317,4 +317,29 @@ theorem sum_vonMangoldt_div_nonprime_le (N : ℕ) :
         · exact mul_nonneg (by norm_num) (div_nonneg (log_natCast_nonneg _) (by positivity))
   _ ≤ 4 := by linarith [sum_log_div_sq_le N]
 
+/-- **Mertens' first theorem**, prime form:
+$\sum_{p \le N} \log p / p = \log N + O(1)$, with an explicit constant. -/
+theorem abs_sum_log_prime_div_sub_log_le {N : ℕ} (hN : 1 ≤ N) :
+    |(∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p) - Real.log N| ≤ log 4 + 8 := by
+  classical
+  have hfloor : Ioc 0 ⌊(N : ℝ)⌋₊ = Icc 1 N := by
+    rw [Nat.floor_natCast]
+    rfl
+  have hmain := abs_sum_vonMangoldt_div_sub_log_le (x := (N : ℝ)) (by exact_mod_cast hN)
+  rw [hfloor] at hmain
+  have hsplit : ∑ d ∈ Icc 1 N, Λ d / (d : ℝ)
+      = (∑ d ∈ (Icc 1 N).filter Nat.Prime, Λ d / (d : ℝ))
+        + ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime), Λ d / (d : ℝ) :=
+    (Finset.sum_filter_add_sum_filter_not _ _ _).symm
+  have hprime : ∑ d ∈ (Icc 1 N).filter Nat.Prime, Λ d / (d : ℝ)
+      = ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p := by
+    refine sum_congr rfl fun d hd ↦ ?_
+    rw [ArithmeticFunction.vonMangoldt_apply_prime (mem_filter.1 hd).2]
+  have htail := sum_vonMangoldt_div_nonprime_le N
+  have htail0 : 0 ≤ ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime), Λ d / (d : ℝ) :=
+    Finset.sum_nonneg fun d _ ↦ div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+  rw [abs_le] at hmain ⊢
+  rw [hprime] at hsplit
+  constructor <;> [linarith [hmain.1, hmain.2]; linarith [hmain.1, hmain.2]]
+
 end Mertens
