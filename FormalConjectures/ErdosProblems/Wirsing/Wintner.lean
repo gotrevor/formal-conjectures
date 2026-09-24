@@ -250,36 +250,6 @@ theorem hasMeanValue_of_summable_wintnerCoeff
   rw [zero_add] at this
   exact this.congr fun N ↦ by ring
 
-/--
-**The summability of the Möbius transform in the convergent case.**
-
-`g = f * μ` is multiplicative, and on prime powers
-`g(p) = f(p) - 1 ∈ \{0, -2\}`, `g(p^k) = f(p^k) - f(p^{k-1}) ∈ \{0, ±2\}`, so
-`|g(p)| = 1 - f(p)` and `|g(p^k)| ≤ 2` for `k ≥ 2`.  Hence
-
-    ∑_d |g(d)|/d  ≤  ∏_p (1 + (1 - f(p))/p + 4/p²),
-
-and the product converges because `∑_p (1 - f(p))/p < ∞` is the hypothesis and
-`∑_p 1/p² < ∞`.  Note the second factor is needed even when `f(p) = 1` for every `p`: the
-higher prime powers `f(p^2)` are unconstrained by the hypothesis.
-
-The Lean obstruction is the comparison of `∑_{d ≤ X}` with `∏_{p ≤ X}` for a nonnegative
-multiplicative summand.  `Mathlib`'s `EulerProduct` results assume summability rather than
-providing it, so this needs the factorisation injection
-`d ↦ d.factorization` explicitly.  See `PENDING_WORK.md`.
--/
-@[category API, AMS 11]
-theorem summable_abs_wintnerCoeff_div (hf : IsPMOneMultiplicative f)
-    (h : Summable (pretentiousSeries f)) :
-    Summable (fun d : ℕ ↦ |wintnerCoeff f d| / d) := by
-  sorry
-
-/-- The convergent case of Wirsing's theorem. -/
-@[category API, AMS 11]
-theorem exists_hasMeanValue_of_summable' (hf : IsPMOneMultiplicative f)
-    (h : Summable (pretentiousSeries f)) : ∃ L, HasMeanValue f L :=
-  ⟨_, hasMeanValue_of_summable_wintnerCoeff f (summable_abs_wintnerCoeff_div f hf h)⟩
-
 /-- `g(d) = ∑_{e ∣ d} μ(e) f(d/e)`. -/
 @[category API, AMS 11]
 theorem wintnerCoeff_eq_sum_divisors (n : ℕ) :
@@ -580,5 +550,100 @@ theorem exists_bound_euler_product (hf : IsPMOneMultiplicative f)
     rw [hrw] at hstep
     linarith
   linarith
+
+/--
+**The summability of the Möbius transform in the convergent case.**
+
+`g = f * μ` is multiplicative, and on prime powers
+`g(p) = f(p) - 1 ∈ \{0, -2\}`, `g(p^k) = f(p^k) - f(p^{k-1}) ∈ \{0, ±2\}`, so
+`|g(p)| = 1 - f(p)` and `|g(p^k)| ≤ 2` for `k ≥ 2`.  Hence
+
+    ∑_d |g(d)|/d  ≤  ∏_p (1 + (1 - f(p))/p + 4/p²),
+
+and the product converges because `∑_p (1 - f(p))/p < ∞` is the hypothesis and
+`∑_p 1/p² < ∞`.  Note the second factor is needed even when `f(p) = 1` for every `p`: the
+higher prime powers `f(p^2)` are unconstrained by the hypothesis.
+
+The comparison of a finite sum with the product is done through
+`EulerProduct.summable_and_hasSum_smoothNumbers_prod_primesBelow_tsum`: every nonzero `d`
+below `M` is `M`-smooth, so any finite partial sum of the nonnegative summand is at most the
+finite Euler product over `Nat.primesBelow M`, which is bounded uniformly by
+`Wirsing.exists_bound_euler_product`.
+-/
+@[category API, AMS 11]
+theorem summable_abs_wintnerCoeff_div (hf : IsPMOneMultiplicative f)
+    (h : Summable (pretentiousSeries f)) :
+    Summable (fun d : ℕ ↦ |wintnerCoeff f d| / d) := by
+  classical
+  set G : ℕ → ℝ := fun d ↦ |wintnerCoeff f d| / d with hG
+  have hGnn : ∀ d, 0 ≤ G d := fun d ↦ by rw [hG]; positivity
+  have hGnorm : ∀ d, ‖G d‖ = G d := fun d ↦ abs_of_nonneg (hGnn d)
+  have hG1 : G 1 = 1 := by rw [hG]; simp [wintnerCoeff_one f hf]
+  have hGmul : ∀ {m n : ℕ}, Nat.Coprime m n → G (m * n) = G m * G n := by
+    intro m n hmn
+    rcases Nat.eq_zero_or_pos m with rfl | hm
+    · rw [Nat.coprime_zero_left] at hmn
+      subst hmn
+      rw [hG]
+      simp
+    · rcases Nat.eq_zero_or_pos n with rfl | hn
+      · rw [Nat.coprime_zero_right] at hmn
+        subst hmn
+        rw [hG]
+        simp
+      · have hmR : (m : ℝ) ≠ 0 := by positivity
+        have hnR : (n : ℝ) ≠ 0 := by positivity
+        rw [hG]
+        simp only
+        rw [wintnerCoeff_mul_of_coprime f hf hmn, abs_mul, Nat.cast_mul]
+        field_simp
+  have hGprime : ∀ {p : ℕ}, p.Prime → Summable (fun k : ℕ ↦ ‖G (p ^ k)‖) := by
+    intro p hp
+    have := summable_abs_wintnerCoeff_prime_pow_div f hf hp
+    refine this.congr fun k ↦ ?_
+    rw [hGnorm, hG]
+    simp
+  obtain ⟨C, hCpos, hC⟩ := exists_bound_euler_product f hf h
+  refine summable_of_sum_le (c := C) (fun d ↦ hGnn d) fun u ↦ ?_
+  -- bound the finite sum by the Euler product over a large enough range
+  set M := u.sup id + 1 with hM
+  have hsub : ∀ d ∈ u.erase 0, d ∈ M.smoothNumbers := by
+    intro d hd
+    obtain ⟨hd0, hdu⟩ := Finset.mem_erase.1 hd
+    exact Nat.mem_smoothNumbers_of_lt (Nat.pos_of_ne_zero hd0)
+      (by have := Finset.le_sup (f := id) hdu; simp only [id] at this; omega)
+  obtain ⟨-, hhas⟩ :=
+    EulerProduct.summable_and_hasSum_smoothNumbers_prod_primesBelow_tsum
+      (f := G) hG1 hGmul hGprime M
+  have hfin : ∑ d ∈ u, G d ≤ ∏ p ∈ M.primesBelow, ∑' n : ℕ, G (p ^ n) := by
+    have hzero : ∑ d ∈ u, G d = ∑ d ∈ u.erase 0, G d := by
+      by_cases h0 : (0 : ℕ) ∈ u
+      · rw [← Finset.sum_erase_add u _ h0]
+        rw [hG]
+        simp
+      · rw [Finset.erase_eq_of_notMem h0]
+    rw [hzero]
+    set t : Finset M.smoothNumbers := (u.erase 0).subtype (· ∈ M.smoothNumbers) with ht
+    have hval : ∑ m ∈ t, G m = ∑ d ∈ u.erase 0, G d := by
+      rw [ht, Finset.sum_subtype_eq_sum_filter,
+        Finset.filter_true_of_mem (fun d hd ↦ hsub d hd)]
+    rw [← hval]
+    exact sum_le_hasSum t (fun m _ ↦ hGnn m) hhas
+  refine hfin.trans ?_
+  refine le_trans (Finset.prod_le_prod (fun p _ ↦ ?_) (fun p hp ↦ ?_)) (hC M)
+  · exact tsum_nonneg fun k ↦ hGnn _
+  · have hpp : p.Prime := (Nat.mem_primesBelow.1 hp).2
+    have := tsum_abs_wintnerCoeff_prime_pow_div_le f hf hpp
+    refine le_trans (le_of_eq ?_) this
+    refine tsum_congr fun k ↦ ?_
+    rw [hG]
+    simp
+
+/-- The convergent case of Wirsing's theorem. -/
+@[category API, AMS 11]
+theorem exists_hasMeanValue_of_summable' (hf : IsPMOneMultiplicative f)
+    (h : Summable (pretentiousSeries f)) : ∃ L, HasMeanValue f L :=
+  ⟨_, hasMeanValue_of_summable_wintnerCoeff f (summable_abs_wintnerCoeff_div f hf h)⟩
+
 
 end Wirsing
