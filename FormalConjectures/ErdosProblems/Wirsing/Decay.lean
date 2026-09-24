@@ -1013,4 +1013,45 @@ theorem sum_window_le_sum_badWeight (X : ℕ) (S : Finset ℕ)
       div_nonneg (Real.log_nonneg hpR) (by linarith)
     exact mul_nonneg hw (Finset.sum_nonneg fun N _ ↦ windowTerm_nonneg f p N)
 
+open scoped Classical in
+/-- The tail of the bad-prime sum past `P` still diverges: the head is bounded by `E(P)`. -/
+@[category API, AMS 11]
+theorem sub_badPrimeSum_le_sum_tail (n P : ℕ) :
+    badPrimeSum f n - badPrimeSum f P
+      ≤ ∑ p ∈ (badPrimesLE f n).filter (fun p ↦ P ≤ p), (1 : ℝ) / p := by
+  classical
+  have hsplit := Finset.sum_filter_add_sum_filter_not (badPrimesLE f n)
+    (fun p ↦ P ≤ p) (fun p ↦ (1 : ℝ) / p)
+  have hhead : ∑ p ∈ (badPrimesLE f n).filter (fun p ↦ ¬ P ≤ p), (1 : ℝ) / p
+      ≤ badPrimeSum f P := by
+    rw [badPrimeSum]
+    refine Finset.sum_le_sum_of_subset_of_nonneg ?_ fun p _ _ ↦ by positivity
+    intro p hp
+    obtain ⟨hp1, hp2⟩ := mem_filter.1 hp
+    obtain ⟨hr, hprime, hval⟩ := mem_filter.1 hp1
+    rw [badPrimesLE, mem_filter, Finset.mem_range]
+    exact ⟨by omega, hprime, hval⟩
+  have hbn : badPrimeSum f n
+      = ∑ p ∈ (badPrimesLE f n).filter (fun p ↦ P ≤ p), (1 : ℝ) / p
+        + ∑ p ∈ (badPrimesLE f n).filter (fun p ↦ ¬ P ≤ p), (1 : ℝ) / p := hsplit.symm
+  linarith [hbn, hhead]
+
+/-- Past a threshold, `256/\log p + 16/p^2` is below any positive `ℓ`. -/
+@[category API, AMS 11]
+theorem exists_threshold {l : ℝ} (hl : 0 < l) :
+    ∃ P : ℕ, 2 ≤ P ∧ ∀ p : ℕ, P ≤ p →
+      256 / Real.log (p : ℝ) + 16 / (p : ℝ) ^ 2 ≤ l := by
+  have hlogtop : Tendsto (fun p : ℕ ↦ Real.log (p : ℝ)) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have hsqtop : Tendsto (fun p : ℕ ↦ (p : ℝ) ^ 2) atTop atTop :=
+    (tendsto_pow_atTop (by norm_num)).comp tendsto_natCast_atTop_atTop
+  have h1 : Tendsto (fun p : ℕ ↦ 256 / Real.log (p : ℝ) + 16 / (p : ℝ) ^ 2) atTop (𝓝 0) := by
+    have := (tendsto_const_nhds (x := (256 : ℝ)) (f := atTop (α := ℕ))).div_atTop hlogtop
+    have h2 := (tendsto_const_nhds (x := (16 : ℝ)) (f := atTop (α := ℕ))).div_atTop hsqtop
+    simpa using this.add h2
+  have h3 : ∀ᶠ p : ℕ in atTop, 256 / Real.log (p : ℝ) + 16 / (p : ℝ) ^ 2 < l :=
+    h1.eventually_lt_const hl
+  obtain ⟨P, hP⟩ := h3.exists_forall_of_atTop
+  exact ⟨max P 2, le_max_right _ _, fun p hp ↦ (hP p (le_trans (le_max_left _ _) hp)).le⟩
+
 end Wirsing
