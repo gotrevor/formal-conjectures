@@ -166,4 +166,94 @@ theorem sum_vonMangoldt_pmul_log_add_sum_mul (N : ℕ) :
   refine congrArg _ (Finset.sum_congr rfl fun m _ ↦ ?_)
   rw [pmul_apply, log_apply, sq]
 
+
+open Finset in
+/-- **The classical Möbius identity** `∑_{d ≤ N} μ(d) ⌊N/d⌋ = 1` for `N ≥ 1`. -/
+theorem sum_moebius_mul_div (N : ℕ) (hN : 1 ≤ N) :
+    ∑ d ∈ Icc 1 N, (μ d : ℝ) * ((N / d : ℕ) : ℝ) = 1 := by
+  have h := sum_Icc_mul_apply (μ : ArithmeticFunction ℝ) (ζ : ArithmeticFunction ℝ) N
+  rw [coe_moebius_mul_coe_zeta] at h
+  have hleft : ∑ n ∈ Icc 1 N, (1 : ArithmeticFunction ℝ) n = 1 := by
+    rw [Finset.sum_eq_single 1]
+    · simp
+    · intro b _ hb
+      rw [ArithmeticFunction.one_apply, if_neg hb]
+    · intro h1
+      exact absurd (mem_Icc.2 ⟨le_rfl, hN⟩) h1
+  rw [hleft] at h
+  rw [h]
+  refine Finset.sum_congr rfl fun d hd ↦ ?_
+  rw [intCoe_apply]
+  refine congrArg _ ?_
+  rw [Finset.sum_congr rfl (fun m hm ↦ ?_), Finset.sum_const, Nat.card_Icc, nsmul_eq_mul,
+    mul_one]
+  · simp
+  · rw [natCoe_apply, zeta_apply, if_neg (by have := (mem_Icc.1 hm).1; omega), Nat.cast_one]
+
+open Finset in
+/-- **`|∑_{d ≤ N} μ(d)/d| ≤ 1`**, the elementary Möbius sum bound. -/
+theorem abs_sum_moebius_div_le (N : ℕ) :
+    |∑ d ∈ Icc 1 N, (μ d : ℝ) / d| ≤ 1 := by
+  rcases Nat.eq_zero_or_pos N with rfl | hN
+  · simp
+  have hNR : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+  have hNpos : (0 : ℝ) < (N : ℝ) := by linarith
+  set S : ℝ := ∑ d ∈ Icc 1 N, (μ d : ℝ) / d with hS
+  have hsplit : (N : ℝ) * S - 1
+      = ∑ d ∈ Icc 1 N, (μ d : ℝ) * ((N : ℝ) / d - ((N / d : ℕ) : ℝ)) := by
+    rw [hS, Finset.mul_sum, ← sum_moebius_mul_div N hN, ← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl fun d hd ↦ ?_
+    have hd1 : 1 ≤ d := (mem_Icc.1 hd).1
+    have hdR : (0 : ℝ) < (d : ℝ) := by exact_mod_cast hd1
+    field_simp
+  have hterm : ∀ d ∈ Icc 1 N,
+      |(μ d : ℝ) * ((N : ℝ) / d - ((N / d : ℕ) : ℝ))| ≤ if d = 1 then 0 else 1 := by
+    intro d hd
+    have hd1 : 1 ≤ d := (mem_Icc.1 hd).1
+    have hdR : (0 : ℝ) < (d : ℝ) := by exact_mod_cast hd1
+    have hlow : 0 ≤ (N : ℝ) / d - ((N / d : ℕ) : ℝ) := by
+      rw [sub_nonneg, le_div_iff₀ hdR]
+      have : (N / d) * d ≤ N := Nat.div_mul_le_self N d
+      exact_mod_cast this
+    have hhigh : (N : ℝ) / d - ((N / d : ℕ) : ℝ) < 1 := by
+      rw [sub_lt_iff_lt_add, div_lt_iff₀ hdR]
+      have h1 := Nat.div_add_mod N d
+      have h2 : N % d < d := Nat.mod_lt _ (by omega)
+      have : (N : ℝ) < ((N / d : ℕ) : ℝ) * d + d := by
+        have hnat : N < (N / d) * d + d := by
+          rw [Nat.mul_comm]
+          omega
+        exact_mod_cast hnat
+      linarith
+    rcases eq_or_ne d 1 with rfl | hd1'
+    · simp
+    · rw [if_neg hd1', abs_mul]
+      have hμ : |(μ d : ℝ)| ≤ 1 := by
+        have : |μ d| ≤ 1 := ArithmeticFunction.abs_moebius_le_one
+        have hcast : |(μ d : ℝ)| = ((|μ d| : ℤ) : ℝ) := by push_cast; ring_nf
+        rw [hcast]
+        exact_mod_cast this
+      have habs : |(N : ℝ) / d - ((N / d : ℕ) : ℝ)| ≤ 1 := by
+        rw [abs_of_nonneg hlow]
+        linarith
+      calc |(μ d : ℝ)| * |(N : ℝ) / d - ((N / d : ℕ) : ℝ)| ≤ 1 * 1 :=
+            mul_le_mul hμ habs (abs_nonneg _) (by norm_num)
+        _ = 1 := by norm_num
+  have hcard : ∑ d ∈ Icc 1 N, (if d = 1 then (0 : ℝ) else 1) = (N : ℝ) - 1 := by
+    rw [Finset.sum_ite, Finset.sum_const_zero, zero_add, Finset.sum_const, nsmul_eq_mul,
+      mul_one, Finset.filter_ne', Finset.card_erase_of_mem (mem_Icc.2 ⟨le_rfl, hN⟩),
+      Nat.card_Icc]
+    have : (N + 1 - 1 - 1 : ℕ) = N - 1 := by omega
+    rw [this, Nat.cast_sub hN, Nat.cast_one]
+  have hbound : |(N : ℝ) * S - 1| ≤ (N : ℝ) - 1 := by
+    rw [hsplit]
+    refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+    rw [← hcard]
+    exact Finset.sum_le_sum hterm
+  have hle := abs_le.1 hbound
+  rw [abs_le]
+  constructor
+  · nlinarith [hle.1]
+  · nlinarith [hle.2]
+
 end Selberg
