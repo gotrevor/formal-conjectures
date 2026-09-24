@@ -215,6 +215,35 @@ theorem E₁Λ_le {x : ℝ} (hx : 1 ≤ x) : E₁Λ x ≤ log 4 + 4 := by
     · exact Chebyshev.psi_le_const_mul_self (by linarith)
   _ = x * (log x + (log 4 + 4)) := by ring
 
+/-- The sharp upper bound for the von Mangoldt error term:
+$\sum_{d \le x} \Lambda(d)/d \le \log x + \log 4 - 1 + (2\sqrt{x}\log x + \log x + 1)/x$.
+
+The main term `log 4 - 1 ≈ 0.386` is what makes the prime form of Mertens' theorem
+negative once the proper prime powers (mass `> 0.49`) are removed. -/
+theorem E₁Λ_le_sharp {x : ℝ} (hx : 1 ≤ x) :
+    E₁Λ x ≤ log 4 - 1 + (2 * √x * log x + log x + 1) / x := by
+  have hx0 : (0 : ℝ) < x := by linarith
+  suffices h : x * (∑ d ∈ Ioc 0 ⌊x⌋₊, Λ d / d)
+      ≤ x * (log x + (log 4 - 1 + (2 * √x * log x + log x + 1) / x)) by
+    have := le_of_mul_le_mul_left h hx0
+    simp only [E₁Λ]
+    linarith
+  calc
+  x * (∑ d ∈ Ioc 0 ⌊x⌋₊, Λ d / d) = ∑ d ∈ Ioc 0 ⌊x⌋₊, Λ d * (x / d) := by
+    rw [Finset.mul_sum]; exact sum_congr rfl fun d _ ↦ by ring
+  _ ≤ ∑ d ∈ Ioc 0 ⌊x⌋₊, Λ d * ((⌊x / d⌋₊ : ℝ) + 1) := by
+    refine sum_le_sum fun d _ ↦ ?_
+    exact mul_le_mul_of_nonneg_left (Nat.lt_floor_add_one _).le vonMangoldt_nonneg
+  _ = (∑ d ∈ Ioc 0 ⌊x⌋₊, Λ d * ⌊x / d⌋₊) + ∑ d ∈ Ioc 0 ⌊x⌋₊, Λ d := by
+    simp_rw [mul_add, mul_one]; rw [Finset.sum_add_distrib]
+  _ ≤ (x * log x - x + log x + 1) + (log 4 * x + 2 * √x * log x) := by
+    gcongr
+    · rw [← sum_log_eq_sum_vonMangoldt]; exact sum_log_le_sharp hx
+    · exact Chebyshev.psi_le hx
+  _ = x * (log x + (log 4 - 1 + (2 * √x * log x + log x + 1) / x)) := by
+    field_simp
+    ring
+
 /-- **Mertens' first theorem**, von Mangoldt form:
 $\sum_{n \le x} \Lambda(n)/n = \log x + O(1)$, with an explicit constant. -/
 theorem abs_sum_vonMangoldt_div_sub_log_le {x : ℝ} (hx : 1 ≤ x) :
