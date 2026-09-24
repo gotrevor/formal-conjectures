@@ -1041,4 +1041,58 @@ theorem two_pi_I_inv_circleIntegral_kernel {R : ℝ} (hR : 0 < R) {h : ℂ → �
     simp [Real.pi_ne_zero, Complex.I_ne_zero]
   rw [hcauchy, smul_eq_mul, hf0, ← mul_assoc, inv_mul_cancel₀ hne, one_mul]
 
+/-! ### Newman's theorem on a disc -/
+
+open Metric in
+/--
+**The Newman estimate.**  If `G` is analytic on the closed disc `|z| \le R` and bounded there
+by `M` on the boundary, then
+$$\Bigl|G(0) - \int_0^T F\Bigr| \le \frac{2C}{R} + \frac{2M}{RT}.$$
+
+This is the whole of Newman's argument on a disc: the Cauchy value
+`Newman.two_pi_I_inv_circleIntegral_kernel`, the single circle bound
+`Newman.norm_sub_trunc_mul_kernel_le_circle`, and mathlib's
+`circleIntegral.norm_two_pi_i_inv_smul_integral_le_of_norm_le_const`.  Letting `T \to \infty`
+and then `R \to \infty` gives `\int_0^T F \to G(0)`.
+
+The hypothesis that the truncated transform is entire is the standard differentiation under
+the integral sign for a compactly supported, bounded integrand.
+-/
+@[category API, AMS 30]
+theorem norm_sub_integral_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {G : ℂ → ℂ}
+    (hGeq : ∀ z : ℂ, 0 < z.re →
+      G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+    {M R T : ℝ} (hR : 0 < R) (hT : 0 < T)
+    (hGd : DifferentiableOn ℂ G (closedBall (0 : ℂ) R))
+    (hgd : Differentiable ℂ
+      (fun w : ℂ ↦ ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-w * (t : ℂ))))
+    (hM : ∀ z : ℂ, ‖z‖ = R → ‖G z‖ ≤ M) :
+    ‖G 0 - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ)‖ ≤ 2 * C / R + 2 * M / (R * T) := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  set h : ℂ → ℂ := fun w ↦
+    (G w - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-w * (t : ℂ))) *
+      Complex.exp (w * (T : ℂ)) with hhdef
+  have hexpd : Differentiable ℂ fun w : ℂ ↦ Complex.exp (w * (T : ℂ)) := by fun_prop
+  have hd : DifferentiableOn ℂ h (closedBall (0 : ℂ) R) :=
+    (hGd.sub hgd.differentiableOn).mul hexpd.differentiableOn
+  have hh0 : h 0 = G 0 - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) := by
+    simp [hhdef]
+  have hcauchy := two_pi_I_inv_circleIntegral_kernel hR hd
+  -- the uniform bound on the circle
+  set B : ℝ := 2 * C / R ^ 2 + 2 * M / (R ^ 2 * T) with hB
+  have hbound : ∀ z ∈ Metric.sphere (0 : ℂ) R,
+      ‖h z * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z)‖ ≤ B := by
+    intro z hzs
+    have hz : ‖z‖ = R := by simpa using hzs
+    have := norm_sub_trunc_mul_kernel_le_circle hFb hFi hGeq hR hz hT (hM z hz)
+    rw [hhdef]
+    simpa [mul_assoc] using this
+  have hcirc := circleIntegral.norm_two_pi_i_inv_smul_integral_le_of_norm_le_const
+    (f := fun z : ℂ ↦ h z * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z)) (c := 0) hR.le hbound
+  rw [smul_eq_mul, hcauchy, hh0] at hcirc
+  refine hcirc.trans (le_of_eq ?_)
+  rw [hB]
+  field_simp
+
 end Newman
