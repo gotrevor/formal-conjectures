@@ -728,4 +728,99 @@ theorem exists_envelope_lt {η : ℝ} (hη : 0 < η) :
   obtain ⟨n, hn⟩ := exists_lt_of_ciInf_lt (show envelopeInf f < envelopeInf f + η by linarith)
   exact ⟨n + 2, by omega, hn⟩
 
+open scoped Classical in
+/--
+**The block bound.**  For a nonnegative `h`, the `p` integers `N` with `⌊N/p⌋ = M` each
+contribute at least `h(M)/(p(M+1))`, so
+
+    ∑_{a ≤ M ≤ b} h(M)/(M+1) ≤ ∑_{pa ≤ N ≤ pb+p-1} h(⌊N/p⌋)/N.
+
+This is what converts a sum over `N` weighted by `1/N` into a sum over the *quotients*
+`M = ⌊N/p⌋` with no loss of the factor `p`, which is exactly what the window argument needs.
+-/
+@[category API, AMS 11]
+theorem sum_div_succ_le_sum_block {p : ℕ} (hp : 1 ≤ p) (h : ℕ → ℝ)
+    (hnn : ∀ M, 0 ≤ h M) {a b : ℕ} (ha : 1 ≤ a) :
+    ∑ M ∈ Icc a b, h M / ((M : ℝ) + 1)
+      ≤ ∑ N ∈ Icc (p * a) (p * b + p - 1), h (N / p) / (N : ℝ) := by
+  classical
+  have hpR : (0 : ℝ) < (p : ℝ) := by exact_mod_cast hp
+  have hmaps : ∀ N ∈ Icc (p * a) (p * b + p - 1), N / p ∈ Icc a b := by
+    intro N hN
+    obtain ⟨hN1, hN2⟩ := mem_Icc.1 hN
+    rw [mem_Icc]
+    refine ⟨(Nat.le_div_iff_mul_le (by omega)).2 (by rw [Nat.mul_comm]; exact hN1), ?_⟩
+    by_contra hcon
+    rw [not_le] at hcon
+    have hle : (b + 1) * p ≤ N :=
+      (Nat.le_div_iff_mul_le (by omega)).1 (Nat.succ_le_of_lt hcon)
+    have heq : (b + 1) * p = p * b + p := by ring
+    omega
+  rw [← Finset.sum_fiberwise_of_maps_to hmaps (fun N ↦ h (N / p) / (N : ℝ))]
+  refine Finset.sum_le_sum fun M hM ↦ ?_
+  obtain ⟨hMa, hMb⟩ := mem_Icc.1 hM
+  have hM1 : 1 ≤ M := le_trans ha hMa
+  have hsub : Icc (p * M) (p * M + p - 1)
+      ⊆ {N ∈ Icc (p * a) (p * b + p - 1) | N / p = M} := by
+    intro N hN
+    obtain ⟨hN1, hN2⟩ := mem_Icc.1 hN
+    have hdiv : N / p = M := by
+      refine Nat.div_eq_of_lt_le ?_ ?_
+      · rw [Nat.mul_comm]; exact hN1
+      · have : (M + 1) * p = p * M + p := by ring
+        omega
+    rw [mem_filter, mem_Icc]
+    refine ⟨⟨?_, ?_⟩, hdiv⟩
+    · exact le_trans (Nat.mul_le_mul_left p hMa) hN1
+    · have : p * M + p - 1 ≤ p * b + p - 1 := by
+        have := Nat.mul_le_mul_left p hMb
+        omega
+      omega
+  have hnn' : ∀ N ∈ {N ∈ Icc (p * a) (p * b + p - 1) | N / p = M},
+      N ∉ Icc (p * M) (p * M + p - 1) → 0 ≤ h (N / p) / (N : ℝ) := by
+    intro N _ _
+    have : (0 : ℝ) ≤ (N : ℝ) := by positivity
+    exact div_nonneg (hnn _) this
+  refine le_trans ?_ (Finset.sum_le_sum_of_subset_of_nonneg hsub hnn')
+  -- on a single block every term is at least `h M / (p (M+1))`
+  have hcard : #(Icc (p * M) (p * M + p - 1)) = p := by
+    rw [Nat.card_Icc]
+    omega
+  have hlow : ∀ N ∈ Icc (p * M) (p * M + p - 1),
+      h M / ((p : ℝ) * ((M : ℝ) + 1)) ≤ h (N / p) / (N : ℝ) := by
+    intro N hN
+    obtain ⟨hN1, hN2⟩ := mem_Icc.1 hN
+    have hdiv : N / p = M := by
+      refine Nat.div_eq_of_lt_le ?_ ?_
+      · rw [Nat.mul_comm]; exact hN1
+      · have : (M + 1) * p = p * M + p := by ring
+        omega
+    have hNpos : 0 < N := by
+      have : 1 ≤ p * M := Nat.one_le_iff_ne_zero.2 (by positivity)
+      omega
+    have hNR : (0 : ℝ) < (N : ℝ) := by exact_mod_cast hNpos
+    have hNle : (N : ℝ) ≤ (p : ℝ) * ((M : ℝ) + 1) := by
+      have : N ≤ p * (M + 1) := by
+        have : p * (M + 1) = p * M + p := by ring
+        omega
+      calc (N : ℝ) ≤ ((p * (M + 1) : ℕ) : ℝ) := by exact_mod_cast this
+      _ = (p : ℝ) * ((M : ℝ) + 1) := by push_cast; ring
+    rw [hdiv]
+    exact div_le_div_of_nonneg_left (hnn M) hNR hNle
+  have hsum := Finset.card_nsmul_le_sum _ _ _ hlow
+  rw [hcard, nsmul_eq_mul] at hsum
+  have hrw : (p : ℝ) * (h M / ((p : ℝ) * ((M : ℝ) + 1))) = h M / ((M : ℝ) + 1) := by
+    field_simp
+  rw [hrw] at hsum
+  exact hsum
+
+open scoped Classical in
+/-- The potential difference as a sum over an interval. -/
+@[category API, AMS 11]
+theorem potential_sub {a b : ℕ} (hab : a ≤ b) :
+    potential f b - potential f a = ∑ M ∈ Ioc a b, |logMean f M| / (M : ℝ) := by
+  rw [potential, potential, (by rfl : Icc 1 b = Ioc 0 b), (by rfl : Icc 1 a = Ioc 0 a),
+    ← Finset.sum_Ioc_consecutive _ (Nat.zero_le a) hab]
+  ring
+
 end Wirsing
