@@ -1,5 +1,101 @@
 # PENDING WORK — Erdős 239
 
+## LAP 9 (2026-09-24): Karamata is PROVED, and the crux now has a COMPLETE elementary plan
+
+### Proved this lap (all axiom-clean: `propext, Classical.choice, Quot.sound`)
+
+**`Wirsing/Karamata.lean` is sorry-free — Karamata's Tauberian theorem for Dirichlet series.**
+`a_n ≥ 0`, `a_0 = 0`, `x S(x) → c` as `x → 0⁺` ⟹ `(∑_{n ≤ e^V} a_n)/V → c`
+(`Karamata.tendsto_partialSum_div`; `Karamata.tendsto_partialSum` is the `x`-form).  The
+closing steps were `Karamata.functional_testFun` (the Karamata value of `u^{-1}1_{[θ,1]}` is
+exactly the partial sum `x∑_{n ≤ (1/θ)^{1/x}} a_n`) and `Karamata.tendsto_functional_testFun`
+(the pinch between the two continuous brackets, with `-\log(θ±η) → -\log θ` controlled by
+`log_add_sub_le` / `log_sub_sub_le`).  Take `θ = e^{-1}`.
+
+**`Wirsing/PrimeCos.lean` (new, sorry-free).**
+* `vmWeight t n = Λ(n)/n·(1-\cos(t\log n)) ≥ 0`, its Dirichlet term is the twisted von
+  Mangoldt term, and `tendsto_vmWeight_series` turns lap 8's two-sided `ζ`-bound into the
+  Karamata hypothesis `x S(x) → 1`.
+* `tendsto_sum_vmWeight_div_log` — `∑_{n≤N}Λ(n)/n(1-\cos(t\log n)) ~ \log N`.
+* **`tendsto_sum_primeWeight_cos`** — `∑_{p≤N}(\log p/p)\cos(t\log p) = o(\log N)` for
+  `t ≠ 0`.  **This is the PNT-strength estimate lap 6 named as the blocker.**  It is now a
+  theorem, reached with neither Wiener–Ikehara nor Erdős–Selberg.
+* `tendsto_sum_primeWeight_one_sub_cos_div_log` — the untwisted defect is asymptotically
+  full: `∑_{p≤N}(\log p/p)(1-\cos(t\log p)) ~ \log N`.
+* `quarter_one_sub_cos_two_le` — the exact pointwise identity, for `g = ±1`,
+  `1 - g\cos θ - (1-\cos 2θ)/4 = (\cos θ - g)²/2 ≥ 0`.
+* **`eventually_sum_primeWeight_one_sub_mul_cos_ge`** — hence `∑_{p≤N}(\log p/p)
+  (1-f(p)\cos(t\log p)) ≥ \log N/8` eventually, with **no additive constant** (lap 8 had
+  `\log N/16 - C_t`).
+
+**`Wirsing/Uniform.lean` (new, sorry-free).**
+* `primeDefect f N t = ∑_{p≤N}(1-f(p)\cos(t\log p))/p`, monotone in `N`, continuous in `t`.
+* `tendsto_sum_primes_atTop` — `¬Summable` over `Nat.Primes` ⟹ the `Finset`-truncated prime
+  partial sums tend to `∞`.
+* **`exists_forall_primeDefect_ge`** — `min_{|t|≤T} D_N(t) → ∞`.  Lap 7 gave this pointwise
+  in `t`; the Dini/compactness argument makes it **uniform on compact twist ranges**, which
+  is the form every Halász-type argument needs.
+
+**`Wirsing/Character.lean` (new, sorry-free).**
+* `eq_mul_of_mean_quotient_close` — `f(r) = f(p)f(q)` whenever `p,q` are good in the two-step
+  sense at `N`, `r` is a good prime at `N`, and `⌊N/r⌋` is multiplicatively close to
+  `⌊N/(pq)⌋`.  This is the character relation `c(y+z) = c(y)c(z)` in finite form.
+* **`eq_one_of_mean_quotient_sq_close`** — the same at `q = p`: `f(r) = f(p)² = 1`.
+
+### THE ROUTE-DECISIVE FINDING OF THIS LAP: the character collapses by squaring
+
+The rigidity relation at a near-extremal `N` is `σ(⌊N/n⌋) ≈ sAf(n)`.  With `u = \log N`,
+`F(v) = σ(e^v)` and `c(y) = f(p)` for a good prime with `\log p ≈ yu`, the one-step and
+two-step forms give `F((1-y)u) = sAc(y)` and `F((1-y-z)u) = sAc(y)c(z)`.  Comparing the
+two-step value at `(p,q)` with the one-step value at a prime `r` of the same size (the window
+step `Wirsing.eq_of_mean_quotient_close`, already proved) yields
+
+    c(y + z) = c(y) c(z),
+
+so `c` is a `{±1}`-valued character of `(ℝ_{≥0}, +)`.  Earlier laps recorded the missing
+ingredient as "a pair of good elements in one window with different values of `f`".  **That
+framing was the obstacle.**  No structure theory of characters is needed and no such pair is
+needed: **take `z = y`.**  Then `c(2y) = c(y)² = 1`, so `c ≡ 1` outright, i.e. `f(r) = 1` for
+every good prime `r` multiplicatively close to the square of a good prime.  Squaring is free
+because `f` is `±1`-valued; this is exactly the place where "real-valued" is used, and it is
+why the theorem is false for complex `f`.
+
+### NEXT (the concrete remaining chain)
+
+With `A = \limsup|σ| > 0` assumed for contradiction, `δ` small, `N` near-extremal, `s` its
+sign:
+
+1. **Good primes have full weight.**  From `Wirsing.sum_bad_weight_le` plus Mertens: the
+   primes that fail `s f(p)σ(⌊N/p⌋) ≥ A-ρ` carry Mertens weight `O((δ\log N + 1)/ρ)`, so the
+   good primes carry `(1-o(1))\log N`.  (Both inputs proved; this is bookkeeping.)
+2. **Good squares exist.**  For a good prime `r` in the bulk, produce a good prime `p` with
+   `⌊N/(p·p)⌋` multiplicatively close to `⌊N/r⌋` — i.e. a good prime in the multiplicative
+   window around `√r`.  The window has Mertens weight `≈ ε\log r`, and step 1 says the bad
+   primes cannot fill it.  **This is the one genuinely new estimate still to formalise**, and
+   it needs only Mertens, which is in `FormalConjecturesForMathlib/NumberTheory/Mertens.lean`.
+3. **`f(r) = 1` for almost every prime** (in Mertens weight), by
+   `Wirsing.eq_one_of_mean_quotient_sq_close`.
+4. **Propagate from primes to integers.**  With `f ≈ 1` on the good primes, the rigidity
+   relation becomes `s σ(⌊N/k⌋) ≥ A - ρ` for `k` outside a set of small harmonic weight;
+   induct on `Ω(k)` using `Wirsing.sum_bad_weight_le_step`.
+5. **Close.**  `Wirsing.le_abs_logMean_of_sign_stable` (proved) then gives
+   `|L(N)| ≥ (A-ρ)(\log N - η) - η - 2`, contradicting
+   `Wirsing.tendsto_logMean_div_log_atTop_zero` (proved) unless `A = 0`.
+
+Steps 1, 3, 5 rest on proved lemmas; steps 2 and 4 are the remaining work.  Note that this
+chain proves the **divergent case directly**, so `Main.lean` should be restructured to derive
+`tendsto_mean_atTop_zero_of_badPrimeSum_atTop` from it; the *unconditional* Hildebrand
+asymptotic `tendsto_mean_sub_logMean_div_log_atTop_zero` is strictly stronger than the
+headline needs and should stop being the crux.
+
+The Halász route (for which `Wirsing/Uniform.lean` and `Wirsing/PrimeCos.lean` are the
+inputs) remains the fallback if step 2 or step 4 stalls.
+
+The crux `Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero` in `Wirsing/Main.lean` is
+still the only `sorry` in `src/`.
+
+---
+
 ## LAP 8 (2026-09-24): `Wirsing/Weighted.lean` is sorry-free; the crux needs ONE Tauberian theorem
 
 ### Proved this lap (all axiom-clean: `propext, Classical.choice, Quot.sound`)
