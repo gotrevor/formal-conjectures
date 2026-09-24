@@ -475,6 +475,67 @@ theorem sum_vonMangoldt_div_nonprime_ge {x : ℝ} (hx : 64 ≤ x) :
     linarith
   nlinarith [hl2, hl3, hl5]
 
+/-- The tail of `E₁Λ_le_sharp` is at most `1/10` past `10 ^ 10`. -/
+private lemma tail_le {x : ℝ} (hx : (10 : ℝ) ^ 10 ≤ x) :
+    (2 * √x * log x + log x + 1) / x ≤ 1 / 10 := by
+  have hx0 : (0 : ℝ) < x := by nlinarith
+  set t := x ^ ((1 : ℝ) / 4) with ht
+  have ht0 : 0 < t := Real.rpow_pos_of_pos hx0 _
+  have ht4 : t ^ 4 = x := by
+    rw [ht, ← Real.rpow_natCast (x ^ ((1 : ℝ) / 4)) 4, ← Real.rpow_mul hx0.le]
+    norm_num
+  have hlogt : log t = log x / 4 := by
+    rw [ht, Real.log_rpow hx0]; ring
+  have hlogx : log x ≤ 4 * t := by
+    have h := Real.log_le_sub_one_of_pos ht0
+    rw [hlogt] at h
+    linarith
+  have hsq : √x = t ^ 2 := by
+    rw [← ht4, show t ^ 4 = (t ^ 2) ^ 2 by ring, Real.sqrt_sq (by positivity)]
+  have ht316 : (316 : ℝ) ≤ t := by
+    by_contra hcon
+    rw [not_le] at hcon
+    have h4 : t ^ 4 < (316 : ℝ) ^ 4 := pow_lt_pow_left₀ hcon ht0.le (by norm_num)
+    rw [ht4] at h4
+    nlinarith
+  have hlognn : 0 ≤ log x := Real.log_nonneg (by nlinarith)
+  rw [hsq, div_le_iff₀ hx0]
+  calc 2 * t ^ 2 * log x + log x + 1 ≤ 2 * t ^ 2 * (4 * t) + 4 * t + 1 := by
+        nlinarith [hlogx, sq_nonneg t, ht0]
+  _ ≤ 1 / 10 * t ^ 4 := by nlinarith [ht316, ht0]
+  _ = 1 / 10 * x := by rw [ht4]
+
+/-- **Mertens' first theorem with a negative error**:
+$\sum_{p \le x} \log p / p \le \log x$ for `x ≥ 10 ^ 10`.
+
+The true error is `≈ -1.33`.  This sharp, signed form is what a marginal Gronwall induction
+needs: an `O(1)` two-sided bound is not enough, because the error enters the induction
+through its average `\int_0^{\log x} E`. -/
+theorem sum_log_prime_div_le_log {x : ℝ} (hx : (10 : ℝ) ^ 10 ≤ x) :
+    ∑ p ∈ (Ioc 0 ⌊x⌋₊).filter Nat.Prime, log p / p ≤ log x := by
+  classical
+  have hx1 : (1 : ℝ) ≤ x := by nlinarith
+  have hx64 : (64 : ℝ) ≤ x := by nlinarith
+  have hsplit : ∑ d ∈ Ioc 0 ⌊x⌋₊, Λ d / (d : ℝ)
+      = (∑ d ∈ (Ioc 0 ⌊x⌋₊).filter Nat.Prime, Λ d / (d : ℝ))
+        + ∑ d ∈ (Ioc 0 ⌊x⌋₊).filter (fun d ↦ ¬ d.Prime), Λ d / (d : ℝ) :=
+    (Finset.sum_filter_add_sum_filter_not _ _ _).symm
+  have hprime : ∑ d ∈ (Ioc 0 ⌊x⌋₊).filter Nat.Prime, Λ d / (d : ℝ)
+      = ∑ p ∈ (Ioc 0 ⌊x⌋₊).filter Nat.Prime, log p / p :=
+    sum_congr rfl fun d hd ↦ by
+      rw [ArithmeticFunction.vonMangoldt_apply_prime (mem_filter.1 hd).2]
+  have hupper := E₁Λ_le_sharp hx1
+  have hlower := sum_vonMangoldt_div_nonprime_ge hx64
+  have htail := tail_le hx
+  have hlog4 : log 4 < 1.4 := by
+    have h : log 4 = 2 * log 2 := by
+      rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.log_pow]; push_cast; ring
+    have := Real.log_two_lt_d9
+    linarith
+  simp only [E₁Λ] at hupper
+  rw [hprime] at hsplit
+  linarith
+
 /-- **Mertens' first theorem**, prime form:
 $\sum_{p \le N} \log p / p = \log N + O(1)$, with an explicit constant. -/
 theorem abs_sum_log_prime_div_sub_log_le {N : ℕ} (hN : 1 ≤ N) :
