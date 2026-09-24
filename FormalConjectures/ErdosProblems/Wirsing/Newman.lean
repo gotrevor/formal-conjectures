@@ -683,6 +683,56 @@ theorem norm_integral_Ioi_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤
         ring
 
 /--
+The Laplace integrand is integrable on `(0,\infty)` when `\mathrm{Re}\,z > 0`: it is
+dominated by `Ce^{-xt}`.
+-/
+@[category API, AMS 30]
+theorem integrableOn_laplace {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {z : ℂ} (hz : 0 < z.re) {a : ℝ} :
+    MeasureTheory.IntegrableOn
+      (fun t : ℝ ↦ (F t : ℂ) * Complex.exp (-z * (t : ℂ))) (Set.Ioi a) := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hmeas : MeasureTheory.AEStronglyMeasurable
+      (fun t : ℝ ↦ (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+      (MeasureTheory.volume.restrict (Set.Ioi a)) := by
+    refine MeasureTheory.AEStronglyMeasurable.mul ?_ ?_
+    · exact (Complex.continuous_ofReal.comp_aestronglyMeasurable
+        (hFi.aestronglyMeasurable.restrict))
+    · exact (Complex.continuous_exp.comp (by fun_prop)).aestronglyMeasurable
+  refine MeasureTheory.Integrable.mono' ((exp_neg_integrableOn_Ioi a hz).const_mul C) hmeas ?_
+  filter_upwards with t
+  rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, Complex.norm_exp,
+    show (-z * (t : ℂ)).re = -z.re * t by simp]
+  exact mul_le_mul_of_nonneg_right (hFb t) (Real.exp_pos _).le
+
+/--
+**The tail identity.**  For `\mathrm{Re}\,z > 0` the Laplace transform minus its truncation
+at `T` is exactly the tail:
+$$\int_0^\infty F(t)e^{-zt}\,dt - \int_0^T F(t)e^{-zt}\,dt = \int_T^\infty F(t)e^{-zt}\,dt .$$
+
+This is what turns `Newman.norm_integral_Ioi_le` into a bound on `G - g_T` on the right-hand
+arc, and so feeds `Newman.norm_tail_mul_kernel_le`.
+-/
+@[category API, AMS 30]
+theorem integral_Ioi_sub_integral_Ioc {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {z : ℂ} (hz : 0 < z.re) {T : ℝ} (hT : 0 ≤ T) :
+    (∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+        - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))
+      = ∫ t in Set.Ioi T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)) := by
+  set h : ℝ → ℂ := fun t ↦ (F t : ℂ) * Complex.exp (-z * (t : ℂ)) with hh
+  have hIoi : MeasureTheory.IntegrableOn h (Set.Ioi T) := integrableOn_laplace hFb hFi hz
+  have hIoc : MeasureTheory.IntegrableOn h (Set.Ioc (0 : ℝ) T) :=
+    (integrableOn_laplace hFb hFi hz (a := 0)).mono_set Set.Ioc_subset_Ioi_self
+  have hdisj : Disjoint (Set.Ioc (0 : ℝ) T) (Set.Ioi T) :=
+    Set.Ioc_disjoint_Ioi le_rfl
+  have hunion : Set.Ioc (0 : ℝ) T ∪ Set.Ioi T = Set.Ioi (0 : ℝ) :=
+    Set.Ioc_union_Ioi_eq_Ioi hT
+  have := MeasureTheory.setIntegral_union hdisj measurableSet_Ioi hIoc hIoi
+  rw [hunion] at this
+  rw [this]
+  ring
+
+/--
 **The Newman balance.**  On the right-hand arc the tail and the kernel multiply to `2C/R^2`,
 uniformly in `T`.  Integrating over the semicircle of length `\pi R` and dividing by `2\pi`
 gives the `C/R` bound that drives the whole proof.
