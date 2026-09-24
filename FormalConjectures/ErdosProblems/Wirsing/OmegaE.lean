@@ -66,15 +66,69 @@ noncomputable def omegaBad (n : ℕ) : ℕ := #{p ∈ n.primeFactors | f p = -1}
 /-- `E(N) = ∑_{p ≤ N, f p = -1} 1/p`. -/
 noncomputable def badPrimeSum (N : ℕ) : ℝ := ∑ p ∈ badPrimesLE f N, (1 : ℝ) / p
 
+open scoped Classical in
+/-- The `ℕ`-indexed extension of `pretentiousSeries f` by zero off the primes. -/
+noncomputable def pretentiousTerm (n : ℕ) : ℝ := if n.Prime then (1 - f n) / n else 0
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem pretentiousTerm_nonneg (hf : IsPMOneMultiplicative f) (n : ℕ) :
+    0 ≤ pretentiousTerm f n := by
+  rw [pretentiousTerm]
+  split
+  · rename_i hp
+    rcases hf.pmOne n hp.one_lt.le with h1 | h1 <;> rw [h1] <;> positivity
+  · exact le_rfl
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem sum_range_pretentiousTerm (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    ∑ i ∈ Finset.range (N + 1), pretentiousTerm f i = 2 * badPrimeSum f N := by
+  have key : ∀ i ∈ Finset.range (N + 1),
+      pretentiousTerm f i = if i.Prime ∧ f i = -1 then 2 / (i : ℝ) else 0 := by
+    intro i _
+    rw [pretentiousTerm]
+    by_cases hp : i.Prime
+    · rcases hf.pmOne i hp.one_lt.le with h1 | h1
+      · rw [if_pos hp, if_neg (by rintro ⟨-, h2⟩; rw [h1] at h2; norm_num at h2), h1]
+        simp
+      · rw [if_pos hp, if_pos ⟨hp, h1⟩, h1]
+        norm_num
+    · rw [if_neg hp, if_neg (by tauto)]
+  rw [Finset.sum_congr rfl key, ← Finset.sum_filter, badPrimeSum, badPrimesLE,
+    Finset.mul_sum]
+  exact Finset.sum_congr rfl fun i _ ↦ by ring
+
 /--
-The divergence hypothesis of the hard half of Wirsing's theorem is equivalent to
+The divergence hypothesis of the hard half of Wirsing's theorem says exactly that
 `E(N) → ∞`, because `1 - f p ∈ {0, 2}` for a `±1`-valued `f`.
 -/
 @[category API, AMS 11]
 theorem tendsto_badPrimeSum_atTop_of_not_summable (hf : IsPMOneMultiplicative f)
     (h : ¬ Summable (pretentiousSeries f)) :
     Tendsto (badPrimeSum f) atTop atTop := by
-  sorry
+  classical
+  have hinj : Function.Injective (fun p : Nat.Primes ↦ (p : ℕ)) := Subtype.coe_injective
+  have hzero : ∀ x ∉ Set.range (fun p : Nat.Primes ↦ (p : ℕ)), pretentiousTerm f x = 0 := by
+    intro x hx
+    rw [pretentiousTerm, if_neg]
+    exact fun hp ↦ hx ⟨⟨x, hp⟩, rfl⟩
+  have hcomp : pretentiousTerm f ∘ (fun p : Nat.Primes ↦ (p : ℕ)) = pretentiousSeries f := by
+    funext p
+    simp [pretentiousTerm, pretentiousSeries, p.2]
+  have hns : ¬ Summable (pretentiousTerm f) := by
+    rw [← Function.Injective.summable_iff hinj hzero, hcomp]
+    exact h
+  have hdiv := (not_summable_iff_tendsto_nat_atTop_of_nonneg
+    (pretentiousTerm_nonneg f hf)).1 hns
+  have hstep : Tendsto (fun N : ℕ ↦ N + 1) atTop atTop :=
+    Filter.tendsto_add_atTop_nat 1
+  have hshift : Tendsto (fun N : ℕ ↦ ∑ i ∈ Finset.range (N + 1), pretentiousTerm f i)
+      atTop atTop := hdiv.comp hstep
+  have h2 : Tendsto (fun N : ℕ ↦ 2 * badPrimeSum f N) atTop atTop :=
+    hshift.congr fun N ↦ sum_range_pretentiousTerm f hf N
+  exact (Filter.Tendsto.const_mul_atTop (r := (2 : ℝ)⁻¹) (by norm_num) h2).congr
+    fun N ↦ by ring
 
 /--
 The Turán–Kubilius inequality for the prime set `E = {p : f p = -1}`:

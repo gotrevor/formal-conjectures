@@ -62,7 +62,8 @@ Let `E = {p prime : f p = -1}` and `ω_E n = #{p ∈ E : p ∣ n}`, and
 Steps 1–4 are stated as named `sorry`s in
 `FormalConjectures/ErdosProblems/Wirsing/OmegaE.lean`:
 
-* `Wirsing.tendsto_badPrimeSum_atTop_of_not_summable` (step 0: the hypothesis is `E(N) → ∞`),
+* `Wirsing.tendsto_badPrimeSum_atTop_of_not_summable` (step 0: the hypothesis is `E(N) → ∞`)
+  — **PROVED** 2026-09-24,
 * `Wirsing.exists_turan_kubilius` (step 1),
 * `Wirsing.exists_sum_mul_omegaBad` (step 2),
 * `Wirsing.exists_functional_relation` (step 3).
