@@ -1028,6 +1028,85 @@ theorem sq_log_succ_le (N : ℕ) :
     rw [hcast2]
     linarith [ih, hkey]
 
+/-- `∑_{k ≤ N} 1/k² ≤ 2`. -/
+@[category API, AMS 11]
+theorem sum_one_div_sq_le (N : ℕ) : ∑ k ∈ Icc 1 N, (1 : ℝ) / k ^ 2 ≤ 2 := by
+  have h := sum_one_div_two_sq_le N
+  have hrw : ∑ k ∈ Icc 1 N, (1 : ℝ) / (2 * k ^ 2) = (∑ k ∈ Icc 1 N, (1 : ℝ) / k ^ 2) / 2 := by
+    rw [Finset.sum_div]
+    exact Finset.sum_congr rfl fun k _ ↦ by ring
+  rw [hrw] at h
+  linarith
+
+/-- The matching upper bound `∑_{k ≤ N} log k / k ≤ (log N)²/2 + ∑_{k ≤ N} 1/k²`. -/
+@[category API, AMS 11]
+theorem sum_log_div_le_sq_log_aux (N : ℕ) :
+    (∑ k ∈ Icc 1 N, Real.log k / k)
+      ≤ Real.log N ^ 2 / 2 + ∑ k ∈ Icc 1 N, (1 : ℝ) / k ^ 2 := by
+  induction N with
+  | zero => simp
+  | succ N ih =>
+    rw [Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1),
+      Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1)]
+    have hcast : ((N + 1 : ℕ) : ℝ) = (N : ℝ) + 1 := by push_cast; ring
+    rw [hcast]
+    rcases Nat.eq_zero_or_pos N with rfl | hN
+    · norm_num
+    have hNR : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+    have hpos : (0 : ℝ) < (N : ℝ) := by linarith
+    have hpos1 : (0 : ℝ) < (N : ℝ) + 1 := by linarith
+    set a := Real.log (N : ℝ) with ha
+    set b := Real.log ((N : ℝ) + 1) with hb
+    have hab : a ≤ b := Real.log_le_log hpos (by linarith)
+    have hann : 0 ≤ a := Real.log_nonneg hNR
+    -- `log(1 + 1/N) ≥ 1/(N+1)`
+    have hlow : 1 / ((N : ℝ) + 1) ≤ b - a := by
+      have hd : Real.log (((N : ℝ) + 1) / N) = b - a := Real.log_div (ne_of_gt hpos1) (ne_of_gt hpos)
+      have h1 : Real.log ((N : ℝ) / ((N : ℝ) + 1)) ≤ (N : ℝ) / ((N : ℝ) + 1) - 1 :=
+        Real.log_le_sub_one_of_pos (by positivity)
+      have h2 : Real.log ((N : ℝ) / ((N : ℝ) + 1)) = a - b :=
+        Real.log_div (ne_of_gt hpos) (ne_of_gt hpos1)
+      rw [h2] at h1
+      have h3 : (N : ℝ) / ((N : ℝ) + 1) - 1 = -(1 / ((N : ℝ) + 1)) := by
+        field_simp
+        ring
+      linarith [h1, h3.le, h3.ge]
+    -- `log(1 + 1/N) ≤ 1/N`
+    have hhigh : b - a ≤ 1 / (N : ℝ) := by
+      have h1 : Real.log (((N : ℝ) + 1) / N) ≤ ((N : ℝ) + 1) / N - 1 :=
+        Real.log_le_sub_one_of_pos (by positivity)
+      have h2 : Real.log (((N : ℝ) + 1) / N) = b - a :=
+        Real.log_div (ne_of_gt hpos1) (ne_of_gt hpos)
+      have h3 : ((N : ℝ) + 1) / N - 1 = 1 / (N : ℝ) := by
+        field_simp
+        ring
+      rw [h2] at h1
+      linarith [h1, h3.le, h3.ge]
+    have hkey : b / ((N : ℝ) + 1) ≤ (b ^ 2 - a ^ 2) / 2 + 1 / ((N : ℝ) + 1) ^ 2 := by
+      have hfac : (b ^ 2 - a ^ 2) / 2 = (b - a) * (b + a) / 2 := by ring
+      have hsum : 2 * b - 1 / (N : ℝ) ≤ b + a := by linarith
+      have hb2 : Real.log 2 ≤ b := Real.log_le_log (by norm_num) (by linarith)
+      have hb12 : (1 : ℝ) / 2 < b := by
+        have := Real.log_two_gt_d9
+        linarith
+      have hinvN : 1 / (N : ℝ) ≤ 1 := by rw [div_le_one hpos]; linarith
+      have hprod : (1 / ((N : ℝ) + 1)) * (2 * b - 1 / (N : ℝ)) ≤ (b - a) * (b + a) := by
+        refine mul_le_mul hlow hsum (by linarith) (by linarith)
+      have hexp : (1 / ((N : ℝ) + 1)) * (2 * b - 1 / (N : ℝ)) / 2
+          = b / ((N : ℝ) + 1) - 1 / (2 * (N : ℝ) * ((N : ℝ) + 1)) := by
+        field_simp
+      have hslack : 1 / (2 * (N : ℝ) * ((N : ℝ) + 1)) ≤ 1 / ((N : ℝ) + 1) ^ 2 := by
+        rw [div_le_div_iff₀ (by positivity) (by positivity)]
+        nlinarith [hNR]
+      linarith [hprod, hexp.le, hexp.ge, hslack]
+    linarith [ih, hkey]
+
+/-- `∑_{k ≤ N} log k / k ≤ (log N)²/2 + 2`. -/
+@[category API, AMS 11]
+theorem sum_log_div_le_sq_log (N : ℕ) :
+    (∑ k ∈ Icc 1 N, Real.log k / k) ≤ Real.log N ^ 2 / 2 + 2 := by
+  linarith [sum_log_div_le_sq_log_aux N, sum_one_div_sq_le N]
+
 /-- `(log N)²/2 ≤ ∑_{k ≤ N} log k / k + 1`: the lower bound for the log-weighted harmonic
 sum, with no integral comparison. -/
 @[category API, AMS 11]
