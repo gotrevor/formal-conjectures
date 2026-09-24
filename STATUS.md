@@ -1,60 +1,67 @@
 # STATUS — fc-erdos-239 📊
 
 **Erdős 239 (Wirsing's mean value theorem for `±1`-valued multiplicative functions), formalised
-in Lean 4 / Mathlib.** · **Build**: 🟢 green (8939 jobs) · **Updated**: lap 7 · 2026-09-24 ·
-`1787bf04`
+in Lean 4 / Mathlib.** · **Build**: 🟢 green (8940 jobs) · **Updated**: lap 11 · 2026-09-24 ·
+`2ee6bcea`
 
 ## Where it stands
 
-`Erdos239.erdos_239` reduces to `Wirsing.exists_hasMeanValue`, whose **convergent (Wintner)
-half is complete and sorry-free**.  The divergent half is complete down to one statement, the
-Hildebrand asymptotic `σ(N) - L(N)/\log N → 0` (`Wirsing/Main.lean`), which lap 6 showed to be
-PNT-strength and therefore not avoidable.  Lap 7 found that the analytic input for that
-strength **is already in mathlib** — laps 2–6 had all recorded the opposite — and proved the
-first consequence: `f` is pretentious to no character `n^{it}`.  The crux is now decomposed
-into two named, mathlib-grounded sub-`sorry`s in `Wirsing/Weighted.lean`.
+`Erdos239.erdos_239` reduces to `Wirsing.exists_hasMeanValue`, whose **convergent (Wintner) half
+is complete and sorry-free**.  The divergent half is complete down to *one* analytic theorem:
+Newman's Tauberian theorem `Newman.tendsto_integral_of_analyticOn`.  Everything downstream of it
+is already proved — PNT (`tendsto_chebyshevPsi_div_atTop_one`), sharp Mertens, the window
+statement `tendsto_sum_log_prime_div_window`, and steps 1–5 of the rigidity chain over primes.
+The remaining `sorry`s in `src/` are that theorem, its application
+(`Newman.summable_psi_sub_div`) and the headline crux that consumes them
+(`Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero`).
 
 ## What's happened (newest first)
 
-* **2026-09-24 (lap 7, review + proof)** — **route correction**: mathlib v4.33.1 has `ζ`'s
-  continuation, its simple pole, `ζ ≠ 0` on `re s ≥ 1`, the log-Euler product, `L(Λ,s)=-ζ'/ζ`
-  and `continuousOn_neg_logDeriv_LFunctionTrivChar₁`; only a *Tauberian* theorem is missing.
-  The elementary Erdős–Selberg PNT plan is dropped.  New sorry-free `Wirsing/Pretentious.lean`
-  proves `∑_p (1 - f(p)\cos(t\log p))/p = ∞` for **every** real `t` — the "missing uniformity"
-  that laps 2, 3 and 6 each named and each declared unavailable.  New `Wirsing/Weighted.lean`
-  decomposes the next step (the same statement in the Mertens weight `\log p/p`, at rate
-  `\gg \log N`) into two sub-`sorry`s and proves the `f`-transfer between them.
-* **2026-09-24 (lap 6)** — the convergent case closed (`exists_hasMeanValue_of_summable`,
-  axiom-clean); `Wirsing/Rigidity.lean` (rigidity at a near-extremal point); the exact Abel
-  identity `S(N) = N L(N) - ∑_{M<N} L(M)`; `Selberg.lean` (the arithmetic identity
-  `Λ·\log + Λ*Λ = μ*\log²`).  **Route-decisive**: the headline implies PNT, since `λ` is an
-  instance.
-* **2026-09-24 (lap 5)** — the first crux closed: `L(N) = o(\log N)` in the divergent case
-  (`tendsto_logMean_div_log_atTop_zero`), by the lap-4 potential route.
+* **2026-09-24 (lap 11, review + proof)** — **route correction**: the lap-10 plan to feed the
+  Newman *disc* estimate an analytic `G` on `closedBall 0 R` is **unreachable** —
+  `{re z ≥ 0}` contains no disc around `0` (it misses `-R/2` for every `R`), and no conformal
+  or shifted-disc repair works, because the near-`0` part of the contour must have `re z ≤ -δ`
+  bounded away from `0` to supply the `e^{-δT}` decay.  Mathlib's only non-disc Cauchy theorem
+  is for a **rectangle**, so the contour becomes `Q = [-δ, R] × [-R, R]`; all edge estimates
+  were re-derived by hand and go through with the same kernel `1/z + z/R²`.  New sorry-free
+  `Wirsing/Rectangle.lean`: `rectInt`, `rectInt_eq_zero`, the three edge evaluations of `1/z`
+  by `Complex.log`, `rectInt_inv` (`∮ dz/z = 2πi`) and `rectInt_div_self` (the residue).
+* **2026-09-24 (lap 10)** — the deficit-budget/`Ω(k)`-induction rigidity route refuted, and
+  Chebyshev's bounds shown unable to lift the window gate (PNT is unavoidable).
+  `Wirsing/Extremal.lean` (the variational extremal point, bad-prime weight `O(1)` independent
+  of `N`).  `Newman.lean`: discrete Abel summation, sharp Mertens from the two Newman inputs,
+  **PNT proved** from `summable_psi_sub_div` by a discrete Zagier endgame, the Λ→primes
+  passage, the window statement, and the Newman estimate on a disc.
+* **2026-09-24 (lap 9)** — `Wirsing/Karamata.lean`, `Character.lean`, `PrimeCos.lean`,
+  `Uniform.lean`, `Window.lean`; the window step located as the exact point where PNT enters.
+* **2026-09-24 (lap 7–8)** — route correction: mathlib v4.33.1 *does* have `ζ`'s continuation,
+  simple pole, non-vanishing on `re s ≥ 1`, log-Euler product and `L(Λ,s) = -ζ'/ζ`; only a
+  Tauberian theorem is missing.  `Wirsing/Pretentious.lean` (`∑_p (1 - f(p)\cos(t\log p))/p
+  = ∞` for every real `t`), `Wirsing/Weighted.lean`.
+* **2026-09-24 (lap 6)** — the convergent case closed; `Wirsing/Rigidity.lean`; the exact Abel
+  identity; `Selberg.lean`.  **Route-decisive**: the headline implies PNT (`λ` is an instance).
+* **2026-09-24 (lap 5)** — the first crux closed: `L(N) = o(\log N)` in the divergent case.
 * **2026-09-24 (lap 4)** — the potential route `Φ(N) = ∑_{n≤N}|L(n)|/n`; `Wirsing/Decay.lean`.
-* **2026-09-24 (lap 3)** — the sharp Mertens chain (`sum_log_prime_div_le_log`); the limsup
-  shortcut refuted.
-* **2026-09-24 (lap 2)** — `logProfile` (now dead scaffolding); the step-function deficit
-  bootstrap refuted.
-* **2026-09-24 (lap 1)** — Mertens' first theorem from scratch; the log-weighted functional
-  relation.
+* **2026-09-24 (lap 3)** — the sharp Mertens chain; the limsup shortcut refuted.
+* **2026-09-24 (lap 2)** — `logProfile` (now dead scaffolding); the deficit bootstrap refuted.
+* **2026-09-24 (lap 1)** — Mertens' first theorem from scratch.
 * **2026-09-24 (lap 0)** — `Identity.lean`, `OmegaE.lean` (Turán–Kubilius), `General.lean`.
 
 ## Outstanding
 
 ### Short-term (mirrors `PENDING_WORK.md`)
-1. `Wirsing.exists_tsum_vonMangoldt_twisted_ge` — `∑_n Λ(n)n^{-1-x}(1-\cos(t\log n)) ≥ 1/x - C`
-   for `t ≠ 0`, from `continuousOn_neg_logDeriv_LFunctionTrivChar₁` (level 1) plus
-   `riemannZeta_ne_zero_of_one_le_re`.
-2. `Wirsing.exists_sum_primeWeight_one_sub_cos_ge` — transfer it to
-   `∑_{p≤N}(\log p/p)(1-\cos(t\log p)) ≥ \log N/4 - C` by Abel summation at `x = 1/\log N`,
-   using `Mertens.abs_sum_vonMangoldt_div_sub_log_le` for the tail.
+1. The rectangle edge estimates for Newman's kernel `k(z) = 1/z + z/R²`: `|k| ≤ (1+√2)/R` on
+   the right edge, `|k| ≤ √5|x|/R²` on the top and bottom (from `R² + z² = x(x ± 2iR)`), and
+   `∫_{-R}^{R}|k|\,dy` bounded on the left edge.
+2. The `g_T` deformation off the left edge onto the three outer edges of
+   `Q' = [-R,-δ] × [-R,R]`, a second `Newman.rectInt_eq_zero` (`0 ∉ Q'`).
+3. Assemble `Newman.tendsto_integral_of_analyticOn`: `T → ∞`, then `δ → 0`, then `R → ∞`.
+4. `Newman.summable_psi_sub_div` — apply (3) to `F(t) = ψ(e^t)e^{-t} - 1`, whose transform is
+   `-ζ'/ζ(z+1)/(z+1) - 1/z`.
 
 ### Long-term
-* Feed the weighted deficit into the route-C relation to break the `A ≤ A` stall, i.e. prove
-  `Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero`.
-* If a genuine Tauberian step is still needed there, Newman's theorem on top of mathlib's `ζ`
-  (a ~1-page complex-analysis formalisation), **not** PNT from scratch.
+* `Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero` — feed the now-unconditional window
+  statement into `Wirsing.eq_of_mean_quotient_close` and close the prime chain.
 
 ### To completion
 `#print axioms Erdos239.erdos_239` free of `sorryAx`.
@@ -63,17 +70,20 @@ into two named, mathlib-grounded sub-`sorry`s in `Wirsing/Weighted.lean`.
 
 | headline theorem | paper claim | `#print axioms` shows | status |
 | --- | --- | --- | --- |
-| `Erdos239.erdos_239` | unconditional (Wirsing 1967) | `propext, sorryAx, Classical.choice, Quot.sound` | 🔴 `sorryAx` — 3 open `sorry`s (1 in `Wirsing/Main.lean`, 2 in `Wirsing/Weighted.lean`) |
+| `Erdos239.erdos_239` | unconditional (Wirsing 1967) | `propext, sorryAx, Classical.choice, Quot.sound` | 🔴 `sorryAx` — 3 open `sorry`s (1 in `Wirsing/Main.lean`, 2 in `Wirsing/Newman.lean`) |
 | `Wirsing.exists_hasMeanValue_of_summable` | unconditional (Wintner) | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Newman.tendsto_chebyshevPsi_div_atTop_one` (PNT) | unconditional | `propext, sorryAx, …` | 🔴 via `summable_psi_sub_div` only; the Zagier endgame itself is clean |
+| `Newman.tendsto_sum_log_prime_div_window` | unconditional | `propext, sorryAx, …` | 🔴 same single root |
+| `Newman.norm_sub_integral_le` | unconditional (Newman, disc form) | `propext, Classical.choice, Quot.sound` | ✅ clean, but **unused**: the disc hypothesis is unsatisfiable here |
+| `Newman.rectInt_div_self` | unconditional (residue on a rectangle) | `propext, Classical.choice, Quot.sound` | ✅ clean |
 | `Wirsing.tendsto_logMean_div_log_atTop_zero` | unconditional (Halász, log form) | `propext, Classical.choice, Quot.sound` | ✅ clean |
-| `Wirsing.not_summable_one_sub_mul_cos_of_not_summable` | unconditional | `propext, Classical.choice, Quot.sound` | ✅ clean |
 
 Math-axiom count (🟢+🟡+🟠): **0**.  The project carries no cited axioms; the only debt is the
-three disclosed `sorry`s, which is why `sorryAx` is the single 🔴 entry.  The sorry count in
-`src/` rose from 1 to 3 this lap **by decomposition**, which is progress: the crux now has two
-named sub-goals whose mathlib inputs are identified by name.
+three disclosed `sorry`s, all rooted in the single analytic theorem
+`Newman.tendsto_integral_of_analyticOn`, which is why `sorryAx` is the single 🔴 entry.
 
 ## Pointers
 
-`DIRECTION.md` (binding directive) · `PENDING_WORK.md` (attack path) ·
-`HANDOFF-erdos-239-2026-09-24-lap7.md` (newest baton) · `KICKOFF-2026-09-24-erdos-239.md`
+`DIRECTION.md` (binding directive — lap 11: rectangle contour) · `PENDING_WORK.md` (attack
+path) · `HANDOFF-erdos-239-2026-09-24-lap11.md` (newest baton) ·
+`KICKOFF-2026-09-24-erdos-239.md`
