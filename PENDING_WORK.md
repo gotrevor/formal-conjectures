@@ -31,6 +31,20 @@ a *second-order*, log-weighted relation.  This development so far has only the f
 relation `σ(N)\log N = ∑_p (\log p/p)f(p)σ(⌊N/p⌋) + O(1)`, which is *neutral* (`A ≤ A`) — and
 that is exactly why every push stalled at consistency rather than contradiction.
 
+**Started (lap 6): `FormalConjecturesForMathlib/NumberTheory/Selberg.lean`**, sorry-free.
+It proves the arithmetic identity behind the symmetry formula:
+
+* `Selberg.pmul_log_mul` — pointwise multiplication by `\log` is a derivation for Dirichlet
+  convolution, `(f*g)·\log = (f·\log)*g + f*(g·\log)` (because `\log` is additive on the
+  divisor pairs of `n`);
+* `Selberg.log_pmul_log` — `\log² = ζ * (Λ*Λ + Λ·\log)`;
+* `Selberg.vonMangoldt_pmul_log_add_mul` — **`Λ·\log + Λ*Λ = μ * \log²`.**
+
+What remains for the symmetry formula itself is the summation
+`∑_{n ≤ x}(μ * \log²)(n) = 2x\log x + O(x)`: swap to `∑_{d ≤ x}μ(d)∑_{m ≤ x/d}\log² m`,
+insert `∑_{m ≤ y}\log² m = y\log² y - 2y\log y + 2y + O(\log² y)`, and use the elementary
+Möbius sum bounds.  After that comes the `f`-twisted version, which is what the crux needs.
+
 **So the next structural step is the `f`-twisted Selberg symmetry formula.**  Mathlib has no
 Selberg formula (checked lap 6); `PrimeNumberTheoremAnd` has PNT and is on disk under
 `.lake/packages/`, but is not a dependency of this project.
