@@ -78,3 +78,28 @@ argument to a bounded multiplicative window reduces to exactly this estimate: th
 Mertens bound has the absolute error `\log 4 + 8 ≈ 9.4`, so it says nothing about a window of
 ratio below `e^{19}`.  If the `o(1)` form is elementary, the crux route in `PENDING_WORK.md`
 closes; if it is PNT-equivalent, that route needs a different last step.
+
+## 2026-09-24 (lap 12) — fetch Hildebrand [Hi86] in full
+
+PNT is now proved in-repo (`Newman.tendsto_chebyshevPsi_div_atTop_one`, axiom-clean), so
+**Ask 2 of lap 6 is closed** — no answer needed.  Ask 1 is still open and is now the only
+blocker.  A direct PDF link surfaced by `WebSearch` this lap:
+
+    https://academic.oup.com/blms/article-pdf/18/2/147/956525/18-2-147.pdf
+    A. Hildebrand, "On Wirsing's mean value Theorem for Multiplicative Functions",
+    Bull. London Math. Soc. 18 (1986) 147-152.
+
+`WebFetch` times out from this box.  Please fetch that PDF (or any full text of the paper)
+and drop the text under `ON-LINE-FINDINGS-hildebrand-1986.md`.
+
+What is needed from it, in order of importance:
+
+1. **The statement and proof of the key lemma** — the search snippet describes it as: for real
+   multiplicative `-1 \le f \le 1` and `1 \le w \le \sqrt x`, the mean `(1/x)\sum_{n\le x}f(n)`
+   is related to a *weighted* sum with an explicit error term.  The exact inequality, with its
+   weight and error, is the missing piece: the repo's chain via
+   `Wirsing.le_abs_logMean_of_sign_stable` needs the good integers to have *full harmonic
+   weight*, and lap 10's deficit-budget argument shows the rigidity propagation cannot deliver
+   that.  So Hildebrand must reach the asymptotic a different way, and that way is what we need.
+2. Where real-valuedness is used (the statement is false for `f(n) = n^{i\theta}`).
+3. Whether the proof uses PNT or sharp Mertens anywhere — both are now available in-repo.
