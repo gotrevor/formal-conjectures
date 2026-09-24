@@ -206,4 +206,59 @@ theorem abs_sum_vonMangoldt_prime_sub_le (hf : IsPMOneMultiplicative f) (N : ℕ
         have h := Mertens.sum_log_div_sq_le N
         nlinarith [Nat.cast_nonneg (α := ℝ) N]
 
+/--
+The log-weighted functional relation: for a `±1`-valued multiplicative `f`,
+$$S(N)\log N = \sum_{p \le N} \log p \cdot f(p) \cdot S(\lfloor N/p \rfloor) + O(N).$$
+-/
+@[category API, AMS 11]
+theorem abs_partialSum_mul_log_sub_sum_prime_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |partialSum f N * Real.log N
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p))|
+      ≤ 9 * N := by
+  classical
+  have hbound : ∀ n, 1 ≤ n → |f n| ≤ 1 := fun n hn ↦ (abs_eq_one_of_one_le f hf hn).le
+  have hAbel := abs_sum_mul_log_sub_partialSum_mul_log_le f hbound N
+  have hid := sum_Icc_mul_log f N
+  have hsplit : ∑ d ∈ Icc 1 N,
+        ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m)
+      = (∑ d ∈ (Icc 1 N).filter Nat.Prime,
+          ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m))
+        + ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+          ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m) :=
+    (Finset.sum_filter_add_sum_filter_not _ _ _).symm
+  have hprime : (∑ d ∈ (Icc 1 N).filter Nat.Prime,
+        ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m))
+      = ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * ∑ m ∈ Icc 1 (N / p), f (p * m) :=
+    Finset.sum_congr rfl fun d hd ↦ by
+      rw [ArithmeticFunction.vonMangoldt_apply_prime (mem_filter.1 hd).2]
+  have h1 := abs_sum_vonMangoldt_nonprime_le f hf N
+  have h2 := abs_sum_vonMangoldt_prime_sub_le f hf N
+  rw [hprime] at hsplit
+  rw [hsplit] at hid
+  have hdecomp : partialSum f N * Real.log N
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p))
+      = -((∑ n ∈ Icc 1 N, f n * Real.log n) - partialSum f N * Real.log N)
+        + ((∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * ∑ m ∈ Icc 1 (N / p), f (p * m))
+          - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p)))
+        + ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+            ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m) := by
+    rw [hid]; ring
+  rw [hdecomp]
+  calc |(-((∑ n ∈ Icc 1 N, f n * Real.log n) - partialSum f N * Real.log N)
+          + ((∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * ∑ m ∈ Icc 1 (N / p), f (p * m))
+            - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p))))
+        + ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+            ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m)|
+      ≤ |(-((∑ n ∈ Icc 1 N, f n * Real.log n) - partialSum f N * Real.log N)
+          + ((∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * ∑ m ∈ Icc 1 (N / p), f (p * m))
+            - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p))))|
+        + |∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+            ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m)| := abs_add_le _ _
+  _ ≤ ((N : ℝ) + 4 * N) + 4 * N := by
+        refine add_le_add ?_ h1
+        refine (abs_add_le _ _).trans ?_
+        rw [abs_neg]
+        exact add_le_add hAbel h2
+  _ ≤ 9 * N := by linarith [Nat.cast_nonneg (α := ℝ) N]
+
 end Wirsing
