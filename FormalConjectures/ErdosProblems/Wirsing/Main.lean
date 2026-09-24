@@ -19,6 +19,7 @@ public import FormalConjecturesUtil
 public import FormalConjectures.ErdosProblems.Wirsing.General
 public import FormalConjectures.ErdosProblems.Wirsing.Log
 public import FormalConjectures.ErdosProblems.Wirsing.Decay
+public import FormalConjectures.ErdosProblems.Wirsing.Wintner
 
 /-!
 # Wirsing's mean value theorem: assembly
@@ -118,12 +119,14 @@ The convergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p < \infty$ then
 mean value.
 
 For a `±1`-valued `f` this case is elementary: the convolution `g = f * μ` satisfies
-$\sum_n |g(n)|/n < \infty$, so Wintner's mean value theorem applies.
+$\sum_n |g(n)|/n < \infty$, so Wintner's mean value theorem applies.  Wintner's theorem itself
+is proved in `Wirsing/Wintner.lean`; what remains is the summability, which is the Euler
+product estimate `Wirsing.summable_abs_wintnerCoeff_div`.
 -/
 @[category API, AMS 11]
 theorem exists_hasMeanValue_of_summable (hf : IsPMOneMultiplicative f)
-    (h : Summable (pretentiousSeries f)) : ∃ L, HasMeanValue f L := by
-  sorry
+    (h : Summable (pretentiousSeries f)) : ∃ L, HasMeanValue f L :=
+  exists_hasMeanValue_of_summable' f hf h
 
 /-- Wirsing's mean value theorem for `±1`-valued multiplicative functions. -/
 @[category API, AMS 11]

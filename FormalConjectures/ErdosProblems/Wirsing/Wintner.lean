@@ -250,4 +250,34 @@ theorem hasMeanValue_of_summable_wintnerCoeff
   rw [zero_add] at this
   exact this.congr fun N ↦ by ring
 
+/--
+**The summability of the Möbius transform in the convergent case.**
+
+`g = f * μ` is multiplicative, and on prime powers
+`g(p) = f(p) - 1 ∈ \{0, -2\}`, `g(p^k) = f(p^k) - f(p^{k-1}) ∈ \{0, ±2\}`, so
+`|g(p)| = 1 - f(p)` and `|g(p^k)| ≤ 2` for `k ≥ 2`.  Hence
+
+    ∑_d |g(d)|/d  ≤  ∏_p (1 + (1 - f(p))/p + 4/p²),
+
+and the product converges because `∑_p (1 - f(p))/p < ∞` is the hypothesis and
+`∑_p 1/p² < ∞`.  Note the second factor is needed even when `f(p) = 1` for every `p`: the
+higher prime powers `f(p^2)` are unconstrained by the hypothesis.
+
+The Lean obstruction is the comparison of `∑_{d ≤ X}` with `∏_{p ≤ X}` for a nonnegative
+multiplicative summand.  `Mathlib`'s `EulerProduct` results assume summability rather than
+providing it, so this needs the factorisation injection
+`d ↦ d.factorization` explicitly.  See `PENDING_WORK.md`.
+-/
+@[category API, AMS 11]
+theorem summable_abs_wintnerCoeff_div (hf : IsPMOneMultiplicative f)
+    (h : Summable (pretentiousSeries f)) :
+    Summable (fun d : ℕ ↦ |wintnerCoeff f d| / d) := by
+  sorry
+
+/-- The convergent case of Wirsing's theorem. -/
+@[category API, AMS 11]
+theorem exists_hasMeanValue_of_summable' (hf : IsPMOneMultiplicative f)
+    (h : Summable (pretentiousSeries f)) : ∃ L, HasMeanValue f L :=
+  ⟨_, hasMeanValue_of_summable_wintnerCoeff f (summable_abs_wintnerCoeff_div f hf h)⟩
+
 end Wirsing
