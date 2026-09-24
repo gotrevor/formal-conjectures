@@ -1,7 +1,15 @@
 # HANDOFF — Erdős 239 — 2026-09-24 (lap 7, review lap)
 
-Branch `erdos-239-proof`. Nothing pushed.  `DIRECTION.md`'s CURRENT DIRECTIVE was rewritten
-this lap (lap 7) and **its objective is already met**; the forbidden-drift list still binds.
+Branch `erdos-239-proof`, HEAD `3c757ce3`, working tree clean.  Nothing pushed.
+`DIRECTION.md`'s CURRENT DIRECTIVE was rewritten this lap (lap 7) and **its objective is
+already met**; the forbidden-drift list still binds.  An altitude lap should retarget it at
+the two open `sorry`s in `Wirsing/Weighted.lean`.
+
+Commits this lap:
+
+    1787bf04  f is pretentious to no character (the missing uniformity)
+    e1f89baa  decompose the crux into the Mertens-weighted deficit
+    3c757ce3  the regularised log-derivative of zeta on the 1-line
 
 ## The finding that matters
 
@@ -52,11 +60,25 @@ strictly stronger.  Decomposition, with the mathlib inputs named:
 
 1. `exists_tsum_vonMangoldt_twisted_ge` (**sorry**) — for `t ≠ 0`, `∃ C`, for `0 < x ≤ 1`,
    `∑_n Λ(n) n^{-(1+x)} (1 - cos(t log n)) ≥ 1/x - C`.
-   *Proof plan.*  `∑_n Λ(n)n^{-s} = -ζ'/ζ(s)` (mathlib) `= 1/(s-1) + G(s)` with `G` continuous
-   on `re s ≥ 1` (`continuousOn_neg_logDeriv_LFunctionTrivChar₁` at level `1`, using
-   `LFunction_modOne_eq` to identify `LFunctionTrivChar 1 = riemannZeta`; the non-vanishing
-   enters here).  At `s = 1+x`: `Re = 1/x + O(1)`.  At `s = 1+x+it`: `|1/(x+it)| ≤ 1/|t|` and
-   `G` is bounded near `1+it`, so `Re = O_t(1)`.  Subtract.
+   *Its input is now PROVED* (`exists_continuousOn_lSeries_vonMangoldt_sub`, sorry-free):
+   `∃ G` continuous on `{re s ≥ 1}` with `∑_n Λ(n)n^{-s} = 1/(s-1) + G(s)` for `re s > 1`.
+   That is `continuousOn_neg_logDeriv_LFunctionTrivChar₁` at level `1` (via
+   `lFunctionTrivChar_one_eq : LFunctionTrivChar 1 = riemannZeta`), and it is where
+   `riemannZeta_ne_zero_of_one_le_re` enters.
+
+   *What is left to write.*  Take real parts of that display at `s₀ = ((1+x:ℝ):ℂ)` and
+   `s_t = ((1+x:ℝ):ℂ) + (t:ℂ)*I`, and subtract:
+   * `LSeries ↗Λ s = ∑' n, LSeries.term ↗Λ s n`, summable by
+     `ArithmeticFunction.LSeriesSummable_vonMangoldt`; move `Complex.re` inside with
+     `Complex.re_tsum`, then `Summable.tsum_sub`.
+   * termwise, `Re(term ↗Λ s_t n) = Λ(n)·n^{-(1+x)}·cos(t\log n)` by
+     `Wirsing.re_natCast_cpow_neg` (already proved) after `Complex.cpow_neg` turns
+     `Λ n / n^s` into `Λ n * n^{-s}`; the `t = 0` case is the same lemma with `cos 0 = 1`.
+   * `Re(1/(s₀-1)) = 1/x`; `Re(1/(s_t-1)) = x/(x²+t²) ≤ 1/(2|t|)`.
+   * `G` is bounded on the two **compact** segments `φ '' Icc 0 1` for
+     `φ x = ((1+x:ℝ):ℂ) (+ (t:ℂ)*I)`, by `IsCompact.exists_bound_of_continuousOn` applied to
+     `hG.mono` (the image lies in `{re s ≥ 1}` since `re = 1+x ≥ 1`).
+   Collect the three constants into `C`.
 2. `exists_sum_primeWeight_one_sub_cos_ge` (**sorry**) — for `t ≠ 0`,
    `∑_{p≤N}(log p/p)(1 - cos(t log p)) ≥ log N/4 - C`.
    *Proof plan.*  Take `x = 1/log N` in (1).  All terms are `≥ 0`, so restricting to `n ≤ N`
