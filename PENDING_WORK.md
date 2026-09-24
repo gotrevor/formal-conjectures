@@ -38,7 +38,11 @@ It proves the arithmetic identity behind the symmetry formula:
   convolution, `(f*g)·\log = (f·\log)*g + f*(g·\log)` (because `\log` is additive on the
   divisor pairs of `n`);
 * `Selberg.log_pmul_log` — `\log² = ζ * (Λ*Λ + Λ·\log)`;
-* `Selberg.vonMangoldt_pmul_log_add_mul` — **`Λ·\log + Λ*Λ = μ * \log²`.**
+* `Selberg.vonMangoldt_pmul_log_add_mul` — **`Λ·\log + Λ*Λ = μ * \log²`**;
+* `Selberg.sum_Icc_mul_apply` — the one-sided hyperbola identity
+  `∑_{n ≤ N}(f*g)(n) = ∑_{d ≤ N} f(d) ∑_{m ≤ N/d} g(m)` (general, reusable);
+* `Selberg.sum_vonMangoldt_pmul_log_add_sum_mul` — the summed identity
+  `∑_{n≤N}Λ(n)\log n + ∑_{mn≤N}Λ(m)Λ(n) = ∑_{d≤N}μ(d)∑_{m≤N/d}\log² m`.
 
 What remains for the symmetry formula itself is the summation
 `∑_{n ≤ x}(μ * \log²)(n) = 2x\log x + O(x)`: swap to `∑_{d ≤ x}μ(d)∑_{m ≤ x/d}\log² m`,

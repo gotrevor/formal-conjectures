@@ -82,6 +82,54 @@ theorem log_pmul_log :
     _ = (ζ : ArithmeticFunction ℝ) * (vonMangoldt * vonMangoldt + vonMangoldt.pmul log) := by
         rw [mul_add, ← hlog, mul_assoc]
 
+
+open Finset in
+/--
+**Dirichlet convolution summed over an initial segment** (the hyperbola identity in its
+one-sided form):
+$$\sum_{n \le N} (f * g)(n) = \sum_{d \le N} f(d) \sum_{m \le N/d} g(m).$$
+-/
+theorem sum_Icc_mul_apply (f g : ArithmeticFunction ℝ) (N : ℕ) :
+    ∑ n ∈ Icc 1 N, (f * g) n
+      = ∑ d ∈ Icc 1 N, f d * ∑ m ∈ Icc 1 (N / d), g m := by
+  classical
+  have hstep : ∀ n ∈ Icc 1 N, (f * g) n = ∑ d ∈ n.divisors, f d * g (n / d) := by
+    intro n _
+    rw [mul_apply, Nat.sum_divisorsAntidiagonal (f := fun a b ↦ f a * g b)]
+  rw [Finset.sum_congr rfl hstep,
+    Finset.sum_comm' (s := Icc 1 N) (t := fun n ↦ n.divisors) (t' := Icc 1 N)
+      (s' := fun d ↦ {n ∈ Icc 1 N | d ∣ n})
+      (by
+        intro n d
+        simp only [Nat.mem_divisors, mem_filter, mem_Icc]
+        constructor
+        · rintro ⟨⟨hn1, hnN⟩, hdn, hn0⟩
+          have hd1 : 1 ≤ d := Nat.one_le_iff_ne_zero.2 (by
+            rintro rfl
+            exact hn0 (Nat.eq_zero_of_zero_dvd hdn))
+          exact ⟨⟨⟨hn1, hnN⟩, hdn⟩, hd1, le_trans (Nat.le_of_dvd (by omega) hdn) hnN⟩
+        · rintro ⟨⟨⟨hn1, hnN⟩, hdn⟩, hd1, hdN⟩
+          exact ⟨⟨hn1, hnN⟩, hdn, by omega⟩)]
+  refine Finset.sum_congr rfl fun d hd ↦ ?_
+  have hd1 : 1 ≤ d := (mem_Icc.1 hd).1
+  have himg : {n ∈ Icc 1 N | d ∣ n} = (Icc 1 (N / d)).image (fun m ↦ d * m) := by
+    ext n
+    simp only [mem_filter, mem_Icc, Finset.mem_image]
+    constructor
+    · rintro ⟨⟨hn1, hnN⟩, m, rfl⟩
+      have hm1 : 1 ≤ m := by
+        rcases Nat.eq_zero_or_pos m with rfl | hm
+        · omega
+        · omega
+      exact ⟨m, ⟨hm1, (Nat.le_div_iff_mul_le (by omega)).2 (by rw [Nat.mul_comm]; omega)⟩, rfl⟩
+    · rintro ⟨m, ⟨hm1, hmN⟩, rfl⟩
+      rw [Nat.le_div_iff_mul_le (by omega), Nat.mul_comm] at hmN
+      exact ⟨⟨Nat.one_le_iff_ne_zero.2 (by positivity), hmN⟩, Dvd.intro m rfl⟩
+  rw [himg, Finset.sum_image (by
+    intro a _ b _ hab
+    exact Nat.eq_of_mul_eq_mul_left (by omega) hab), Finset.mul_sum]
+  exact Finset.sum_congr rfl fun m _ ↦ by rw [Nat.mul_div_cancel_left m (by omega : 0 < d)]
+
 /--
 **The Selberg identity.**
 $$\Lambda(n)\log n + (\Lambda * \Lambda)(n) = (\mu * \log^2)(n).$$
@@ -90,5 +138,32 @@ theorem vonMangoldt_pmul_log_add_mul :
     vonMangoldt.pmul log + vonMangoldt * vonMangoldt
       = (μ : ArithmeticFunction ℝ) * (log.pmul log) := by
   rw [log_pmul_log, ← mul_assoc, coe_moebius_mul_coe_zeta, one_mul, add_comm]
+
+
+open Finset in
+/--
+**Selberg's symmetry formula, in the form that still has the Möbius sum in it:**
+$$\sum_{n \le N}\Lambda(n)\log n + \sum_{mn \le N}\Lambda(m)\Lambda(n)
+  = \sum_{d \le N}\mu(d)\sum_{m \le N/d}\log^2 m.$$
+
+What remains for the symmetry formula proper is the evaluation of the right-hand side as
+`2N\log N + O(N)`, via `∑_{m ≤ y}\log^2 m = y\log^2 y - 2y\log y + 2y + O(\log^2 y)` and the
+elementary Möbius sum bounds.
+-/
+theorem sum_vonMangoldt_pmul_log_add_sum_mul (N : ℕ) :
+    ∑ n ∈ Icc 1 N, (vonMangoldt.pmul log) n + ∑ n ∈ Icc 1 N, (vonMangoldt * vonMangoldt) n
+      = ∑ d ∈ Icc 1 N, (μ d : ℝ) * ∑ m ∈ Icc 1 (N / d), Real.log m ^ 2 := by
+  have hid : ∑ n ∈ Icc 1 N, (vonMangoldt.pmul log) n
+      + ∑ n ∈ Icc 1 N, (vonMangoldt * vonMangoldt) n
+      = ∑ n ∈ Icc 1 N, ((μ : ArithmeticFunction ℝ) * (log.pmul log)) n := by
+    rw [← Finset.sum_add_distrib]
+    refine Finset.sum_congr rfl fun n _ ↦ ?_
+    have := congrArg (fun F : ArithmeticFunction ℝ ↦ F n) vonMangoldt_pmul_log_add_mul
+    simpa using this
+  rw [hid, sum_Icc_mul_apply]
+  refine Finset.sum_congr rfl fun d _ ↦ ?_
+  rw [intCoe_apply]
+  refine congrArg _ (Finset.sum_congr rfl fun m _ ↦ ?_)
+  rw [pmul_apply, log_apply, sq]
 
 end Selberg
