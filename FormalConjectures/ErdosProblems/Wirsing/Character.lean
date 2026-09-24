@@ -94,4 +94,21 @@ theorem eq_one_of_mean_quotient_sq_close (hf : IsPMOneMultiplicative f) {A ρ s 
   have h := eq_mul_of_mean_quotient_close f hf hp hp hr hM hMM' hs hgoodpp hgoodr hclose
   rcases hf.pmOne p hp.pos with hv | hv <;> rw [h, hv] <;> norm_num
 
+/--
+**The multiplicative period.**  Two applications of the character relation with the *same*
+prime `q` cancel, because `f(q)^2 = 1`:
+$$f(r_1) = f(r_0)f(q),\quad f(r_2) = f(r_1)f(q) \ \Longrightarrow\ f(r_2) = f(r_0).$$
+
+So every good `q` is a *multiplicative period* of `f` along the good primes: `f` takes the
+same value at scales `\log r` and `\log r + 2\log q`.  This is the form of the character
+collapse that the density of the good set can actually supply — see
+`Wirsing.eq_one_of_mean_quotient_sq_close` for the form that it cannot.
+-/
+@[category API, AMS 11]
+theorem eq_of_character_step_two (hf : IsPMOneMultiplicative f) {q r₀ r₁ r₂ : ℕ}
+    (hq : q.Prime) (h1 : f r₁ = f r₀ * f q) (h2 : f r₂ = f r₁ * f q) :
+    f r₂ = f r₀ := by
+  rw [h2, h1, mul_assoc]
+  rcases hf.pmOne q hq.pos with hv | hv <;> rw [hv] <;> norm_num
+
 end Wirsing

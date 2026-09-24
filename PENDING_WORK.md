@@ -60,6 +60,29 @@ every good prime `r` multiplicatively close to the square of a good prime.  Squa
 because `f` is `±1`-valued; this is exactly the place where "real-valued" is used, and it is
 why the theorem is false for complex `f`.
 
+### CORRECTION, found the same lap: the naive squaring step has a density obstruction
+
+`Wirsing.eq_one_of_mean_quotient_sq_close` is a correct lemma, but **its hypothesis cannot be
+supplied by a weight count.**  The window step `Wirsing.eq_of_mean_quotient_close` needs
+`(M' - M)/M' < A - ρ`, so the admissible window around `√r` has *constant* multiplicative
+ratio and therefore **bounded** Mertens weight `≈ \tfrac12|\log(1-A)|`.  The bad primes have
+weight `O((δ\log N + 1)/ρ)`, which is `o(\log N)` but **unbounded**.  A bounded-weight window
+can therefore be entirely bad, and no averaging over `r` repairs this: the near-diagonal pairs
+`p ≈ q ≈ √r` carry total weight `O(\log N)` across all scales, against `o(\log^2 N)` bad
+pairs.  **Do not spend a lap trying to count a good prime into the diagonal window.**
+
+The fix keeps the character relation and drops the diagonal.  Use the relation twice with the
+*same* `q` (`Wirsing.eq_of_character_step_two`): since `f(q)^2 = 1`,
+
+    f(r₂) = f(r₁)f(q),  f(r₁) = f(r₀)f(q)   ⟹   f(r₂) = f(r₀),
+
+so every good `q` is a **multiplicative period** `q^2` of `f` along the good primes.  Here the
+pairs are *off*-diagonal — `q` ranges over a full-weight set at every scale independently of
+`r₀` — so the density that the diagonal lacked is available.  Two incommensurable periods then
+force `f` constant on the good primes, and the character equation makes the constant `1`
+(`k = k^2`).  That last step is the discrete analogue of "a function with a positive-measure
+set of periods is constant"; it is the remaining genuinely new ingredient.
+
 ### NEXT (the concrete remaining chain)
 
 With `A = \limsup|σ| > 0` assumed for contradiction, `δ` small, `N` near-extremal, `s` its
@@ -68,13 +91,14 @@ sign:
 1. **Good primes have full weight.**  From `Wirsing.sum_bad_weight_le` plus Mertens: the
    primes that fail `s f(p)σ(⌊N/p⌋) ≥ A-ρ` carry Mertens weight `O((δ\log N + 1)/ρ)`, so the
    good primes carry `(1-o(1))\log N`.  (Both inputs proved; this is bookkeeping.)
-2. **Good squares exist.**  For a good prime `r` in the bulk, produce a good prime `p` with
-   `⌊N/(p·p)⌋` multiplicatively close to `⌊N/r⌋` — i.e. a good prime in the multiplicative
-   window around `√r`.  The window has Mertens weight `≈ ε\log r`, and step 1 says the bad
-   primes cannot fill it.  **This is the one genuinely new estimate still to formalise**, and
-   it needs only Mertens, which is in `FormalConjecturesForMathlib/NumberTheory/Mertens.lean`.
-3. **`f(r) = 1` for almost every prime** (in Mertens weight), by
-   `Wirsing.eq_one_of_mean_quotient_sq_close`.
+2. **Periods.**  For most pairs of good primes `(q, r₀)` produce a good prime `r₁` with
+   `⌊N/r₁⌋` multiplicatively close to `⌊N/(r₀q)⌋`, and then `r₂` for `(q, r₁)`.  These windows
+   are *off*-diagonal, so `q` and `r₀` vary independently and the double Mertens sum
+   `∑_{r₀}∑_{q}(\log r₀/r₀)(\log q/q) ≈ \tfrac12\log^2 N` dominates the `o(\log^2 N)` bad
+   pairs.  `Wirsing.eq_of_character_step_two` then gives `f(r₂) = f(r₀)`.
+3. **`f(r) = 1` for almost every prime** (in Mertens weight): `f` has a full-weight set of
+   multiplicative periods `q^2` along the good primes, hence is constant there, and the
+   character equation `k = k^2` makes the constant `1`.
 4. **Propagate from primes to integers.**  With `f ≈ 1` on the good primes, the rigidity
    relation becomes `s σ(⌊N/k⌋) ≥ A - ρ` for `k` outside a set of small harmonic weight;
    induct on `Ω(k)` using `Wirsing.sum_bad_weight_le_step`.
