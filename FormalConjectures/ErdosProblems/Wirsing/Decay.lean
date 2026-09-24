@@ -1054,4 +1054,62 @@ theorem exists_threshold {l : ℝ} (hl : 0 < l) :
   obtain ⟨P, hP⟩ := h3.exists_forall_of_atTop
   exact ⟨max P 2, le_max_right _ _, fun p hp ↦ (hP p (le_trans (le_max_left _ _) hp)).le⟩
 
+open scoped Classical in
+/--
+**The window is large when the envelope limit is positive.**  If `ℓ = ⨅ G > 0`, then past the
+threshold where the error terms are below `ℓ`, and past a scale `M₀` where `G` is already
+below `2ℓ`, the potential grows by at least `ℓ (\log p)^2` across the window `p < M ≤ p^2`.
+
+The gain is structural: `G(p^2) ≥ ℓ` forces `Φ(p^2) ≥ 4ℓ(\log p)^2` because
+`\log(p^2) = 2\log p`, while `G(p) < 2ℓ` caps `Φ(p) < 2ℓ(\log p)^2`.
+-/
+@[category API, AMS 11]
+theorem potential_window_ge (hf : IsPMOneMultiplicative f) {p M₀ : ℕ} (hp : 2 ≤ p)
+    (hM₀ : 2 ≤ M₀) (hpM : M₀ ≤ p)
+    (hup : envelope f M₀ < envelopeInf f + envelopeInf f)
+    (hthr : 256 / Real.log (p : ℝ) + 16 / (p : ℝ) ^ 2 ≤ envelopeInf f) :
+    envelopeInf f * Real.log (p : ℝ) ^ 2 ≤ potential f (p ^ 2) - potential f p := by
+  classical
+  set l : ℝ := envelopeInf f with hl
+  set L : ℝ := Real.log (p : ℝ) with hLdef
+  have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp
+  have hL : 0 < L := Real.log_pos (by linarith)
+  -- lower bound on `Φ(p^2)`
+  have hlow0 := envelopeInf_le f (show 2 ≤ p ^ 2 by nlinarith)
+  simp only [envelope] at hlow0
+  push_cast at hlow0
+  rw [Real.log_pow] at hlow0
+  push_cast at hlow0
+  have hlow : l ≤ potential f (p ^ 2) / (2 * L) ^ 2 + 128 * (1 / (2 * L))
+      + 4 * (1 / (p : ℝ) ^ 2) := hlow0
+  have hexp : 4 * L ^ 2 * (potential f (p ^ 2) / (2 * L) ^ 2 + 128 * (1 / (2 * L))
+      + 4 * (1 / (p : ℝ) ^ 2))
+      = potential f (p ^ 2) + 256 * L + 16 * L ^ 2 / (p : ℝ) ^ 2 := by
+    field_simp
+    ring
+  have hlow' : 4 * L ^ 2 * l ≤ potential f (p ^ 2) + 256 * L + 16 * L ^ 2 / (p : ℝ) ^ 2 := by
+    have := mul_le_mul_of_nonneg_left hlow (show (0 : ℝ) ≤ 4 * L ^ 2 by positivity)
+    rw [hexp] at this
+    linarith
+  -- upper bound on `Φ(p)`
+  have hanti := envelope_antitone f hf hM₀ hpM
+  have hup' : envelope f p < 2 * l := by linarith
+  simp only [envelope] at hup'
+  have hnn1 : (0 : ℝ) ≤ 128 * (1 / L) := by positivity
+  have hnn2 : (0 : ℝ) ≤ 4 * (1 / (p : ℝ)) := by positivity
+  have hup2 : potential f p / L ^ 2 < 2 * l := by
+    rw [← hLdef] at hup'
+    linarith
+  have hup3 : potential f p < 2 * l * L ^ 2 := by
+    rw [div_lt_iff₀ (by positivity)] at hup2
+    linarith
+  -- the threshold makes the errors affordable
+  have hthrmul : 256 * L + 16 * L ^ 2 / (p : ℝ) ^ 2 ≤ l * L ^ 2 := by
+    have h := mul_le_mul_of_nonneg_left hthr (show (0 : ℝ) ≤ L ^ 2 by positivity)
+    have he : L ^ 2 * (256 / L + 16 / (p : ℝ) ^ 2) = 256 * L + 16 * L ^ 2 / (p : ℝ) ^ 2 := by
+      field_simp
+    rw [he] at h
+    linarith
+  nlinarith [hlow', hup3, hthrmul]
+
 end Wirsing
