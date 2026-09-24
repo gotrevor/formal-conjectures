@@ -1041,6 +1041,118 @@ theorem two_pi_I_inv_circleIntegral_kernel {R : ℝ} (hR : 0 < R) {h : ℂ → �
     simp [Real.pi_ne_zero, Complex.I_ne_zero]
   rw [hcauchy, smul_eq_mul, hf0, ← mul_assoc, inv_mul_cancel₀ hne, one_mul]
 
+/-- On a bounded window the Laplace integrand is integrable for **every** `w`. -/
+@[category API, AMS 30]
+theorem integrableOn_laplace_Ioc {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) (w : ℂ) (T : ℝ) :
+    MeasureTheory.IntegrableOn
+      (fun t : ℝ ↦ (F t : ℂ) * Complex.exp (-w * (t : ℂ))) (Set.Ioc 0 T) := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hmeas : MeasureTheory.AEStronglyMeasurable
+      (fun t : ℝ ↦ (F t : ℂ) * Complex.exp (-w * (t : ℂ)))
+      (MeasureTheory.volume.restrict (Set.Ioc (0 : ℝ) T)) := by
+    refine MeasureTheory.AEStronglyMeasurable.mul ?_ ?_
+    · exact Complex.continuous_ofReal.comp_aestronglyMeasurable hFi.aestronglyMeasurable.restrict
+    · exact (Complex.continuous_exp.comp (by fun_prop)).aestronglyMeasurable
+  have : MeasureTheory.IsFiniteMeasure
+      (MeasureTheory.volume.restrict (Set.Ioc (0 : ℝ) T)) :=
+    ⟨by rw [MeasureTheory.Measure.restrict_apply_univ]; exact measure_Ioc_lt_top⟩
+  have hconst : MeasureTheory.IntegrableOn
+      (fun _ : ℝ ↦ C * Real.exp (‖w‖ * T)) (Set.Ioc (0 : ℝ) T) :=
+    MeasureTheory.integrable_const _
+  refine MeasureTheory.Integrable.mono' hconst hmeas ?_
+  rw [MeasureTheory.ae_restrict_iff' measurableSet_Ioc]
+  filter_upwards with t ht
+  obtain ⟨ht0, htT⟩ := ht
+  rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, Complex.norm_exp,
+    show (-w * (t : ℂ)).re = -w.re * t by simp]
+  have h1 : -w.re * t ≤ ‖w‖ * T := by
+    have hre : -w.re ≤ ‖w‖ := neg_le_of_neg_le (neg_le_of_abs_le (Complex.abs_re_le_norm w))
+    have hw0 : (0 : ℝ) ≤ ‖w‖ := norm_nonneg _
+    nlinarith
+  calc |F t| * Real.exp (-w.re * t) ≤ C * Real.exp (-w.re * t) :=
+        mul_le_mul_of_nonneg_right (hFb t) (Real.exp_pos _).le
+    _ ≤ C * Real.exp (‖w‖ * T) :=
+        mul_le_mul_of_nonneg_left (Real.exp_le_exp.2 h1) hC0
+
+/--
+**The truncated transform is entire.**  `w \mapsto \int_0^T F(t)e^{-wt}\,dt` is differentiable
+on all of `\mathbb C`.
+
+Differentiation under the integral sign: on the bounded window `(0,T]` the `w`-derivative
+`-tF(t)e^{-wt}` is dominated, uniformly for `w` in a ball, by the constant
+`CTe^{(\|w_0\|+1)T}`, which is integrable because the window has finite measure.  This is the
+one hypothesis of `Newman.norm_sub_integral_le` that is not about `G`.
+-/
+@[category API, AMS 30]
+theorem differentiable_truncLaplace {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {T : ℝ} (hT : 0 ≤ T) :
+    Differentiable ℂ
+      (fun w : ℂ ↦ ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-w * (t : ℂ))) := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  intro w₀
+  set μ : MeasureTheory.Measure ℝ := MeasureTheory.volume.restrict (Set.Ioc (0 : ℝ) T) with hμ
+  set bd : ℝ := C * T * Real.exp ((‖w₀‖ + 1) * T) with hbd
+  have hmeas : ∀ w : ℂ, MeasureTheory.AEStronglyMeasurable
+      (fun t : ℝ ↦ (F t : ℂ) * Complex.exp (-w * (t : ℂ))) μ := by
+    intro w
+    refine MeasureTheory.AEStronglyMeasurable.mul ?_ ?_
+    · exact Complex.continuous_ofReal.comp_aestronglyMeasurable hFi.aestronglyMeasurable.restrict
+    · exact (Complex.continuous_exp.comp (by fun_prop)).aestronglyMeasurable
+  have hmeas' : MeasureTheory.AEStronglyMeasurable
+      (fun t : ℝ ↦ (F t : ℂ) * (-(t : ℂ)) * Complex.exp (-w₀ * (t : ℂ))) μ := by
+    refine MeasureTheory.AEStronglyMeasurable.mul (MeasureTheory.AEStronglyMeasurable.mul ?_ ?_) ?_
+    · exact Complex.continuous_ofReal.comp_aestronglyMeasurable hFi.aestronglyMeasurable.restrict
+    · exact (by fun_prop : Continuous fun t : ℝ ↦ (-(t : ℂ))).aestronglyMeasurable
+    · exact (Complex.continuous_exp.comp (by fun_prop)).aestronglyMeasurable
+  have : MeasureTheory.IsFiniteMeasure μ := by
+    rw [hμ]
+    exact ⟨by rw [MeasureTheory.Measure.restrict_apply_univ]; exact measure_Ioc_lt_top⟩
+  have hbdint : MeasureTheory.Integrable (fun _ : ℝ ↦ bd) μ :=
+    MeasureTheory.integrable_const _
+  have hbound : ∀ᵐ t ∂μ, ∀ w ∈ Metric.ball w₀ 1,
+      ‖(F t : ℂ) * (-(t : ℂ)) * Complex.exp (-w * (t : ℂ))‖ ≤ bd := by
+    rw [hμ, MeasureTheory.ae_restrict_iff' measurableSet_Ioc]
+    filter_upwards with t ht w hw
+    obtain ⟨ht0, htT⟩ := ht
+    have hwn : ‖w‖ ≤ ‖w₀‖ + 1 := by
+      have := (Metric.mem_ball.1 hw).le
+      rw [dist_eq_norm] at this
+      calc ‖w‖ = ‖w₀ + (w - w₀)‖ := by ring_nf
+        _ ≤ ‖w₀‖ + ‖w - w₀‖ := norm_add_le _ _
+        _ ≤ ‖w₀‖ + 1 := by linarith
+    rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs, Complex.norm_exp,
+      show (-w * (t : ℂ)).re = -w.re * t by simp]
+    have hre : -w.re ≤ ‖w‖ := neg_le_of_neg_le (neg_le_of_abs_le (Complex.abs_re_le_norm w))
+    have h1 : -w.re * t ≤ (‖w₀‖ + 1) * T := by nlinarith [norm_nonneg w]
+    have h2 : ‖(-(t : ℂ))‖ ≤ T := by
+      rw [norm_neg, Complex.norm_real, Real.norm_eq_abs, abs_of_pos ht0]
+      exact htT
+    have hexp : Real.exp (-w.re * t) ≤ Real.exp ((‖w₀‖ + 1) * T) := Real.exp_le_exp.2 h1
+    have hT0 : (0 : ℝ) ≤ ‖(-(t : ℂ))‖ := norm_nonneg _
+    have habs : (0 : ℝ) ≤ |F t| := abs_nonneg _
+    have hFt := hFb t
+    have hstep1 : |F t| * ‖(-(t : ℂ))‖ ≤ C * T := by nlinarith
+    have hstep2 : |F t| * ‖(-(t : ℂ))‖ * Real.exp (-w.re * t)
+        ≤ C * T * Real.exp ((‖w₀‖ + 1) * T) := by
+      have hmul : (0 : ℝ) ≤ |F t| * ‖(-(t : ℂ))‖ := by positivity
+      have hCT : (0 : ℝ) ≤ C * T := le_trans hmul hstep1
+      nlinarith [Real.exp_pos (-w.re * t), Real.exp_pos ((‖w₀‖ + 1) * T)]
+    rw [hbd]
+    exact hstep2
+  have hdiff : ∀ᵐ t ∂μ, ∀ w ∈ Metric.ball w₀ 1,
+      HasDerivAt (fun w : ℂ ↦ (F t : ℂ) * Complex.exp (-w * (t : ℂ)))
+        ((F t : ℂ) * (-(t : ℂ)) * Complex.exp (-w * (t : ℂ))) w := by
+    filter_upwards with t w _
+    have h := (((hasDerivAt_id w).neg.mul_const (t : ℂ)).cexp).const_mul (F t : ℂ)
+    simpa [mul_assoc, mul_comm, mul_left_comm] using h
+  have hint : MeasureTheory.Integrable
+      (fun t : ℝ ↦ (F t : ℂ) * Complex.exp (-w₀ * (t : ℂ))) μ :=
+    integrableOn_laplace_Ioc hFb hFi w₀ T
+  exact (hasDerivAt_integral_of_dominated_loc_of_deriv_le
+    (Metric.ball_mem_nhds w₀ one_pos) (Filter.Eventually.of_forall hmeas) hint hmeas'
+    hbound hbdint hdiff).2.differentiableAt
+
 /-! ### Newman's theorem on a disc -/
 
 open Metric in
@@ -1055,8 +1167,6 @@ This is the whole of Newman's argument on a disc: the Cauchy value
 `circleIntegral.norm_two_pi_i_inv_smul_integral_le_of_norm_le_const`.  Letting `T \to \infty`
 and then `R \to \infty` gives `\int_0^T F \to G(0)`.
 
-The hypothesis that the truncated transform is entire is the standard differentiation under
-the integral sign for a compactly supported, bounded integrand.
 -/
 @[category API, AMS 30]
 theorem norm_sub_integral_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
@@ -1065,11 +1175,12 @@ theorem norm_sub_integral_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤
       G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
     {M R T : ℝ} (hR : 0 < R) (hT : 0 < T)
     (hGd : DifferentiableOn ℂ G (closedBall (0 : ℂ) R))
-    (hgd : Differentiable ℂ
-      (fun w : ℂ ↦ ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-w * (t : ℂ))))
     (hM : ∀ z : ℂ, ‖z‖ = R → ‖G z‖ ≤ M) :
     ‖G 0 - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ)‖ ≤ 2 * C / R + 2 * M / (R * T) := by
   have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hgd : Differentiable ℂ
+      (fun w : ℂ ↦ ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-w * (t : ℂ))) :=
+    differentiable_truncLaplace hFb hFi hT.le
   set h : ℂ → ℂ := fun w ↦
     (G w - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-w * (t : ℂ))) *
       Complex.exp (w * (T : ℂ)) with hhdef
