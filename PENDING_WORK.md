@@ -1,5 +1,41 @@
 # PENDING WORK — Erdős 239
 
+## Lap 13 (2026-09-24) — the SHARP weight comparison is proved
+
+`Wirsing.exists_abs_sum_primeWeight_comp_sub_sum_div_le` (in `Wirsing/Sharp.lean`),
+axiom-clean:
+
+    ∀ ε > 0, ∃ C, ∀ g N, (∀ m, 2 ≤ m ≤ N → |g m - g (m-1)| ≤ 1/m) → (∀ m, |g m| ≤ 1) →
+      |∑_{k ≤ N} primeWeight k · g ⌊N/k⌋ - ∑_{n ≤ N} g n / n| ≤ ε log N + C
+
+This is the `o(log N)` replacement for `Wirsing.abs_sum_primeWeight_comp_sub_sum_div_le`,
+whose `16 log N` error is the size of the main term and killed the weight transfers of laps
+2-5.  The advance on the crux: the transfer from prime weights to harmonic weights is now
+lossless at the scale that matters, so `Wirsing.abs_mean_mul_log_sub_sum_prime_le` can be
+turned into a genuine differential inequality for `Φ(u) = ∫_0^u |F|`.
+
+Mechanism, as planned in lap 12: Abel-expand both sides along the increments of `g`, write the
+discrepancy `D(m) = ∑_{k ≤ ⌊N/m⌋} primeWeight k - (H_N - H_{m-1})` as `-E + η(m)`, and
+telescope the constant to `-E(g N - g 1)` — `O(1)` because `g` is bounded, whereas a merely
+bounded discrepancy costs `E` times the total variation of `g`, i.e. `log N`.  `|η(m)| ≤
+ε/2 + 2/(m-1)` once `⌊N/m⌋ ≥ M₀(ε)` (sharp Mertens + `abs_harmonicSum_sub_sub_log_le` +
+`log_natCast_div_sub_le`); the remaining `m > N/M₀` carry harmonic weight `≤ log M₀ + 1`, a
+constant.  Supporting lemmas: `sum_Icc_one_div_mul_pred` (`∑_{2≤m≤N} 1/(m(m-1)) = 1 - 1/N`),
+`sum_Icc_one_div_mul_pred_le`.
+
+### Next attack on the crux
+
+1. Apply it with `g = fun n ↦ |mean f n|` (increments: `Wirsing.abs_abs_logMean_sub_le` is the
+   analogue for `logMean`; the `mean` version has to be checked — if `mean` is not `1/m`-
+   Lipschitz, run the comparison with `logMean` instead and use
+   `Wirsing.abs_mean_mul_log_sub_sum_prime_le`) to get
+   `|σ(N)| log N ≤ ∑_{n ≤ N} |σ(⌊N/n⌋)|/n + o(log N)`.
+2. In the log variable that is `u Φ'(u) ≤ Φ(u) + o(u)` with `Φ(u) = ∫_0^u |F|`, so `Φ(u)/u` is
+   nearly non-increasing, hence convergent; with `|F| ≤ Φ/u + o(1)` this gives `|σ(N)| → α`.
+3. `α = 0` is then the remaining step; that is where `PrimeCos.lean` / `Uniform.lean` enter.
+
+---
+
 ## Lap 12 (2026-09-24) — PNT IS PROVED; the crux is restated as the divergent case
 
 ### Landed: the whole Newman chain, axiom-clean
