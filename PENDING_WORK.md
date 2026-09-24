@@ -60,28 +60,51 @@ every good prime `r` multiplicatively close to the square of a good prime.  Squa
 because `f` is `±1`-valued; this is exactly the place where "real-valued" is used, and it is
 why the theorem is false for complex `f`.
 
-### CORRECTION, found the same lap: the naive squaring step has a density obstruction
+### WHERE THE PNT-STRENGTH INGREDIENT ACTUALLY ENTERS (lap 9, final analysis)
 
-`Wirsing.eq_one_of_mean_quotient_sq_close` is a correct lemma, but **its hypothesis cannot be
-supplied by a weight count.**  The window step `Wirsing.eq_of_mean_quotient_close` needs
-`(M' - M)/M' < A - ρ`, so the admissible window around `√r` has *constant* multiplicative
-ratio and therefore **bounded** Mertens weight `≈ \tfrac12|\log(1-A)|`.  The bad primes have
-weight `O((δ\log N + 1)/ρ)`, which is `o(\log N)` but **unbounded**.  A bounded-weight window
-can therefore be entirely bad, and no averaging over `r` repairs this: the near-diagonal pairs
-`p ≈ q ≈ √r` carry total weight `O(\log N)` across all scales, against `o(\log^2 N)` bad
-pairs.  **Do not spend a lap trying to count a good prime into the diagonal window.**
+Two successive analyses were made of the squaring step this lap; the first two were wrong and
+are recorded so they are not repeated.
 
-The fix keeps the character relation and drops the diagonal.  Use the relation twice with the
-*same* `q` (`Wirsing.eq_of_character_step_two`): since `f(q)^2 = 1`,
+**Wrong analysis 1** ("it just works"): for a good prime `r` find a good prime `p` with
+`p^2 ≈ r`, by counting.
 
-    f(r₂) = f(r₁)f(q),  f(r₁) = f(r₀)f(q)   ⟹   f(r₂) = f(r₀),
+**Wrong analysis 2** ("density obstruction"): the window around `√r` has bounded Mertens
+weight while the bad set has unbounded weight `o(\log N)`, so the window can be all bad, and
+averaging over `r` fails because near-diagonal pairs carry only `O(\log N)` weight against
+`o(\log^2 N)` bad pairs.  **This comparison is invalid** — it compares global weights where
+the correct computation is a Fubini over scales.  Writing `b(z)` for the bad weight in the
+window at log-scale `z`, one has `∫_0^{\log N} b(z)\,dz = w\cdot o(\log N)`, so
+`\mathrm{meas}\{z : b(z) \ge w\} = o(\log N)` out of a range of length `\log N`.  **Most
+windows are therefore good**, and the diagonal is fine: the `r` that are lost have weight
+`o(\log N)`.
 
-so every good `q` is a **multiplicative period** `q^2` of `f` along the good primes.  Here the
-pairs are *off*-diagonal — `q` ranges over a full-weight set at every scale independently of
-`r₀` — so the density that the diagonal lacked is available.  Two incommensurable periods then
-force `f` constant on the good primes, and the character equation makes the constant `1`
-(`k = k^2`).  That last step is the discrete analogue of "a function with a positive-measure
-set of periods is constant"; it is the remaining genuinely new ingredient.
+**The real gate.**  That Fubini argument needs the *total* prime weight of a window of
+log-width `w` to exceed the bad weight in it, i.e. it needs to know the window weight at all.
+Mertens gives `∑_{X < p \le Xe^w} \log p/p = w + O(1)` with the explicit constant
+`\log 4 + 8 ≈ 9.4` (`Mertens.abs_sum_log_prime_div_sub_log_le`), while the admissible window
+has `w = \log(1/(1-(A-ρ))) ≈ A`, which is a constant `< 1`.  **Mertens with an `O(1)` error
+cannot certify that a short multiplicative window contains any prime at all.**  What is needed
+is the sharp form `∑_{p \le N}\log p/p = \log N - E + o(1)`, and that is equivalent to PNT.
+
+This independently re-derives the lap-6 finding (Erdős 239 ⟹ PNT, via Liouville) and pins it
+to a single named lemma, and it explains the three refuted weight transfers of laps 2–5, all
+of which wanted exactly `∑_{p≤x}\log p/p = \log x - E + o(1)`.
+
+**Decision: build PNT.**  Mathlib v4.33.1 has no Wiener–Ikehara, no Newman Tauberian theorem
+and no PNT (grepped this lap), but it has every analytic input.  `Wirsing/Newman.lean` (new)
+is the decomposition, with four disclosed `sorry`s:
+
+* `Newman.tendsto_integral_of_analyticOn` — Newman's analytic theorem (the contour estimate;
+  the only genuinely new analytic content);
+* `Newman.tendsto_chebyshevPsi_div_atTop_one` — PNT as `ψ(x) \sim x`, from it applied to
+  `F(t) = ψ(e^t)e^{-t} - 1`, whose transform is analytic across `re z = 0` by
+  `Wirsing.exists_continuousOn_lSeries_vonMangoldt_sub`;
+* `Newman.exists_tendsto_sum_log_prime_div_sub_log` — sharp Mertens by partial summation;
+* `Newman.tendsto_sum_log_prime_div_window` — prime weight `\to \log c` in a window of ratio
+  `c`, the form the rigidity window step consumes.
+
+Attack `Newman.tendsto_integral_of_analyticOn` first: everything else is bookkeeping on top
+of it, and it is the only step whose feasibility is in doubt.
 
 ### NEXT (the concrete remaining chain)
 
@@ -91,14 +114,14 @@ sign:
 1. **Good primes have full weight.**  From `Wirsing.sum_bad_weight_le` plus Mertens: the
    primes that fail `s f(p)σ(⌊N/p⌋) ≥ A-ρ` carry Mertens weight `O((δ\log N + 1)/ρ)`, so the
    good primes carry `(1-o(1))\log N`.  (Both inputs proved; this is bookkeeping.)
-2. **Periods.**  For most pairs of good primes `(q, r₀)` produce a good prime `r₁` with
-   `⌊N/r₁⌋` multiplicatively close to `⌊N/(r₀q)⌋`, and then `r₂` for `(q, r₁)`.  These windows
-   are *off*-diagonal, so `q` and `r₀` vary independently and the double Mertens sum
-   `∑_{r₀}∑_{q}(\log r₀/r₀)(\log q/q) ≈ \tfrac12\log^2 N` dominates the `o(\log^2 N)` bad
-   pairs.  `Wirsing.eq_of_character_step_two` then gives `f(r₂) = f(r₀)`.
-3. **`f(r) = 1` for almost every prime** (in Mertens weight): `f` has a full-weight set of
-   multiplicative periods `q^2` along the good primes, hence is constant there, and the
-   character equation `k = k^2` makes the constant `1`.
+2. **Good squares exist — GATED ON PNT.**  For most good primes `r`, find a good prime `p`
+   with `⌊N/(p·p)⌋` multiplicatively close to `⌊N/r⌋`.  The Fubini-over-scales count works
+   (most windows are good), *provided* the window's prime weight is known to be positive.
+   That needs `Newman.tendsto_sum_log_prime_div_window`, i.e. PNT.  Use
+   `Wirsing.eq_of_character_step_two` for the off-diagonal variant if the diagonal is awkward;
+   both need the same window input.
+3. **`f(r) = 1` for almost every prime** (in Mertens weight), by
+   `Wirsing.eq_one_of_mean_quotient_sq_close`.
 4. **Propagate from primes to integers.**  With `f ≈ 1` on the good primes, the rigidity
    relation becomes `s σ(⌊N/k⌋) ≥ A - ρ` for `k` outside a set of small harmonic weight;
    induct on `Ω(k)` using `Wirsing.sum_bad_weight_le_step`.
