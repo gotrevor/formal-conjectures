@@ -65,14 +65,17 @@ Steps 1–4 are stated as named `sorry`s in
 * `Wirsing.tendsto_badPrimeSum_atTop_of_not_summable` (step 0: the hypothesis is `E(N) → ∞`)
   — **PROVED** 2026-09-24,
 * `Wirsing.exists_turan_kubilius` (step 1) — **PROVED** 2026-09-24, with `C = 3`,
-* `Wirsing.exists_sum_mul_omegaBad` (step 2),
+* `Wirsing.exists_sum_mul_omegaBad` (step 2) — **PROVED** 2026-09-24, with `C = 2`,
 * `Wirsing.exists_functional_relation` (step 3).
 
-Steps 0 and 1 are done.  Step 2 (`exists_sum_mul_omegaBad`) is the next concrete target:
-`∑_{n≤N} f(n) ω_E(n) = ∑_{p ∈ E, p ≤ N} f(p) S(N/p) + O(N)`, where the error comes only
-from the `n ≤ N` divisible by `p²`.  It reuses `sum_indicator_dvd_le` and
-`card_filter_dvd_Icc`, together with `∑_p 1/p² < ∞`.  Step 4 (relation ⟹ `σ → 0`) is still
-open and is where the research difficulty now lives.
+Steps 0, 1 and 2 are done.  **Step 3 (`exists_functional_relation`) is the next target**:
+assemble Turán–Kubilius (via Cauchy–Schwarz, `Finset.inner_mul_le_norm_mul_norm` or
+`Finset.sum_div_pow_mul_fract...`; the plain form `|∑ a_n b_n| ≤ √(∑a²)√(∑b²)` is
+`Finset.inner_mul_le_norm_mul_norm` / `Finset.sum_sqrt_mul_sqrt_le`) with
+`exists_sum_mul_omegaBad`, using `f p = -1` on `E` and `|f n| = 1`.  The bookkeeping
+`S(N/p)/N = mean f (N/p)/p + O(1/N)` costs another `O(1)` after summing over `p ≤ N`.
+
+Step 4 (relation ⟹ `σ → 0`) is still open and is where the research difficulty now lives.
 
 ## Build note
 

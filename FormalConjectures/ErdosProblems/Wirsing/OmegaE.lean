@@ -408,17 +408,80 @@ theorem sum_mul_omegaBad_eq (N : ℕ) :
   rw [← Finset.sum_filter]
   exact sum_filter_dvd_eq (mem_badPrimesLE_iff f |>.1 hp).2.1.pos f
 
+@[category API, AMS 11]
+theorem abs_eq_one_of_one_le (hf : IsPMOneMultiplicative f) {n : ℕ} (hn : 1 ≤ n) :
+    |f n| = 1 := by
+  rcases hf.pmOne n hn with h | h <;> rw [h] <;> norm_num
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem sum_badPrimesLE_one_div_sq_le (N : ℕ) :
+    ∑ p ∈ badPrimesLE f N, (1 : ℝ) / p ^ 2 ≤ 1 := by
+  have hsub : badPrimesLE f N ⊆ Icc 2 N := by
+    intro p hp
+    rw [mem_badPrimesLE_iff] at hp
+    exact Finset.mem_Icc.2 ⟨hp.2.1.two_le, hp.1⟩
+  have h1 : ∑ p ∈ badPrimesLE f N, (1 : ℝ) / p ^ 2 ≤ ∑ k ∈ Icc 2 N, (1 : ℝ) / k ^ 2 :=
+    Finset.sum_le_sum_of_subset_of_nonneg hsub fun i _ _ ↦ by positivity
+  rcases Nat.eq_zero_or_pos N with rfl | hN
+  · rw [Finset.Icc_eq_empty (by omega : ¬ (2 : ℕ) ≤ 0), Finset.sum_empty] at h1
+    linarith
+  · have h2 := sum_Icc_one_div_sq_le N hN
+    have h3 : (0 : ℝ) < N := by exact_mod_cast hN
+    have : (0 : ℝ) ≤ 1 / N := by positivity
+    linarith
+
+open scoped Classical in
 /--
 The hyperbola estimate: `∑_{n ≤ N} f(n) ω_E(n) = ∑_{p ∈ E, p ≤ N} f(p) S(N/p) + O(N)`.
 
-The error comes only from the `n ≤ N` divisible by `p²`, of which there are at most `N/p²`,
-and `∑_p 1/p² < ∞`.
+The error comes only from the `m ≤ N/p` divisible by `p`, of which there are at most `N/p²`,
+and `∑_p 1/p² ≤ 1`.
 -/
 @[category API, AMS 11]
 theorem exists_sum_mul_omegaBad (hf : IsPMOneMultiplicative f) :
     ∃ C : ℝ, ∀ N : ℕ, |(∑ n ∈ Icc 1 N, f n * omegaBad f n)
       - ∑ p ∈ badPrimesLE f N, f p * partialSum f (N / p)| ≤ C * N := by
-  sorry
+  refine ⟨2, fun N ↦ ?_⟩
+  rw [sum_mul_omegaBad_eq, ← Finset.sum_sub_distrib]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  have key : ∀ p ∈ badPrimesLE f N,
+      |∑ m ∈ Icc 1 (N / p), f (p * m) - f p * partialSum f (N / p)|
+        ≤ 2 * (N : ℝ) * ((1 : ℝ) / p ^ 2) := by
+    intro p hp
+    obtain ⟨hpN, hprime, hfp⟩ := mem_badPrimesLE_iff f |>.1 hp
+    have hppos : 0 < p := hprime.pos
+    have hpR : (0 : ℝ) < p := by exact_mod_cast hppos
+    rw [partialSum, Finset.mul_sum, ← Finset.sum_sub_distrib]
+    refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+    have hterm : ∀ m ∈ Icc 1 (N / p),
+        |f (p * m) - f p * f m| ≤ if p ∣ m then (2 : ℝ) else 0 := by
+      intro m hm
+      simp only [Finset.mem_Icc] at hm
+      by_cases hd : p ∣ m
+      · rw [if_pos hd]
+        rcases hf.pmOne (p * m) (Nat.mul_pos hppos (by omega)) with h1 | h1 <;>
+          rcases hf.pmOne p hppos with h2 | h2 <;>
+            rcases hf.pmOne m hm.1 with h3 | h3 <;> rw [h1, h2, h3] <;> norm_num
+      · rw [if_neg hd, hf.map_mul_of_coprime p m ((Nat.Prime.coprime_iff_not_dvd hprime).2 hd)]
+        simp
+    refine (Finset.sum_le_sum hterm).trans ?_
+    have hcount : ∑ m ∈ Icc 1 (N / p), (if p ∣ m then (2 : ℝ) else 0)
+        = 2 * ((N / p / p : ℕ) : ℝ) := by
+      have hsplit : ∀ m : ℕ, (if p ∣ m then (2 : ℝ) else 0)
+          = 2 * (if p ∣ m then (1 : ℝ) else 0) := by
+        intro m; split <;> simp
+      rw [Finset.sum_congr rfl fun m _ ↦ hsplit m, ← Finset.mul_sum, Finset.sum_boole,
+        card_filter_dvd_Icc]
+    rw [hcount, Nat.div_div_eq_div_mul]
+    have h4 : ((N / (p * p) : ℕ) : ℝ) ≤ (N : ℝ) / (p * p) := by
+      rw [← Nat.cast_mul]; exact Nat.cast_div_le
+    have : (N : ℝ) / (p * p) = N * (1 / p ^ 2) := by ring
+    nlinarith [h4]
+  refine (Finset.sum_le_sum key).trans ?_
+  rw [← Finset.mul_sum]
+  have hN : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+  nlinarith [sum_badPrimesLE_one_div_sq_le f N, hN]
 
 /--
 The functional relation: with `σ(N) = S(N)/N`,
