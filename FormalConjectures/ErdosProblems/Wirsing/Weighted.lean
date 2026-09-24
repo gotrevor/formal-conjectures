@@ -134,7 +134,95 @@ theorem exists_tsum_vonMangoldt_twisted_ge {t : ℝ} (ht : t ≠ 0) :
     ∃ C : ℝ, ∀ x : ℝ, 0 < x → x ≤ 1 →
       1 / x - C ≤ ∑' n : ℕ, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
         (1 - Real.cos (t * Real.log n)) := by
-  sorry
+  obtain ⟨G, hGc, hGeq⟩ := exists_continuousOn_lSeries_vonMangoldt_sub
+  -- `G` is bounded on each of the two compact segments `{1 + x + iτ : 0 ≤ x ≤ 1}`.
+  have hbound : ∀ τ : ℝ, ∃ M : ℝ, ∀ x ∈ Set.Icc (0 : ℝ) 1,
+      ‖G (((1 + x : ℝ) : ℂ) + (τ : ℂ) * I)‖ ≤ M := by
+    intro τ
+    have hc : IsCompact ((fun u : ℝ ↦ ((1 + u : ℝ) : ℂ) + (τ : ℂ) * I) '' Set.Icc 0 1) :=
+      isCompact_Icc.image (by fun_prop)
+    have hsub : (fun u : ℝ ↦ ((1 + u : ℝ) : ℂ) + (τ : ℂ) * I) '' Set.Icc 0 1 ⊆
+        {s : ℂ | 1 ≤ s.re} := by
+      rintro _ ⟨u, hu, rfl⟩
+      simp only [Set.mem_ofPred_eq, Complex.add_re, Complex.ofReal_re, Complex.mul_re,
+        Complex.I_re, Complex.I_im, Complex.ofReal_im, mul_zero, zero_mul, sub_zero, add_zero]
+      linarith [hu.1]
+    obtain ⟨M, hM⟩ := hc.exists_bound_of_continuousOn (hGc.mono hsub)
+    exact ⟨M, fun x hx ↦ hM _ ⟨x, hx, rfl⟩⟩
+  obtain ⟨M₀, hM₀⟩ := hbound 0
+  obtain ⟨M₁, hM₁⟩ := hbound t
+  refine ⟨1 / (2 * |t|) + M₀ + M₁, fun x hx hx1 ↦ ?_⟩
+  have htabs : 0 < |t| := abs_pos.2 ht
+  set F : ℕ → ℂ := fun n ↦ ((ArithmeticFunction.vonMangoldt n : ℝ) : ℂ) with hF
+  set s : ℝ → ℂ := fun τ ↦ ((1 + x : ℝ) : ℂ) + (τ : ℂ) * I with hs
+  have hsre : ∀ τ : ℝ, (s τ).re = 1 + x := by
+    intro τ
+    simp [hs, Complex.add_re, Complex.mul_re]
+  have hsgt : ∀ τ : ℝ, 1 < (s τ).re := fun τ ↦ by rw [hsre]; linarith
+  -- The real part of the `n`-th term of the `L`-series.
+  have hterm : ∀ (τ : ℝ) (n : ℕ), (LSeries.term F (s τ) n).re
+      = ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
+        Real.cos (τ * Real.log n) := by
+    intro τ n
+    rcases eq_or_ne n 0 with rfl | hn
+    · simp [LSeries.term_zero]
+    · rw [LSeries.term_of_ne_zero hn]
+      have : F n / (n : ℂ) ^ (s τ) = ((ArithmeticFunction.vonMangoldt n : ℝ) : ℂ) *
+          (n : ℂ) ^ (-(((1 + x : ℝ) : ℂ) + (τ : ℂ) * I)) := by
+        rw [Complex.cpow_neg, hF, hs]
+        ring
+      rw [this, Complex.re_ofReal_mul, re_natCast_cpow_neg hn]
+      ring
+  have hsummable : ∀ τ : ℝ, Summable (fun n : ℕ ↦
+      ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) * Real.cos (τ * Real.log n)) := by
+    intro τ
+    have h1 : Summable (LSeries.term F (s τ)) :=
+      ArithmeticFunction.LSeriesSummable_vonMangoldt (hsgt τ)
+    simpa only [hterm τ] using (Complex.hasSum_re h1.hasSum).summable
+  have hLre : ∀ τ : ℝ, (LSeries F (s τ)).re = ∑' n : ℕ,
+      ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) * Real.cos (τ * Real.log n) := by
+    intro τ
+    have h1 : Summable (LSeries.term F (s τ)) :=
+      ArithmeticFunction.LSeriesSummable_vonMangoldt (hsgt τ)
+    simp only [LSeries, Complex.re_tsum h1, hterm τ]
+  -- Split the target sum into the two `L`-series.
+  have hsplit : ∑' n : ℕ, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
+        (1 - Real.cos (t * Real.log n))
+      = (LSeries F (s 0)).re - (LSeries F (s t)).re := by
+    rw [hLre, hLre, ← (hsummable 0).tsum_sub (hsummable t)]
+    refine tsum_congr fun n ↦ ?_
+    simp only [zero_mul, Real.cos_zero, mul_one]
+    ring
+  -- Evaluate both `L`-series through the pole.
+  have hx0 : x ∈ Set.Icc (0 : ℝ) 1 := ⟨hx.le, hx1⟩
+  have hval : ∀ τ : ℝ, (LSeries F (s τ)).re = (1 / (s τ - 1)).re + (G (s τ)).re := by
+    intro τ
+    rw [hGeq _ (hsgt τ), Complex.add_re]
+  have hpole0 : (1 / (s 0 - 1)).re = 1 / x := by
+    have : s 0 - 1 = ((x : ℝ) : ℂ) := by simp [hs]
+    rw [this]
+    simp
+  have hpolet : (1 / (s t - 1)).re = x / (x ^ 2 + t ^ 2) := by
+    have h1 : s t - 1 = ((x : ℝ) : ℂ) + (t : ℂ) * I := by simp [hs]; ring
+    rw [h1, one_div, Complex.inv_re, Complex.normSq_apply]
+    simp only [Complex.add_re, Complex.ofReal_re, Complex.mul_re, Complex.I_re, Complex.I_im,
+      Complex.ofReal_im, mul_zero, sub_zero, add_zero, Complex.add_im, Complex.mul_im,
+      mul_one, zero_add]
+    ring_nf
+  have hpolele : x / (x ^ 2 + t ^ 2) ≤ 1 / (2 * |t|) := by
+    rw [div_le_div_iff₀ (by positivity) (by positivity)]
+    nlinarith [sq_nonneg (x - |t|), sq_abs t]
+  have hG0 : -M₀ ≤ (G (s 0)).re := by
+    have := hM₀ x hx0
+    have h2 := Complex.abs_re_le_norm (G (((1 + x : ℝ) : ℂ) + ((0 : ℝ) : ℂ) * I))
+    have : |(G (s 0)).re| ≤ M₀ := le_trans (by simpa [hs] using h2) (by simpa [hs] using hM₀ x hx0)
+    linarith [neg_abs_le (G (s 0)).re]
+  have hGt : (G (s t)).re ≤ M₁ := by
+    have h2 := Complex.abs_re_le_norm (G (((1 + x : ℝ) : ℂ) + (t : ℂ) * I))
+    have : |(G (s t)).re| ≤ M₁ := le_trans (by simpa [hs] using h2) (by simpa [hs] using hM₁ x hx0)
+    linarith [le_abs_self (G (s t)).re]
+  rw [hsplit, hval, hval, hpole0, hpolet]
+  linarith
 
 /--
 **The Mertens-weighted deficit.**  For `t ≠ 0`,
