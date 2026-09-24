@@ -921,6 +921,88 @@ theorem norm_trunc_mul_kernel_le' {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t
     positivity
   · exact norm_trunc_mul_kernel_le hFb hR hz hneg hT
 
+/-- For `x \le 0` and `T > 0`, `(-x)e^{xT} \le 1/T`: the decay beats the linear factor. -/
+@[category API, AMS 26]
+theorem neg_mul_exp_mul_le {x T : ℝ} (hx : x ≤ 0) (hT : 0 < T) :
+    (-x) * Real.exp (x * T) ≤ 1 / T := by
+  set y : ℝ := -x with hy
+  have hy0 : 0 ≤ y := by simp [hy]; linarith
+  have hpos : 0 < Real.exp (y * T) := Real.exp_pos _
+  have key : y * T ≤ Real.exp (y * T) := by
+    linarith [Real.add_one_le_exp (y * T)]
+  rw [show x * T = -(y * T) by rw [hy]; ring, Real.exp_neg, le_div_iff₀ hT,
+    inv_eq_one_div, mul_one_div, div_mul_eq_mul_div, div_le_one hpos]
+  exact key
+
+/--
+**The uniform bound on the whole circle.**  If `\|G\| \le M` on `|z| = R` then for every
+`T > 0` and every `z` with `|z| = R`,
+$$\bigl\|(G(z) - g_T(z))e^{zT}\tfrac{1 + z^2/R^2}{z}\bigr\|
+   \le \frac{2C}{R^2} + \frac{2M}{R^2 T} .$$
+
+This is the estimate that makes Newman's proof go through with **no contour split and no
+dominated convergence**.  On the right arc it is `Newman.norm_sub_trunc_mul_kernel_le`.  On
+the left arc one splits `G - g_T`; the `g_T` part is `Newman.norm_trunc_mul_kernel_le'`, and
+the `G` part is `M e^{xT}\cdot 2|x|/R^2` with `x = \mathrm{Re}\,z < 0`, where the kernel's
+own factor `|x|` is exactly what the exponential decay can absorb:
+`(-x)e^{xT} \le 1/T` uniformly in `x` (`Newman.neg_mul_exp_mul_le`).  Without the factor
+`1 + z^2/R^2` the kernel would be `1/R` with no `|x|`, and the left arc would not tend to
+`0`.
+
+Integrating over the circle and dividing by `2\pi` gives
+`|G(0) - g_T(0)| \le 2C/R + 2M/(RT)`, whence the theorem on letting `T \to \infty` and then
+`R \to \infty`.
+-/
+@[category API, AMS 30]
+theorem norm_sub_trunc_mul_kernel_le_circle {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {G : ℂ → ℂ}
+    (hGeq : ∀ z : ℂ, 0 < z.re →
+      G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+    {M : ℝ} {z : ℂ} {R T : ℝ} (hR : 0 < R) (hz : ‖z‖ = R) (hT : 0 < T)
+    (hM : ‖G z‖ ≤ M) :
+    ‖(G z - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))) *
+        Complex.exp (z * (T : ℂ)) * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z)‖
+      ≤ 2 * C / R ^ 2 + 2 * M / (R ^ 2 * T) := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hM0 : 0 ≤ M := le_trans (norm_nonneg _) hM
+  have hextra : 0 ≤ 2 * M / (R ^ 2 * T) := by positivity
+  rcases le_or_gt 0 z.re with hzre | hzre
+  · have := norm_sub_trunc_mul_kernel_le hFb hFi hGeq hR hz hzre hT.le
+    linarith
+  · -- the left arc: split `G - g_T`
+    set g : ℂ := ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)) with hgdef
+    set K : ℂ := (1 + z ^ 2 / (R : ℂ) ^ 2) / z with hK
+    have hsplit : (G z - g) * Complex.exp (z * (T : ℂ)) * K
+        = G z * Complex.exp (z * (T : ℂ)) * K - g * Complex.exp (z * (T : ℂ)) * K := by
+      ring
+    have hgpart : ‖g * Complex.exp (z * (T : ℂ)) * K‖ ≤ 2 * C / R ^ 2 :=
+      norm_trunc_mul_kernel_le' hFb hR hz hzre.le hT.le
+    have hGpart : ‖G z * Complex.exp (z * (T : ℂ)) * K‖ ≤ 2 * M / (R ^ 2 * T) := by
+      have hexp : ‖Complex.exp (z * (T : ℂ))‖ = Real.exp (z.re * T) := by
+        rw [Complex.norm_exp]; congr 1; simp
+      rw [norm_mul, norm_mul, hexp, hK, norm_kernel hR hz, abs_of_neg hzre]
+      have hdecay : (-z.re) * Real.exp (z.re * T) ≤ 1 / T := neg_mul_exp_mul_le hzre.le hT
+      have hnegre : (0 : ℝ) < -z.re := by linarith
+      have hnn : (0 : ℝ) ≤ 2 * -z.re / R ^ 2 := by positivity
+      have hstep : ‖G z‖ * Real.exp (z.re * T) * (2 * -z.re / R ^ 2)
+          ≤ M * ((-z.re) * Real.exp (z.re * T)) * (2 / R ^ 2) := by
+        have h1 : ‖G z‖ * Real.exp (z.re * T) * (2 * -z.re / R ^ 2)
+            = (‖G z‖ * ((-z.re) * Real.exp (z.re * T))) * (2 / R ^ 2) := by ring
+        rw [h1]
+        refine mul_le_mul_of_nonneg_right ?_ (by positivity)
+        refine mul_le_mul_of_nonneg_right hM ?_
+        exact mul_nonneg hnegre.le (Real.exp_pos _).le
+      refine hstep.trans ?_
+      have h2 : M * ((-z.re) * Real.exp (z.re * T)) * (2 / R ^ 2)
+          ≤ M * (1 / T) * (2 / R ^ 2) := by
+        refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hdecay hM0) ?_
+        positivity
+      refine h2.trans (le_of_eq ?_)
+      field_simp
+    rw [hsplit]
+    refine (norm_sub_le _ _).trans ?_
+    linarith
+
 /-! ### The Cauchy value of the Newman kernel -/
 
 open Metric in
