@@ -64,16 +64,15 @@ Steps 1–4 are stated as named `sorry`s in
 
 * `Wirsing.tendsto_badPrimeSum_atTop_of_not_summable` (step 0: the hypothesis is `E(N) → ∞`)
   — **PROVED** 2026-09-24,
-* `Wirsing.exists_turan_kubilius` (step 1) — first moment done: `sum_omegaBad_eq`,
-  `sum_omegaBad_le` and `le_sum_omegaBad` give `∑_{n≤N} ω_E(n) = N·E(N) + O(#E(N))`;
-  what remains is the second moment `∑_{n≤N} ω_E(n)² ≤ N·E(N) + N·E(N)²`, after which
-  `C = 3` works,
+* `Wirsing.exists_turan_kubilius` (step 1) — **PROVED** 2026-09-24, with `C = 3`,
 * `Wirsing.exists_sum_mul_omegaBad` (step 2),
 * `Wirsing.exists_functional_relation` (step 3).
 
-Steps 1 and 2 are the next concrete targets: both are elementary, and neither needs any
-analytic number theory that mathlib lacks.  Step 4 (relation ⟹ `σ → 0`) is still open and
-is where the research difficulty now lives.
+Steps 0 and 1 are done.  Step 2 (`exists_sum_mul_omegaBad`) is the next concrete target:
+`∑_{n≤N} f(n) ω_E(n) = ∑_{p ∈ E, p ≤ N} f(p) S(N/p) + O(N)`, where the error comes only
+from the `n ≤ N` divisible by `p²`.  It reuses `sum_indicator_dvd_le` and
+`card_filter_dvd_Icc`, together with `∑_p 1/p² < ∞`.  Step 4 (relation ⟹ `σ → 0`) is still
+open and is where the research difficulty now lives.
 
 ## Build note
 

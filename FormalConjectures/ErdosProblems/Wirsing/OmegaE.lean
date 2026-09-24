@@ -208,6 +208,92 @@ theorem le_sum_omegaBad (N : ℕ) :
   push_cast
   nlinarith [hlt]
 
+open scoped Classical in
+@[category API, AMS 11]
+theorem card_filter_dvd_Icc (N d : ℕ) : #{n ∈ Icc 1 N | d ∣ n} = N / d := by
+  have hIcc : Finset.Icc 1 N = Finset.Ioc 0 N := by
+    ext x; simp only [Finset.mem_Icc, Finset.mem_Ioc]; omega
+  rw [hIcc, Nat.Ioc_filter_dvd_card_eq_div]
+
+open scoped Classical in
+/--
+The number of `n ≤ N` divisible by both of the primes `p` and `q` is at most `N/(pq)`, plus
+`N/p` on the diagonal `p = q`.
+-/
+@[category API, AMS 11]
+theorem sum_indicator_dvd_le {N p q : ℕ} (hp : p.Prime) (hq : q.Prime) :
+    ∑ n ∈ Icc 1 N, (if p ∣ n then (1 : ℝ) else 0) * (if q ∣ n then (1 : ℝ) else 0)
+      ≤ (if p = q then (N : ℝ) / p else 0) + (N : ℝ) / (p * q) := by
+  have hmul : ∀ n : ℕ, (if p ∣ n then (1 : ℝ) else 0) * (if q ∣ n then (1 : ℝ) else 0)
+      = if p ∣ n ∧ q ∣ n then (1 : ℝ) else 0 := by
+    intro n
+    by_cases h1 : p ∣ n <;> by_cases h2 : q ∣ n <;> simp [h1, h2]
+  rw [Finset.sum_congr rfl fun n _ ↦ hmul n, Finset.sum_boole]
+  have hpR : (0 : ℝ) < p := by exact_mod_cast hp.pos
+  have hqR : (0 : ℝ) < q := by exact_mod_cast hq.pos
+  by_cases hpq : p = q
+  · subst hpq
+    have : {n ∈ Icc 1 N | p ∣ n ∧ p ∣ n} = {n ∈ Icc 1 N | p ∣ n} := by
+      simp
+    rw [this, card_filter_dvd_Icc, if_pos rfl]
+    have h1 : ((N / p : ℕ) : ℝ) ≤ (N : ℝ) / p := Nat.cast_div_le
+    have h2 : (0 : ℝ) ≤ (N : ℝ) / (p * p) := by positivity
+    linarith
+  · have hcop : Nat.Coprime p q := (Nat.coprime_primes hp hq).2 hpq
+    have : {n ∈ Icc 1 N | p ∣ n ∧ q ∣ n} = {n ∈ Icc 1 N | p * q ∣ n} := by
+      refine Finset.filter_congr fun n _ ↦ ?_
+      exact ⟨fun h ↦ hcop.mul_dvd_of_dvd_of_dvd h.1 h.2,
+        fun h ↦ ⟨(dvd_mul_right p q).trans h, (dvd_mul_left q p).trans h⟩⟩
+    rw [this, card_filter_dvd_Icc, if_neg hpq]
+    have h1 : ((N / (p * q) : ℕ) : ℝ) ≤ (N : ℝ) / (p * q) := by
+      rw [← Nat.cast_mul]; exact Nat.cast_div_le
+    simpa using h1
+
+open scoped Classical in
+/-- The second moment `∑_{n ≤ N} ω_E(n)² ≤ N·E(N) + N·E(N)²`. -/
+@[category API, AMS 11]
+theorem sum_omegaBad_sq_le (N : ℕ) :
+    ∑ n ∈ Icc 1 N, ((omegaBad f n : ℝ)) ^ 2
+      ≤ N * badPrimeSum f N + N * badPrimeSum f N ^ 2 := by
+  set P := badPrimesLE f N with hP
+  have hexp : ∀ n ∈ Icc 1 N, ((omegaBad f n : ℝ)) ^ 2
+      = ∑ p ∈ P, ∑ q ∈ P, (if p ∣ n then (1 : ℝ) else 0) * (if q ∣ n then (1 : ℝ) else 0) := by
+    intro n hn
+    simp only [Finset.mem_Icc] at hn
+    have hcard : ((omegaBad f n : ℕ) : ℝ) = ∑ p ∈ P, (if p ∣ n then (1 : ℝ) else 0) := by
+      rw [omegaBad_eq_card_filter_badPrimesLE f hn.1 hn.2, Finset.sum_boole]
+    rw [sq, hcard, Finset.sum_mul_sum]
+  rw [Finset.sum_congr rfl hexp, Finset.sum_comm]
+  have hswap : ∀ p ∈ P, ∑ n ∈ Icc 1 N, ∑ q ∈ P,
+      (if p ∣ n then (1 : ℝ) else 0) * (if q ∣ n then (1 : ℝ) else 0)
+      = ∑ q ∈ P, ∑ n ∈ Icc 1 N,
+        (if p ∣ n then (1 : ℝ) else 0) * (if q ∣ n then (1 : ℝ) else 0) :=
+    fun p _ ↦ Finset.sum_comm
+  rw [Finset.sum_congr rfl hswap]
+  have hbound : ∀ p ∈ P, ∑ q ∈ P, ∑ n ∈ Icc 1 N,
+      (if p ∣ n then (1 : ℝ) else 0) * (if q ∣ n then (1 : ℝ) else 0)
+      ≤ ∑ q ∈ P, ((if p = q then (N : ℝ) / p else 0) + (N : ℝ) / (p * q)) := by
+    intro p hp
+    refine Finset.sum_le_sum fun q hq ↦ ?_
+    exact sum_indicator_dvd_le (mem_badPrimesLE_iff f |>.1 hp).2.1
+      (mem_badPrimesLE_iff f |>.1 hq).2.1
+  refine (Finset.sum_le_sum hbound).trans ?_
+  have hsplit : ∀ p ∈ P, ∑ q ∈ P, ((if p = q then (N : ℝ) / p else 0) + (N : ℝ) / (p * q))
+      = (N : ℝ) / p + (N : ℝ) / p * ∑ q ∈ P, (1 : ℝ) / q := by
+    intro p hp
+    rw [Finset.sum_add_distrib, Finset.sum_ite_eq P p (fun _ ↦ (N : ℝ) / p), if_pos hp,
+      Finset.mul_sum]
+    refine congrArg _ (Finset.sum_congr rfl fun q _ ↦ ?_)
+    rw [div_mul_eq_div_div]
+    ring
+  rw [Finset.sum_congr rfl hsplit, Finset.sum_add_distrib, ← Finset.sum_mul]
+  have hE : ∑ p ∈ P, (N : ℝ) / p = N * badPrimeSum f N := by
+    rw [badPrimeSum, ← hP, Finset.mul_sum]
+    exact Finset.sum_congr rfl fun p _ ↦ by rw [mul_one_div]
+  rw [hE, badPrimeSum, ← hP]
+  ring_nf
+  rfl
+
 /--
 The Turán–Kubilius inequality for the prime set `E = {p : f p = -1}`:
 `∑_{n ≤ N} (ω_E n - E(N))² ≪ N (E(N) + 1)`.
@@ -216,10 +302,45 @@ Elementary second moment computation: expand the square and count multiples of `
 `p q` using `⌊N/p⌋ = N/p + O(1)`.
 -/
 @[category API, AMS 11]
+theorem badPrimeSum_nonneg (N : ℕ) : 0 ≤ badPrimeSum f N :=
+  Finset.sum_nonneg fun p _ ↦ by positivity
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem card_badPrimesLE_le (N : ℕ) : (#(badPrimesLE f N) : ℝ) ≤ N := by
+  have hsub : badPrimesLE f N ⊆ Icc 1 N := by
+    intro p hp
+    rw [mem_badPrimesLE_iff] at hp
+    exact Finset.mem_Icc.2 ⟨hp.2.1.one_lt.le, hp.1⟩
+  have := Finset.card_le_card hsub
+  rw [Nat.card_Icc] at this
+  exact_mod_cast this.trans_eq (by omega)
+
+open scoped Classical in
+@[category API, AMS 11]
 theorem exists_turan_kubilius :
     ∃ C : ℝ, ∀ N : ℕ, ∑ n ∈ Icc 1 N, ((omegaBad f n : ℝ) - badPrimeSum f N) ^ 2
       ≤ C * N * (badPrimeSum f N + 1) := by
-  sorry
+  refine ⟨3, fun N ↦ ?_⟩
+  have hcardIcc : ((#(Icc 1 N) : ℕ) : ℝ) = N := by rw [Nat.card_Icc]; simp
+  have hexp : ∑ n ∈ Icc 1 N, ((omegaBad f n : ℝ) - badPrimeSum f N) ^ 2
+      = (∑ n ∈ Icc 1 N, (omegaBad f n : ℝ) ^ 2)
+        - 2 * badPrimeSum f N * (∑ n ∈ Icc 1 N, (omegaBad f n : ℝ))
+        + N * badPrimeSum f N ^ 2 := by
+    have : ∀ n ∈ Icc 1 N, ((omegaBad f n : ℝ) - badPrimeSum f N) ^ 2
+        = (omegaBad f n : ℝ) ^ 2 - badPrimeSum f N * (2 * (omegaBad f n : ℝ))
+          + badPrimeSum f N ^ 2 := fun n _ ↦ by ring
+    rw [Finset.sum_congr rfl this, Finset.sum_add_distrib, Finset.sum_sub_distrib,
+      ← Finset.mul_sum, ← Finset.mul_sum, Finset.sum_const, nsmul_eq_mul, hcardIcc]
+    ring
+  have h1 := sum_omegaBad_sq_le f N
+  have h2 := le_sum_omegaBad f N
+  have hE := badPrimeSum_nonneg f N
+  have hcard := card_badPrimesLE_le f N
+  have hN : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+  rw [hexp]
+  nlinarith [mul_le_mul_of_nonneg_left h2 (by linarith : (0 : ℝ) ≤ 2 * badPrimeSum f N),
+    mul_nonneg hE hN, mul_nonneg hE hE]
 
 /--
 The hyperbola estimate: `∑_{n ≤ N} f(n) ω_E(n) = ∑_{p ∈ E, p ≤ N} f(p) S(N/p) + O(N)`.
