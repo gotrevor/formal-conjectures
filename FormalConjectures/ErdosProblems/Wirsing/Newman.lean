@@ -132,7 +132,74 @@ in every window, for all large `X`.
 theorem tendsto_sum_log_prime_div_window {c : ℝ} (hc : 1 < c) :
     Tendsto (fun X : ℕ ↦ ∑ p ∈ (Finset.Ioc X ⌊c * X⌋₊).filter Nat.Prime,
       Real.log p / p) atTop (𝓝 (Real.log c)) := by
-  sorry
+  classical
+  obtain ⟨E, hE⟩ := exists_tendsto_sum_log_prime_div_sub_log
+  set g : ℕ → ℝ := fun N ↦ ∑ p ∈ (Finset.Icc 1 N).filter Nat.Prime, Real.log p / p with hg
+  have hc0 : (0 : ℝ) < c := by linarith
+  -- `X ≤ ⌊cX⌋`
+  have hfl : ∀ X : ℕ, X ≤ ⌊c * X⌋₊ := by
+    intro X
+    refine Nat.le_floor ?_
+    have : (1 : ℝ) * X ≤ c * X := by
+      refine mul_le_mul_of_nonneg_right hc.le (by positivity)
+    simpa using this
+  -- the window sum splits
+  set F : ℕ → ℝ := fun p ↦ if p.Prime then Real.log p / p else 0 with hF
+  have hsumF : ∀ S : Finset ℕ, ∑ p ∈ S.filter Nat.Prime, Real.log p / p = ∑ p ∈ S, F p :=
+    fun S ↦ by rw [hF, Finset.sum_filter]
+  have hgF : ∀ N : ℕ, g N = ∑ p ∈ Finset.Ioc 0 N, F p := by
+    intro N
+    simp only [hg]
+    rw [show Finset.Icc 1 N = Finset.Ioc 0 N from rfl, hsumF]
+  have hsplit : ∀ X : ℕ, ∑ p ∈ (Finset.Ioc X ⌊c * X⌋₊).filter Nat.Prime, Real.log p / p
+      = g ⌊c * X⌋₊ - g X := by
+    intro X
+    have hcons := Finset.sum_Ioc_consecutive F (Nat.zero_le X) (hfl X)
+    rw [hsumF, hgF, hgF]
+    linarith [hcons]
+  -- the floor tends to infinity
+  have hflTop : Tendsto (fun X : ℕ ↦ ⌊c * X⌋₊) atTop atTop :=
+    tendsto_atTop_mono hfl tendsto_id
+  -- the ratio tends to `c`
+  have hratio : Tendsto (fun X : ℕ ↦ ((⌊c * X⌋₊ : ℝ)) / X) atTop (𝓝 c) := by
+    have hlb : ∀ᶠ X : ℕ in atTop, c - 1 / X ≤ ((⌊c * X⌋₊ : ℝ)) / X := by
+      filter_upwards [eventually_ge_atTop 1] with X hX
+      have hX0 : (0 : ℝ) < X := by exact_mod_cast hX
+      have h1 : c * X - 1 < (⌊c * X⌋₊ : ℝ) := by
+        have := Nat.lt_floor_add_one (c * (X : ℝ))
+        linarith
+      rw [le_div_iff₀ hX0]
+      field_simp
+      linarith
+    have hub : ∀ᶠ X : ℕ in atTop, ((⌊c * X⌋₊ : ℝ)) / X ≤ c := by
+      filter_upwards [eventually_ge_atTop 1] with X hX
+      have hX0 : (0 : ℝ) < X := by exact_mod_cast hX
+      rw [div_le_iff₀ hX0]
+      exact Nat.floor_le (by positivity)
+    have hlim : Tendsto (fun X : ℕ ↦ c - 1 / (X : ℝ)) atTop (𝓝 c) := by
+      have : Tendsto (fun X : ℕ ↦ (1 : ℝ) / X) atTop (𝓝 0) := tendsto_one_div_atTop_nhds_zero_nat
+      simpa using (tendsto_const_nhds (x := c) (f := (atTop : Filter ℕ))).sub this
+    exact tendsto_of_tendsto_of_tendsto_of_le_of_le' hlim tendsto_const_nhds hlb hub
+  -- hence `log ⌊cX⌋ - log X → log c`
+  have hlogdiff : Tendsto (fun X : ℕ ↦ Real.log (⌊c * X⌋₊ : ℝ) - Real.log X) atTop
+      (𝓝 (Real.log c)) := by
+    have hcomp : Tendsto (fun X : ℕ ↦ Real.log (((⌊c * X⌋₊ : ℝ)) / X)) atTop
+        (𝓝 (Real.log c)) := (Real.continuousAt_log (by linarith)).tendsto.comp hratio
+    refine hcomp.congr' ?_
+    filter_upwards [eventually_ge_atTop 1] with X hX
+    have hX0 : (0 : ℝ) < X := by exact_mod_cast hX
+    have hfX : (0 : ℝ) < (⌊c * X⌋₊ : ℝ) := by
+      have : X ≤ ⌊c * X⌋₊ := hfl X
+      have : (1 : ℕ) ≤ ⌊c * X⌋₊ := le_trans hX this
+      exact_mod_cast Nat.lt_of_lt_of_le Nat.zero_lt_one this
+    rw [Real.log_div (ne_of_gt hfX) (ne_of_gt hX0)]
+  have hEcomp : Tendsto (fun X : ℕ ↦ g ⌊c * X⌋₊ - Real.log (⌊c * X⌋₊ : ℝ)) atTop (𝓝 (-E)) :=
+    hE.comp hflTop
+  have hfinal := (hEcomp.sub hE).add hlogdiff
+  rw [show -E - -E + Real.log c = Real.log c by ring] at hfinal
+  refine hfinal.congr fun X ↦ ?_
+  rw [hsplit X]
+  ring
 
 /-! ### The Newman kernel -/
 
