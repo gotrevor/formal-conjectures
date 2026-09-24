@@ -124,4 +124,130 @@ theorem abs_mean_sub_sum_wintnerCoeff_div_le {N : ℕ} (hN : 1 ≤ N) :
         mul_le_mul_of_nonneg_left hfl (abs_nonneg _)
     _ = 1 / (N : ℝ) * |wintnerCoeff f d| := by ring
 
+/--
+**Kronecker's lemma, in the form needed.**  If `∑ a_d` converges with `a_d ≥ 0`, then
+`(1/N) ∑_{d ≤ N} d\,a_d → 0`.
+-/
+@[category API, AMS 11]
+theorem tendsto_div_sum_mul_atTop_zero {a : ℕ → ℝ} (hnn : ∀ n, 0 ≤ a n) (ha : Summable a) :
+    Tendsto (fun N : ℕ ↦ (1 / (N : ℝ)) * ∑ d ∈ Icc 1 N, (d : ℝ) * a d) atTop (𝓝 0) := by
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  have hpart : Tendsto (fun n ↦ ∑ i ∈ range n, a i) atTop (𝓝 (∑' i, a i)) :=
+    ha.hasSum.tendsto_sum_nat
+  rw [Metric.tendsto_atTop] at hpart
+  obtain ⟨y, hy⟩ := hpart (ε / 2) (by linarith)
+  -- the tail past `y` is small
+  have htail : ∀ N : ℕ, ∑ d ∈ Icc (y + 1) N, a d ≤ ε / 2 := by
+    intro N
+    have hdisj : Disjoint (range (y + 1)) (Icc (y + 1) N) := by
+      rw [Finset.disjoint_left]
+      intro d hd hd2
+      rw [Finset.mem_range] at hd
+      rw [mem_Icc] at hd2
+      omega
+    have hle : ∑ d ∈ range (y + 1) ∪ Icc (y + 1) N, a d ≤ ∑' i, a i :=
+      sum_le_hasSum _ (fun i _ ↦ hnn i) ha.hasSum
+    rw [Finset.sum_union hdisj] at hle
+    have hd := hy (y + 1) (by omega)
+    rw [Real.dist_eq, abs_lt] at hd
+    linarith [hd.1, hd.2]
+  set C : ℝ := ∑ d ∈ Icc 1 y, (d : ℝ) * a d with hC
+  have hC0 : 0 ≤ C := Finset.sum_nonneg fun d _ ↦ mul_nonneg (by positivity) (hnn d)
+  obtain ⟨m, hm⟩ := exists_nat_gt (2 * C / ε)
+  refine ⟨max (max y 1) m, fun N hN ↦ ?_⟩
+  have hNy : y ≤ N := le_trans (le_trans (le_max_left y 1) (le_max_left _ _)) hN
+  have hN1 : 1 ≤ N := le_trans (le_trans (le_max_right y 1) (le_max_left _ _)) hN
+  have hNm : m ≤ N := le_trans (le_max_right _ _) hN
+  have hNR : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN1
+  have hNpos : (0 : ℝ) < N := by linarith
+  have hmR : (m : ℝ) ≤ (N : ℝ) := by exact_mod_cast hNm
+  have hCN : C / N < ε / 2 := by
+    rw [div_lt_iff₀ hNpos]
+    have : 2 * C / ε < (N : ℝ) := lt_of_lt_of_le hm hmR
+    rw [div_lt_iff₀ hε] at this
+    linarith
+  -- split the sum at `y`
+  have hsplit : ∑ d ∈ Icc 1 N, (d : ℝ) * a d
+      = C + ∑ d ∈ Icc (y + 1) N, (d : ℝ) * a d := by
+    rw [hC, ← Finset.sum_union (by
+      rw [Finset.disjoint_left]
+      intro d hd hd2
+      rw [mem_Icc] at hd hd2
+      omega)]
+    refine Finset.sum_congr ?_ fun _ _ ↦ rfl
+    ext d
+    simp only [Finset.mem_union, mem_Icc]
+    omega
+  have hbig : ∑ d ∈ Icc (y + 1) N, (d : ℝ) * a d ≤ (N : ℝ) * (ε / 2) := by
+    calc ∑ d ∈ Icc (y + 1) N, (d : ℝ) * a d
+        ≤ ∑ d ∈ Icc (y + 1) N, (N : ℝ) * a d := by
+          refine Finset.sum_le_sum fun d hd ↦ ?_
+          have hdN : (d : ℝ) ≤ (N : ℝ) := by exact_mod_cast (mem_Icc.1 hd).2
+          exact mul_le_mul_of_nonneg_right hdN (hnn d)
+      _ = (N : ℝ) * ∑ d ∈ Icc (y + 1) N, a d := by rw [Finset.mul_sum]
+      _ ≤ (N : ℝ) * (ε / 2) := mul_le_mul_of_nonneg_left (htail N) (by linarith)
+  have hnn' : 0 ≤ ∑ d ∈ Icc 1 N, (d : ℝ) * a d :=
+    Finset.sum_nonneg fun d _ ↦ mul_nonneg (by positivity) (hnn d)
+  rw [Real.dist_eq, sub_zero, abs_of_nonneg (mul_nonneg (by positivity) hnn')]
+  rw [hsplit]
+  have hfinal : (1 / (N : ℝ)) * (C + (N : ℝ) * (ε / 2)) = C / N + ε / 2 := by
+    field_simp
+  calc (1 / (N : ℝ)) * (C + ∑ d ∈ Icc (y + 1) N, (d : ℝ) * a d)
+      ≤ (1 / (N : ℝ)) * (C + (N : ℝ) * (ε / 2)) := by
+        refine mul_le_mul_of_nonneg_left (by linarith [hbig]) (by positivity)
+    _ = C / N + ε / 2 := hfinal
+    _ < ε := by linarith
+
+/-- The averaged error term of Wintner's bound tends to `0`. -/
+@[category API, AMS 11]
+theorem tendsto_avg_abs_wintnerCoeff
+    (hsum : Summable (fun d : ℕ ↦ |wintnerCoeff f d| / d)) :
+    Tendsto (fun N : ℕ ↦ (1 / (N : ℝ)) * ∑ d ∈ Icc 1 N, |wintnerCoeff f d|)
+      atTop (𝓝 0) := by
+  have h := tendsto_div_sum_mul_atTop_zero (a := fun d : ℕ ↦ |wintnerCoeff f d| / d)
+    (fun d ↦ by positivity) hsum
+  refine h.congr fun N ↦ ?_
+  refine congrArg _ (Finset.sum_congr rfl fun d hd ↦ ?_)
+  have hd1 : 1 ≤ d := (mem_Icc.1 hd).1
+  have hdR : (0 : ℝ) < (d : ℝ) := by
+    have : (1 : ℝ) ≤ (d : ℝ) := by exact_mod_cast hd1
+    linarith
+  field_simp
+
+/--
+**Wintner's mean value theorem.**  If `∑_d |g(d)|/d < ∞` for `g = f * μ`, then `f` has the
+mean value `∑_d g(d)/d`.
+-/
+@[category API, AMS 11]
+theorem hasMeanValue_of_summable_wintnerCoeff
+    (hsum : Summable (fun d : ℕ ↦ |wintnerCoeff f d| / d)) :
+    HasMeanValue f (∑' d : ℕ, wintnerCoeff f d / d) := by
+  have habs : (fun d : ℕ ↦ |wintnerCoeff f d| / d) = fun d : ℕ ↦ |wintnerCoeff f d / d| := by
+    funext d
+    rw [abs_div, Nat.abs_cast]
+  rw [habs] at hsum
+  have hsum' : Summable (fun d : ℕ ↦ wintnerCoeff f d / d) := hsum.of_abs
+  have hmain : Tendsto (fun N : ℕ ↦ ∑ d ∈ Icc 1 N, wintnerCoeff f d / d) atTop
+      (𝓝 (∑' d : ℕ, wintnerCoeff f d / d)) := by
+    have hnat := hsum'.hasSum.tendsto_sum_nat
+    have hshift : Tendsto (fun N : ℕ ↦ N + 1) atTop atTop :=
+      tendsto_atTop_atTop_of_monotone (fun _ _ h ↦ by omega) fun b ↦ ⟨b, by omega⟩
+    refine (hnat.comp hshift).congr fun N ↦ ?_
+    simp only [Function.comp_apply]
+    rw [Finset.range_eq_Ico, show Finset.Ico 0 (N + 1) = insert 0 (Icc 1 N) from by
+      ext d; simp only [Finset.mem_Ico, Finset.mem_insert, mem_Icc]; omega,
+      Finset.sum_insert (by simp)]
+    simp
+  have herr : Tendsto (fun N : ℕ ↦ mean f N - ∑ d ∈ Icc 1 N, wintnerCoeff f d / d)
+      atTop (𝓝 0) := by
+    rw [tendsto_zero_iff_abs_tendsto_zero]
+    refine squeeze_zero' (Eventually.of_forall fun N ↦ abs_nonneg _) ?_
+      (tendsto_avg_abs_wintnerCoeff f (by rw [habs]; exact hsum))
+    filter_upwards [eventually_ge_atTop 1] with N hN
+    exact abs_mean_sub_sum_wintnerCoeff_div_le f hN
+  have := herr.add hmain
+  rw [zero_add] at this
+  exact this.congr fun N ↦ by ring
+
 end Wirsing
