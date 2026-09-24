@@ -823,4 +823,123 @@ theorem potential_sub {a b : ℕ} (hab : a ≤ b) :
     ← Finset.sum_Ioc_consecutive _ (Nat.zero_le a) hab]
   ring
 
+open scoped Classical in
+/--
+**The per-prime window bound.**  For a prime-sized `p ≥ 2` and `X ≥ p^3 + p`, the growth of
+the potential across the window `p < M ≤ p^2` is dominated by the block of `N`'s lying over
+that window inside `Icc 3 X`:
+
+    (Φ(p^2) - Φ(p)) / (128 (\log p)^3) ≤ ∑_{3 ≤ N ≤ X} |L(⌊N/p⌋)| / (N (\log N)^3).
+
+Two factors of `2` and one of `64` are lost: `M + 1 ≤ 2M`, and on the block
+`N ≤ 2p^3`, so `\log N ≤ 4 \log p`.
+-/
+@[category API, AMS 11]
+theorem potential_window_le_sum {p X : ℕ} (hp : 2 ≤ p) (hX : p * p ^ 2 + p ≤ X) :
+    (potential f (p ^ 2) - potential f p) / (128 * Real.log p ^ 3)
+      ≤ ∑ N ∈ Icc 3 X, |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) := by
+  classical
+  have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp
+  have hlogp : 0 < Real.log (p : ℝ) := Real.log_pos (by linarith)
+  have hlog2p : Real.log 2 ≤ Real.log (p : ℝ) := Real.log_le_log (by norm_num) hpR
+  set S : ℝ := ∑ N ∈ Icc 3 X, |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) with hS
+  -- the window as a sum
+  have hple : p ≤ p ^ 2 := by nlinarith [hp]
+  have hwin : potential f (p ^ 2) - potential f p
+      = ∑ M ∈ Icc (p + 1) (p ^ 2), |logMean f M| / (M : ℝ) := by
+    rw [potential_sub f hple]
+    refine Finset.sum_congr ?_ fun _ _ ↦ rfl
+    ext m
+    simp only [mem_Ioc, mem_Icc]
+    omega
+  -- compare `1/M` with `2/(M+1)`
+  have hstep1 : ∑ M ∈ Icc (p + 1) (p ^ 2), |logMean f M| / (M : ℝ)
+      ≤ 2 * ∑ M ∈ Icc (p + 1) (p ^ 2), |logMean f M| / ((M : ℝ) + 1) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun M hM ↦ ?_
+    have hM1 : 1 ≤ M := le_trans (by omega) (mem_Icc.1 hM).1
+    have hMR : (1 : ℝ) ≤ (M : ℝ) := by exact_mod_cast hM1
+    rw [mul_div_assoc'] at *
+    rw [div_le_div_iff₀ (by linarith) (by linarith)]
+    nlinarith [abs_nonneg (logMean f M)]
+  -- the block bound
+  have hstep2 := sum_div_succ_le_sum_block (p := p) (by omega)
+    (fun M ↦ |logMean f M|) (fun M ↦ abs_nonneg _) (a := p + 1) (b := p ^ 2) (by omega)
+  -- on the block, `(log N)^3 ≤ 64 (log p)^3`
+  have hsub : Icc (p * (p + 1)) (p * p ^ 2 + p - 1) ⊆ Icc 3 X := by
+    intro N hN
+    obtain ⟨hN1, hN2⟩ := mem_Icc.1 hN
+    rw [mem_Icc]
+    have : 3 ≤ p * (p + 1) := by nlinarith [hp]
+    omega
+  have hstep3 : ∑ N ∈ Icc (p * (p + 1)) (p * p ^ 2 + p - 1),
+      |logMean f (N / p)| / (N : ℝ) ≤ 64 * Real.log (p : ℝ) ^ 3 * S := by
+    have hterm : ∀ N ∈ Icc (p * (p + 1)) (p * p ^ 2 + p - 1),
+        |logMean f (N / p)| / (N : ℝ)
+          ≤ 64 * Real.log (p : ℝ) ^ 3 * (|logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3)) := by
+      intro N hN
+      obtain ⟨hN1, hN2⟩ := mem_Icc.1 hN
+      have hN3 : 3 ≤ N := by
+        have : 3 ≤ p * (p + 1) := by nlinarith [hp]
+        omega
+      have hNR : (3 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN3
+      have hlogN : 0 < Real.log (N : ℝ) := Real.log_pos (by linarith)
+      have hNle : (N : ℝ) ≤ 2 * (p : ℝ) ^ 3 := by
+        have hnat : N ≤ 2 * p ^ 3 := by
+          have hcube : p ^ 3 = p * p ^ 2 := by ring
+          have hp3 : p ≤ p ^ 3 := Nat.le_self_pow (by norm_num) p
+          omega
+        calc (N : ℝ) ≤ ((2 * p ^ 3 : ℕ) : ℝ) := by exact_mod_cast hnat
+        _ = 2 * (p : ℝ) ^ 3 := by push_cast; ring
+      have hlogle : Real.log (N : ℝ) ≤ 4 * Real.log (p : ℝ) := by
+        have h1 : Real.log (N : ℝ) ≤ Real.log (2 * (p : ℝ) ^ 3) :=
+          Real.log_le_log (by linarith) hNle
+        rw [Real.log_mul (by norm_num) (by positivity), Real.log_pow] at h1
+        push_cast at h1
+        linarith
+      have hcube : Real.log (N : ℝ) ^ 3 ≤ 64 * Real.log (p : ℝ) ^ 3 := by
+        have h1 : Real.log (N : ℝ) * Real.log (N : ℝ)
+            ≤ (4 * Real.log (p : ℝ)) * (4 * Real.log (p : ℝ)) :=
+          mul_le_mul hlogle hlogle hlogN.le (by linarith)
+        have h2 : Real.log (N : ℝ) * Real.log (N : ℝ) * Real.log (N : ℝ)
+            ≤ (4 * Real.log (p : ℝ)) * (4 * Real.log (p : ℝ)) * (4 * Real.log (p : ℝ)) :=
+          mul_le_mul h1 hlogle hlogN.le (by positivity)
+        nlinarith [h2]
+      have hrw : 64 * Real.log (p : ℝ) ^ 3 *
+          (|logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3))
+          = (64 * Real.log (p : ℝ) ^ 3 / Real.log (N : ℝ) ^ 3) *
+              (|logMean f (N / p)| / (N : ℝ)) := by
+        field_simp
+      rw [hrw]
+      refine le_mul_of_one_le_left (by positivity) ?_
+      rw [le_div_iff₀ (by positivity)]
+      linarith
+    calc ∑ N ∈ Icc (p * (p + 1)) (p * p ^ 2 + p - 1), |logMean f (N / p)| / (N : ℝ)
+        ≤ ∑ N ∈ Icc (p * (p + 1)) (p * p ^ 2 + p - 1),
+            64 * Real.log (p : ℝ) ^ 3 * (|logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3)) :=
+          Finset.sum_le_sum hterm
+      _ = 64 * Real.log (p : ℝ) ^ 3 *
+            ∑ N ∈ Icc (p * (p + 1)) (p * p ^ 2 + p - 1),
+              |logMean f (N / p)| / ((N : ℝ) * Real.log N ^ 3) := by rw [Finset.mul_sum]
+      _ ≤ 64 * Real.log (p : ℝ) ^ 3 * S := by
+          refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+          rw [hS]
+          refine Finset.sum_le_sum_of_subset_of_nonneg hsub fun N hN _ ↦ ?_
+          have : (0 : ℝ) ≤ Real.log (N : ℝ) := Real.log_nonneg (by
+            have : 3 ≤ N := by
+              have h3 : 3 ≤ X := le_trans (by nlinarith [hp]) hX
+              exact (mem_Icc.1 hN).1
+            exact_mod_cast le_trans (by norm_num) this)
+          positivity
+  have hfinal : potential f (p ^ 2) - potential f p ≤ 128 * Real.log (p : ℝ) ^ 3 * S := by
+    rw [hwin]
+    calc ∑ M ∈ Icc (p + 1) (p ^ 2), |logMean f M| / (M : ℝ)
+        ≤ 2 * ∑ M ∈ Icc (p + 1) (p ^ 2), |logMean f M| / ((M : ℝ) + 1) := hstep1
+      _ ≤ 2 * ∑ N ∈ Icc (p * (p + 1)) (p * p ^ 2 + p - 1), |logMean f (N / p)| / (N : ℝ) := by
+          linarith [hstep2]
+      _ ≤ 2 * (64 * Real.log (p : ℝ) ^ 3 * S) := by linarith [hstep3]
+      _ = 128 * Real.log (p : ℝ) ^ 3 * S := by ring
+  rw [div_le_iff₀ (by positivity)]
+  linarith [hfinal]
+
 end Wirsing
