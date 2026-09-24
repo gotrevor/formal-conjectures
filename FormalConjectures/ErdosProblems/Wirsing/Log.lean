@@ -90,4 +90,39 @@ theorem abs_sum_mul_log_sub_partialSum_mul_log_le (hf : ∀ n, 1 ≤ n → |f n|
           + |partialSum f N * (Real.log (N + 1) - Real.log N)| := abs_sub _ _
     _ ≤ (N : ℝ) + 1 := by linarith [ih, hbound]
 
+/--
+Shifting by a prime: $\sum_{m \le M} f(pm)$ differs from $f(p)\sum_{m \le M} f(m)$ only
+through the multiples of `p`, of which there are $\lfloor M/p \rfloor$.
+-/
+@[category API, AMS 11]
+theorem abs_sum_shift_prime_sub_le (hf : IsPMOneMultiplicative f) {p M : ℕ} (hp : p.Prime) :
+    |(∑ m ∈ Icc 1 M, f (p * m)) - f p * partialSum f M| ≤ 2 * ((M / p : ℕ) : ℝ) := by
+  classical
+  have hdiff : (∑ m ∈ Icc 1 M, f (p * m)) - f p * partialSum f M
+      = ∑ m ∈ Icc 1 M, (f (p * m) - f p * f m) := by
+    rw [Finset.sum_sub_distrib, partialSum, Finset.mul_sum]
+  have hvanish : ∀ m ∈ Icc 1 M, m ∉ {m ∈ Icc 1 M | p ∣ m} → f (p * m) - f p * f m = 0 := by
+    intro m hm hm'
+    simp only [Finset.mem_filter] at hm'
+    have hnd : ¬ p ∣ m := fun h ↦ hm' ⟨hm, h⟩
+    have hcop : Nat.Coprime p m := (Nat.Prime.coprime_iff_not_dvd hp).2 hnd
+    rw [hf.map_mul_of_coprime p m hcop, sub_self]
+  rw [hdiff, ← Finset.sum_subset (Finset.filter_subset _ _) hvanish]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  have hterm : ∀ m ∈ {m ∈ Icc 1 M | p ∣ m}, |f (p * m) - f p * f m| ≤ 2 := by
+    intro m hm
+    simp only [Finset.mem_filter, Finset.mem_Icc] at hm
+    have hm1 : 1 ≤ m := hm.1.1
+    have hpm : 1 ≤ p * m := Nat.mul_pos hp.pos hm1
+    have h1 := abs_eq_one_of_one_le f hf hpm
+    have h2 := abs_eq_one_of_one_le f hf hp.one_lt.le
+    have h3 := abs_eq_one_of_one_le f hf hm1
+    calc |f (p * m) - f p * f m| ≤ |f (p * m)| + |f p * f m| := abs_sub _ _
+    _ = 2 := by rw [h1, abs_mul, h2, h3]; norm_num
+  calc ∑ m ∈ {m ∈ Icc 1 M | p ∣ m}, |f (p * m) - f p * f m|
+      ≤ ∑ _m ∈ {m ∈ Icc 1 M | p ∣ m}, (2 : ℝ) := Finset.sum_le_sum hterm
+  _ = 2 * ((M / p : ℕ) : ℝ) := by
+      rw [Finset.sum_const, card_filter_dvd_Icc, nsmul_eq_mul]
+      ring
+
 end Wirsing
