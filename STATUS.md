@@ -2,7 +2,7 @@
 
 **Erdős 239 (Wirsing's mean value theorem for `±1`-valued multiplicative functions), formalised
 in Lean 4 / Mathlib.** · **Build**: 🟢 green (8940 jobs) · **Updated**: lap 11 · 2026-09-24 ·
-`2ee6bcea`
+`1bc1c772`
 
 ## Where it stands
 
@@ -24,8 +24,9 @@ The remaining `sorry`s in `src/` are that theorem, its application
   bounded away from `0` to supply the `e^{-δT}` decay.  Mathlib's only non-disc Cauchy theorem
   is for a **rectangle**, so the contour becomes `Q = [-δ, R] × [-R, R]`; all edge estimates
   were re-derived by hand and go through with the same kernel `1/z + z/R²`.  New sorry-free
-  `Wirsing/Rectangle.lean`: `rectInt`, `rectInt_eq_zero`, the three edge evaluations of `1/z`
-  by `Complex.log`, `rectInt_inv` (`∮ dz/z = 2πi`) and `rectInt_div_self` (the residue).
+  `Wirsing/Rectangle.lean` (`rectInt`, `rectInt_inv` = `∮ dz/z = 2πi`, `rectInt_mul_kernel`,
+  the two kernel bounds) and `Wirsing/Laplace.lean` (`Newman.lean` split; `newmanAux`, the four
+  edge estimates, and **`norm_sub_integral_le_rect`**, Newman's estimate on the rectangle).
 * **2026-09-24 (lap 10)** — the deficit-budget/`Ω(k)`-induction rigidity route refuted, and
   Chebyshev's bounds shown unable to lift the window gate (PNT is unavoidable).
   `Wirsing/Extremal.lean` (the variational extremal point, bad-prime weight `O(1)` independent
@@ -50,13 +51,13 @@ The remaining `sorry`s in `src/` are that theorem, its application
 ## Outstanding
 
 ### Short-term (mirrors `PENDING_WORK.md`)
-1. The rectangle edge estimates for Newman's kernel `k(z) = 1/z + z/R²`: `|k| ≤ (1+√2)/R` on
-   the right edge, `|k| ≤ √5|x|/R²` on the top and bottom (from `R² + z² = x(x ± 2iR)`), and
-   `∫_{-R}^{R}|k|\,dy` bounded on the left edge.
-2. The `g_T` deformation off the left edge onto the three outer edges of
-   `Q' = [-R,-δ] × [-R,R]`, a second `Newman.rectInt_eq_zero` (`0 ∉ Q'`).
-3. Assemble `Newman.tendsto_integral_of_analyticOn`: `T → ∞`, then `δ → 0`, then `R → ∞`.
-4. `Newman.summable_psi_sub_div` — apply (3) to `F(t) = ψ(e^t)e^{-t} - 1`, whose transform is
+1. **Done this lap**: `Newman.norm_sub_integral_le_rect`, Newman's estimate on the rectangle,
+   `‖G 0 - ∫_0^T F‖ ≤ (2Mδ + 5C)/R + R M e^{-δT}(1/δ + 2/R)`.
+2. `Newman.tendsto_integral_of_analyticOn` from it: the compactness step
+   (`IsCompact.exists_thickening_subset_open` gives `δ(R) > 0` with
+   `rect (-δ) R (-R) R ⊆ {z | AnalyticAt ℂ G z}`; fix `δ₀` first so one `M` serves all
+   `δ ≤ δ₀`), then the ε-chase `T → ∞`, `δ → 0`, `R → ∞`.
+3. `Newman.summable_psi_sub_div` — apply (2) to `F(t) = ψ(e^t)e^{-t} - 1`, whose transform is
    `-ζ'/ζ(z+1)/(z+1) - 1/z`.
 
 ### Long-term
@@ -75,7 +76,8 @@ The remaining `sorry`s in `src/` are that theorem, its application
 | `Newman.tendsto_chebyshevPsi_div_atTop_one` (PNT) | unconditional | `propext, sorryAx, …` | 🔴 via `summable_psi_sub_div` only; the Zagier endgame itself is clean |
 | `Newman.tendsto_sum_log_prime_div_window` | unconditional | `propext, sorryAx, …` | 🔴 same single root |
 | `Newman.norm_sub_integral_le` | unconditional (Newman, disc form) | `propext, Classical.choice, Quot.sound` | ✅ clean, but **unused**: the disc hypothesis is unsatisfiable here |
-| `Newman.rectInt_div_self` | unconditional (residue on a rectangle) | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Newman.rectInt_div_self`, `Newman.rectInt_mul_kernel` | unconditional (residue on a rectangle) | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Newman.norm_sub_integral_le_rect` | unconditional (Newman, rectangle form) | `propext, Classical.choice, Quot.sound` | ✅ clean — the live route |
 | `Wirsing.tendsto_logMean_div_log_atTop_zero` | unconditional (Halász, log form) | `propext, Classical.choice, Quot.sound` | ✅ clean |
 
 Math-axiom count (🟢+🟡+🟠): **0**.  The project carries no cited axioms; the only debt is the
