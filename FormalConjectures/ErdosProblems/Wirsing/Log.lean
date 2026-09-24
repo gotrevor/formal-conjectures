@@ -261,4 +261,97 @@ theorem abs_partialSum_mul_log_sub_sum_prime_le (hf : IsPMOneMultiplicative f) (
         exact add_le_add hAbel h2
   _ ≤ 9 * N := by linarith [Nat.cast_nonneg (α := ℝ) N]
 
+/-- `S(M) = M · mean f M`, including for `M = 0`. -/
+@[category API, AMS 11]
+theorem partialSum_eq_mul_mean (M : ℕ) : partialSum f M = M * mean f M := by
+  rcases Nat.eq_zero_or_pos M with rfl | hM
+  · simp [partialSum, mean]
+  · have hM0 : (M : ℝ) ≠ 0 := by positivity
+    rw [mean_eq_partialSum_div, mul_comm, div_mul_cancel₀ _ hM0]
+
+/--
+The log-weighted functional relation in mean-value form: for a `±1`-valued multiplicative `f`
+and `N ≥ 1`,
+$$\sigma(N)\log N = \sum_{p \le N} \frac{\log p}{p} f(p)\, \sigma(\lfloor N/p \rfloor) + O(1),$$
+where $\sigma = $ `mean f`.  By Mertens' first theorem the weights $\log p / p$ have total
+mass $\log N + O(1)$, so this is an averaging identity for `mean f`.
+-/
+@[category API, AMS 11]
+theorem abs_mean_mul_log_sub_sum_prime_le (hf : IsPMOneMultiplicative f) {N : ℕ} (hN : 1 ≤ N) :
+    |mean f N * Real.log N
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (f p * mean f (N / p))|
+      ≤ 9 + Real.log 4 := by
+  classical
+  have hN0 : (0 : ℝ) < N := by exact_mod_cast hN
+  have hmain := abs_partialSum_mul_log_sub_sum_prime_le f hf N
+  -- replace `S(N/p)` by `(N/p) · mean f (N/p)` and `⌊N/p⌋` by `N/p`
+  have hswap : |(∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p)))
+      - (N : ℝ) * ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / p * (f p * mean f (N / p))| ≤ Real.log 4 * N := by
+    rw [Finset.mul_sum, ← Finset.sum_sub_distrib]
+    refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+    calc ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          |Real.log p * (f p * partialSum f (N / p))
+            - (N : ℝ) * (Real.log p / p * (f p * mean f (N / p)))|
+        ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p := by
+          refine Finset.sum_le_sum fun p hp ↦ ?_
+          have hpp : p.Prime := (mem_filter.1 hp).2
+          have hpR : (0 : ℝ) < p := by exact_mod_cast hpp.pos
+          have hlog : 0 ≤ Real.log p := Real.log_natCast_nonneg _
+          have hfp : |f p| = 1 := abs_eq_one_of_one_le f hf hpp.one_lt.le
+          have hmn : |mean f (N / p)| ≤ 1 := abs_mean_le_one f hf _
+          have hfl1 : ((N / p : ℕ) : ℝ) ≤ (N : ℝ) / p := Nat.cast_div_le
+          have hfl2 : (N : ℝ) / p - 1 ≤ ((N / p : ℕ) : ℝ) := by
+            have hmod : N % p < p := Nat.mod_lt _ hpp.pos
+            have hdm := Nat.div_add_mod N p
+            have hlt : N < p * (N / p) + p := by omega
+            have hltR : (N : ℝ) < (p : ℝ) * ((N / p : ℕ) : ℝ) + p := by exact_mod_cast hlt
+            rw [sub_le_iff_le_add, div_le_iff₀ hpR]
+            nlinarith
+          rw [partialSum_eq_mul_mean]
+          have hrw : Real.log p * (f p * ((N / p : ℕ) * mean f (N / p)))
+              - (N : ℝ) * (Real.log p / p * (f p * mean f (N / p)))
+              = Real.log p * (f p * mean f (N / p)) * (((N / p : ℕ) : ℝ) - (N : ℝ) / p) := by
+            field_simp
+          rw [hrw, abs_mul, abs_mul, abs_mul, hfp]
+          have habs : |((N / p : ℕ) : ℝ) - (N : ℝ) / p| ≤ 1 := by
+            rw [abs_le]; constructor <;> linarith
+          calc |Real.log p| * (1 * |mean f (N / p)|) * |((N / p : ℕ) : ℝ) - (N : ℝ) / p|
+              ≤ Real.log p * (1 * 1) * 1 := by
+                rw [abs_of_nonneg hlog]
+                have hprod : |mean f (N / p)| * |((N / p : ℕ) : ℝ) - (N : ℝ) / p| ≤ 1 :=
+                  mul_le_one₀ hmn (abs_nonneg _) habs
+                nlinarith [hprod, hlog]
+          _ = Real.log p := by ring
+    _ ≤ Real.log 4 * N := by
+          have hthe := Chebyshev.theta_le_log4_mul_x (x := (N : ℝ)) hN0.le
+          rw [Chebyshev.theta, Nat.floor_natCast] at hthe
+          exact hthe
+  have hcomb : |partialSum f N * Real.log N
+      - (N : ℝ) * ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / p * (f p * mean f (N / p))| ≤ 9 * N + Real.log 4 * N := by
+    calc |partialSum f N * Real.log N
+        - (N : ℝ) * ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+            Real.log p / p * (f p * mean f (N / p))|
+        ≤ |partialSum f N * Real.log N
+            - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p))|
+          + |(∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p)))
+            - (N : ℝ) * ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+                Real.log p / p * (f p * mean f (N / p))| := by
+          have := abs_add_le
+            (partialSum f N * Real.log N
+              - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p)))
+            ((∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p)))
+              - (N : ℝ) * ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+                  Real.log p / p * (f p * mean f (N / p)))
+          simpa using this
+    _ ≤ 9 * N + Real.log 4 * N := add_le_add hmain hswap
+  rw [partialSum_eq_mul_mean, mul_assoc] at hcomb
+  rw [← mul_sub, abs_mul, abs_of_nonneg hN0.le] at hcomb
+  refine le_of_mul_le_mul_left ?_ hN0
+  calc (N : ℝ) * |mean f N * Real.log N
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (f p * mean f (N / p))|
+      ≤ 9 * N + Real.log 4 * N := hcomb
+  _ = (N : ℝ) * (9 + Real.log 4) := by ring
+
 end Wirsing
