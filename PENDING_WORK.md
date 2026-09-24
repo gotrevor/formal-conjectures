@@ -1,3 +1,84 @@
+# PENDING WORK — Erdős 239
+
+## LAP 5 (2026-09-24): THE CRUX IS CLOSED
+
+`Wirsing.tendsto_logMean_div_log_atTop_zero` — `L(N) = o(\log N)` in the divergent case — is
+now a complete machine-checked proof.  The potential route of lap 4 went through exactly as
+planned; `logProfile` scaffolding is deleted from `Main.lean`.
+
+New in `Wirsing/Decay.lean`, all sorry-free:
+
+* `windowTerm_nonneg`, `potential_window_le_sum` — the per-prime window bound
+  `(Φ(p²) - Φ(p))/(128(\log p)³) ≤ ∑_{N ∈ Icc a X} |L(⌊N/p⌋)|/(N(\log N)³)` for `a ≤ p(p+1)`,
+  `X ≥ p³ + p`.
+* `sum_badWeight_div_eq` — the Fubini swap over bad primes (`Finset.sum_comm'`, membership
+  condition `N ∈ Icc 3 X ∧ p ∈ filter Q (Icc 1 N) ↔ N ∈ Icc (max 3 p) X ∧ p ∈ filter Q (Icc 1 X)`).
+* `sum_window_le_sum_badWeight` — the deficit sum dominates the windows of any finite set of
+  large bad primes.
+* `sub_badPrimeSum_le_sum_tail`, `exists_threshold` — the tail of `E` still diverges; and
+  `256/\log p + 16/p² ≤ ℓ` past a threshold.
+* `potential_window_ge` — `Φ(p²) - Φ(p) ≥ ℓ(\log p)²`.  The gain is structural:
+  `\log(p²) = 2\log p`, so `G(p²) ≥ ℓ` forces `Φ(p²) ≥ 4ℓ(\log p)²` while `G(p) < 2ℓ` caps
+  `Φ(p) < 2ℓ(\log p)²`.
+* `envelopeInf_eq_zero` — **the crux contradiction**.  Each bad prime past the threshold
+  contributes `≥ ℓ/(128p)` to a sum bounded by the absolute constant of
+  `exists_sum_badWeight_le`, and `∑_{f(p) = -1} 1/p = ∞`.
+* `tendsto_envelope_atTop_zero`, `tendsto_abs_logMean_div_log_atTop_zero`.
+
+## THE REMAINING CRUX: the Tauberian step
+
+`Wirsing.tendsto_mean_atTop_zero_of_logMean` in `Main.lean`, now carrying **both** hypotheses
+(`hdiv` and `L(N) = o(\log N)`).  Two negative results from this lap fix the route:
+
+1. **`L(N) = o(\log N)` alone cannot suffice.**  `σ(N) = \cos(θ\log N)` satisfies it, is
+   bounded, and is log-Lipschitz (`|σ(N) - σ(M)| ≤ 2(N-M)/N`), yet does not tend to `0`.  It
+   is realised by `f(n) = n^{iθ}`, so **real-valuedness of `f` is essential** and must be used.
+2. **The mean-side engine identity is vacuous.**  Mirroring
+   `abs_logMean_mul_log_sub_defect_le` on the mean side gives
+   `σ(N)\log N = ∑_p (\log p/p)(1 + f(p))σ(⌊N/p⌋) + O(\log N)`, but `|σ| ≤ 1` makes the main
+   term itself `≤ \log N`: every error term is as large as the conclusion.  On the
+   logarithmic side the same `O(\log N)` errors were affordable only because `L(N)` may be as
+   large as `\log N`.  **Do not spend another lap on an `O(1)`-error functional relation for
+   `σ`.**  The whole potential machinery also gives nothing new for `σ`: it would conclude
+   `Φ_σ(N) = o((\log N)²)`, which is the hypothesis `L(N) = o(\log N)` again.
+
+So the gain must come from a **second moment**.  [Hi86] proves the quantitative form
+`|σ(x)| ≤ γ(1 + ∑_{p ≤ x}(1 - f(p))/p)^{-1/2}`; the exponent `-1/2` is the signature of a
+Cauchy–Schwarz step.  Per the literature search of this lap, the route is an inversion of the
+order of summation in `∑_{n ≤ x} f(n)\log n` giving `S(x) ~ τ(x/\log x)L(x)` for real `f`,
+after which `L(x) = o(\log x)` — which this repo now has — finishes.
+
+### Started this lap: `Wirsing/Mean.lean` (sorry-free)
+
+The inversion itself, exactly:
+
+* `sum_Icc_one_div_comm` — the `km ≤ N` hyperbola swap with both indices from `1`.
+* `sum_partialSum_div_eq` — **exact**: `∑_{k ≤ N} S(⌊N/k⌋) = ∑_{m ≤ N} f(m)⌊N/m⌋`.
+* `abs_sum_partialSum_div_sub_mul_logMean_le` — `|∑_{k ≤ N} S(⌊N/k⌋) - N L(N)| ≤ N`.
+
+So `∑_{k ≤ N} S(⌊N/k⌋) = N L(N) + O(N) = o(N \log N)` is available.  **This is the first
+place where `L(N) = o(\log N)` bites on the mean side**, and it is not vacuous: the sum has
+`N` terms of size up to `N`, so the trivial bound is `N \log N`, and we now beat it.
+
+### Next attack, in order
+
+1. Turn `∑_{k ≤ N} S(⌊N/k⌋) = o(N \log N)` into information about `σ`.  Writing
+   `S(⌊N/k⌋) = ⌊N/k⌋σ(⌊N/k⌋)` and `⌊N/k⌋ = N/k + O(1)`, this reads
+   `∑_{k ≤ N} σ(⌊N/k⌋)/k = o(\log N)`: the **log-average of `σ` along the quotients**
+   vanishes.  Formalise this as `sum_mean_div_le`.
+2. Apply Cauchy–Schwarz to `∑_{k ≤ N} σ(⌊N/k⌋)/k` against the second moment
+   `∑_{k ≤ N} σ(⌊N/k⌋)²/k`.  This is where real-valuedness enters: for real `f`, `σ²` is a
+   nonnegative log-average, so no cancellation is possible in it, and a lower bound for it
+   (from `σ` being log-Lipschitz and `|σ(N)| ≥ δ` at one point) contradicts step 1.
+   **This is the step to test first next lap** — it is the smallest probe that decides whether
+   the second moment closes the Tauberian step without Halász.
+3. Only if step 2 fails: formalise the `ζ(1+it) ≠ 0` input and go through Halász.
+
+The Wintner half (`exists_hasMeanValue_of_summable`) is still untouched and still elementary;
+it is independent of all of the above.
+
+---
+
 # Erdős 239 — pending work
 
 Headline: `Erdos239.erdos_239` in `FormalConjectures/ErdosProblems/239.lean`.
