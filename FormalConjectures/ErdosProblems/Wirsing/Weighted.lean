@@ -491,6 +491,26 @@ theorem summable_vonMangoldt_rpow {x : ℝ} (hx : 0 < x) :
     Summable (fun n : ℕ ↦ (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x))) := by
   simpa using summable_vonMangoldt_rpow_cos hx 0
 
+/-- The numeric instance of `Wirsing.sum_range_exp_ge` used below: `m = 32`, `c = 2`. -/
+@[category API, AMS 11]
+theorem sum_range_exp_ge_32 :
+    (90 / 7 : ℝ) ≤ ∑ i ∈ range 32, Real.exp (-(2 * ((i : ℝ) + 1) / 32)) := by
+  have h := sum_range_exp_ge (m := 32) (by norm_num) (c := (2 : ℝ)) (by norm_num)
+  have he1 : (15 / 16 : ℝ) ≤ Real.exp (-(2 / ((32 : ℕ) : ℝ))) := by
+    have h0 := Real.add_one_le_exp (-(2 / ((32 : ℕ) : ℝ)))
+    norm_num at h0 ⊢
+    linarith
+  have he2 : Real.exp (-2 : ℝ) ≤ 1 / 7 := by
+    have h1 : (2.7182818283 : ℝ) < Real.exp 1 := Real.exp_one_gt_d9
+    have h2 : Real.exp (2 : ℝ) = Real.exp 1 * Real.exp 1 := by rw [← Real.exp_add]; norm_num
+    have h3 : (7 : ℝ) ≤ Real.exp 2 := by nlinarith [Real.exp_pos (1 : ℝ)]
+    have h4 : Real.exp (-2 : ℝ) * Real.exp (2 : ℝ) = 1 := by rw [← Real.exp_add]; norm_num
+    nlinarith [Real.exp_pos (-2 : ℝ)]
+  have hcast : ((32 : ℕ) : ℝ) / 2 = 16 := by norm_num
+  rw [hcast] at h
+  refine le_trans ?_ h
+  nlinarith [Real.exp_pos (-(2 / ((32 : ℕ) : ℝ))), Real.exp_pos (-2 : ℝ), he1, he2]
+
 /--
 **The Mertens-weighted deficit.**  For `t ≠ 0`,
 $$\sum_{p \le N} \frac{\log p}{p}\bigl(1 - \cos(t\log p)\bigr) \ge \frac{\log N}{4} - C_t.$$
@@ -506,7 +526,142 @@ theorem exists_sum_primeWeight_one_sub_cos_ge {t : ℝ} (ht : t ≠ 0) :
     ∃ C : ℝ, ∀ N : ℕ, 1 ≤ N →
       Real.log N / 4 - C ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime,
         Real.log p / p * (1 - Real.cos (t * Real.log p)) := by
-  sorry
+  obtain ⟨C₁, hC₁⟩ := exists_tsum_vonMangoldt_twisted_ge ht
+  obtain ⟨C₂, hC₂⟩ := exists_tsum_vonMangoldt_le
+  set B := Real.log 4 + 4 with hB
+  have hB4 : 4 ≤ B := by
+    have : 0 ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    linarith
+  refine ⟨|C₁| + 2 * |C₂| + (360 / 7) * B + 8 + 16 * B, fun N hN ↦ ?_⟩
+  have hNR : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+  set L := Real.log N with hLdef
+  have hLnn : 0 ≤ L := Real.log_nonneg hNR
+  have hSnn : 0 ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+      Real.log p / p * (1 - Real.cos (t * Real.log p)) := by
+    refine Finset.sum_nonneg fun p hp ↦ ?_
+    obtain ⟨_, hpp⟩ := Finset.mem_filter.1 hp
+    have h2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hpp.two_le
+    have hlp : 0 ≤ Real.log p / p := by
+      have : 0 ≤ Real.log p := Real.log_nonneg (by linarith)
+      positivity
+    nlinarith [Real.cos_le_one (t * Real.log p)]
+  have habs1 : 0 ≤ |C₁| := abs_nonneg C₁
+  have habs2 : 0 ≤ |C₂| := abs_nonneg C₂
+  rcases lt_or_ge L (64 * B) with hsmall | hlarge
+  · linarith
+  have hLpos : 0 < L := by linarith
+  set x := 2 / L with hxdef
+  have hx : 0 < x := by positivity
+  have hx1 : x ≤ 1 := by rw [hxdef, div_le_one hLpos]; linarith
+  have hinv : 1 / x = L / 2 := by rw [hxdef]; field_simp
+  set g : ℕ → ℝ := fun n ↦ (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x)) *
+    (1 - Real.cos (t * Real.log n)) with hg
+  set Gf : ℕ → ℝ := fun n ↦ (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x))
+    with hGf
+  have hGsum : Summable Gf := summable_vonMangoldt_rpow hx
+  have hgsum : Summable g := by
+    refine (hGsum.sub (summable_vonMangoldt_rpow_cos hx t)).congr fun n ↦ ?_
+    simp only [hg, hGf]; ring
+  have hgnn : ∀ n : ℕ, 0 ≤ g n := by
+    intro n
+    have h1 : (0 : ℝ) ≤ (ArithmeticFunction.vonMangoldt n : ℝ) :=
+      ArithmeticFunction.vonMangoldt_nonneg
+    have h2 : (0 : ℝ) ≤ (n : ℝ) ^ (-(1 + x)) := Real.rpow_nonneg (Nat.cast_nonneg n) _
+    have h3 := Real.cos_le_one (t * Real.log n)
+    simp only [hg]
+    have : 0 ≤ 1 - Real.cos (t * Real.log n) := by linarith
+    positivity
+  have hgle : ∀ n : ℕ, g n ≤ 2 * Gf n := by
+    intro n
+    have h1 : (0 : ℝ) ≤ (ArithmeticFunction.vonMangoldt n : ℝ) :=
+      ArithmeticFunction.vonMangoldt_nonneg
+    have h2 : (0 : ℝ) ≤ (n : ℝ) ^ (-(1 + x)) := Real.rpow_nonneg (Nat.cast_nonneg n) _
+    have h3 := Real.neg_one_le_cos (t * Real.log n)
+    simp only [hg, hGf]
+    nlinarith [mul_nonneg h1 h2]
+  -- Head/tail split of both series at `N`.
+  set s0 : Finset ℕ := Ioc 0 N with hs0
+  have hsplitg := hgsum.sum_add_tsum_compl (s := s0)
+  have hsplitG := hGsum.sum_add_tsum_compl (s := s0)
+  set S : Set ℕ := ((s0 : Set ℕ))ᶜ with hSdef
+  have htailg : ∑' i : S, g i ≤ 2 * ∑' i : S, Gf i := by
+    have h1 : Summable (fun i : S ↦ g i) := hgsum.subtype _
+    have h2 : Summable (fun i : S ↦ Gf i) := hGsum.subtype _
+    calc ∑' i : S, g i ≤ ∑' i : S, (2 * Gf i) :=
+          h1.tsum_le_tsum (fun i ↦ hgle i) (h2.mul_left 2)
+      _ = 2 * ∑' i : S, Gf i := tsum_mul_left
+  have hT : 1 / x - C₁ ≤ ∑' n : ℕ, g n := hC₁ x hx hx1
+  have hTt : ∑' n : ℕ, Gf n ≤ 1 / x + C₂ := hC₂ x hx hx1
+  -- Mertens in geometric blocks bounds the head of the untwisted series.
+  have hheadG : (L / 32 - 2 * B) * (90 / 7) ≤ ∑ n ∈ s0, Gf n := by
+    have h := sum_vonMangoldt_rpow_head_ge (m := 32) (by norm_num) (c := (2 : ℝ))
+      (by norm_num) hN hLpos
+    have hcast : ((32 : ℕ) : ℝ) = 32 := by norm_num
+    rw [hcast] at h
+    refine le_trans ?_ h
+    have hnn : 0 ≤ L / 32 - 2 * B := by linarith
+    exact mul_le_mul_of_nonneg_left sum_range_exp_ge_32 hnn
+  -- Collect: the head of the twisted series.
+  have hheadg : L / 2 - |C₁| - 2 * ((L / 2 + |C₂|) - (L / 32 - 2 * B) * (90 / 7))
+      ≤ ∑ n ∈ s0, g n := by
+    rw [hinv] at hT hTt
+    have h1 : C₁ ≤ |C₁| := le_abs_self C₁
+    have h2 : C₂ ≤ |C₂| := le_abs_self C₂
+    linarith
+  -- Drop the proper prime powers and compare the prime part.
+  have hIoc : s0 = Icc 1 N := by
+    rw [hs0]; ext n; simp only [Finset.mem_Ioc, Finset.mem_Icc]; omega
+  have hle_div : ∀ n : ℕ, 1 ≤ n → g n ≤ 2 * ((ArithmeticFunction.vonMangoldt n : ℝ) / n) := by
+    intro n hn1
+    have hnR : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn1
+    have h1 : (0 : ℝ) ≤ (ArithmeticFunction.vonMangoldt n : ℝ) :=
+      ArithmeticFunction.vonMangoldt_nonneg
+    have hpow : (n : ℝ) ^ (-(1 + x)) ≤ (n : ℝ)⁻¹ := by
+      rw [show ((n : ℝ)⁻¹) = (n : ℝ) ^ (-1 : ℝ) by rw [Real.rpow_neg_one]]
+      exact Real.rpow_le_rpow_of_exponent_le hnR (by linarith)
+    have h2 : (0 : ℝ) ≤ (n : ℝ) ^ (-(1 + x)) := Real.rpow_nonneg (by linarith) _
+    have h3 := Real.neg_one_le_cos (t * Real.log n)
+    have h4 := Real.cos_le_one (t * Real.log n)
+    simp only [hg]
+    rw [div_eq_mul_inv]
+    nlinarith [mul_nonneg h1 h2, mul_le_mul_of_nonneg_left hpow h1]
+  have hnonprime : ∑ n ∈ (Icc 1 N).filter (fun n ↦ ¬ n.Prime), g n ≤ 8 := by
+    calc ∑ n ∈ (Icc 1 N).filter (fun n ↦ ¬ n.Prime), g n
+        ≤ ∑ n ∈ (Icc 1 N).filter (fun n ↦ ¬ n.Prime),
+            2 * ((ArithmeticFunction.vonMangoldt n : ℝ) / n) := by
+          refine Finset.sum_le_sum fun n hn ↦ hle_div n ?_
+          exact (Finset.mem_Icc.1 (Finset.mem_filter.1 hn).1).1
+      _ = 2 * ∑ n ∈ (Icc 1 N).filter (fun n ↦ ¬ n.Prime),
+            (ArithmeticFunction.vonMangoldt n : ℝ) / n := by rw [Finset.mul_sum]
+      _ ≤ 2 * 4 := by
+          have := Mertens.sum_vonMangoldt_div_nonprime_le N
+          linarith
+      _ = 8 := by norm_num
+  have hprime : ∑ n ∈ (Icc 1 N).filter Nat.Prime, g n
+      ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / p * (1 - Real.cos (t * Real.log p)) := by
+    refine Finset.sum_le_sum fun p hp ↦ ?_
+    obtain ⟨hp1, hpp⟩ := Finset.mem_filter.1 hp
+    have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hpp.two_le
+    have hlam : (ArithmeticFunction.vonMangoldt p : ℝ) = Real.log p :=
+      ArithmeticFunction.vonMangoldt_apply_prime hpp
+    have hpow : (p : ℝ) ^ (-(1 + x)) ≤ (p : ℝ)⁻¹ := by
+      rw [show ((p : ℝ)⁻¹) = (p : ℝ) ^ (-1 : ℝ) by rw [Real.rpow_neg_one]]
+      exact Real.rpow_le_rpow_of_exponent_le (by linarith) (by linarith)
+    have hlogp : 0 ≤ Real.log p := Real.log_nonneg (by linarith)
+    have h3 := Real.cos_le_one (t * Real.log p)
+    have hrn : (0 : ℝ) ≤ (p : ℝ) ^ (-(1 + x)) :=
+      Real.rpow_nonneg (show (0 : ℝ) ≤ (p : ℝ) by linarith) _
+    simp only [hg, hlam]
+    rw [div_eq_mul_inv]
+    nlinarith [mul_nonneg hlogp hrn, mul_le_mul_of_nonneg_left hpow hlogp]
+  have hsplitfilter : ∑ n ∈ Icc 1 N, g n
+      = ∑ n ∈ (Icc 1 N).filter Nat.Prime, g n
+        + ∑ n ∈ (Icc 1 N).filter (fun n ↦ ¬ n.Prime), g n :=
+    (Finset.sum_filter_add_sum_filter_not _ _ _).symm
+  rw [hIoc] at hheadg
+  rw [hsplitfilter] at hheadg
+  linarith
 
 /--
 **The symbol of the averaging operator is bounded away from `1`.**  For a `{±1}`-valued
