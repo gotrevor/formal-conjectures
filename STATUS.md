@@ -1,53 +1,60 @@
 # STATUS — fc-erdos-239 📊
 
 **Erdős 239 (Wirsing's mean value theorem for `±1`-valued multiplicative functions), formalised
-in Lean 4 / Mathlib.** · **Build**: 🟢 green · **Updated**: lap 4 · 2026-09-24 · `da8f27fb`
+in Lean 4 / Mathlib.** · **Build**: 🟢 green (8939 jobs) · **Updated**: lap 7 · 2026-09-24 ·
+`1787bf04`
 
 ## Where it stands
 
-`Erdos239.erdos_239` is reduced to `Wirsing.exists_hasMeanValue`, which splits into the
-divergent case (the crux) and the convergent Wintner case.  All the number theory of the
-divergent case is proved and sorry-free: the engine identity, Mertens' first theorem with a
-sharp negative error, the log-weighted functional relation, and the Turán–Kubilius machinery.
-Three `sorry`s remain, all in `Wirsing/Main.lean`.  Laps 1–3 built the analytic inputs and
-refuted two single-scale iteration schemes; lap 4 replaced the whole iteration strategy with a
-**potential route** that closes the crux on paper with only inputs this repo already has.
+`Erdos239.erdos_239` reduces to `Wirsing.exists_hasMeanValue`, whose **convergent (Wintner)
+half is complete and sorry-free**.  The divergent half is complete down to one statement, the
+Hildebrand asymptotic `σ(N) - L(N)/\log N → 0` (`Wirsing/Main.lean`), which lap 6 showed to be
+PNT-strength and therefore not avoidable.  Lap 7 found that the analytic input for that
+strength **is already in mathlib** — laps 2–6 had all recorded the opposite — and proved the
+first consequence: `f` is pretentious to no character `n^{it}`.  The crux is now decomposed
+into two named, mathlib-grounded sub-`sorry`s in `Wirsing/Weighted.lean`.
 
 ## What's happened (newest first)
 
-* **2026-09-24 (lap 4, proof)** — steps A–D of the potential route proved and sorry-free in the
-  new `Wirsing/Decay.lean`: the Fubini weight comparison, the closed inequality
-  `|L(N)|log N ≤ 2Φ(N) − 2D(N) + O(log N)`, the telescoping of `Φ/(log N)²` giving
-  `∑ D(N)/(N(log N)³) < ∞`, the monotone envelope and its infimum `ℓ`, and the block bound.
-  Only the window bound, the Fubini swap over bad primes and the contradiction remain.
-* **2026-09-24 (lap 4, review)** — found a complete elementary proof of the crux: telescope
-  `Φ(N)/(log N)²` for `Φ(N) = ∑_{n≤N}|L(n)|/n`, which makes the bad-prime deficit summable
-  against `1/(N (log N)³)`; a Fubini swap turns that into `∑_{f(p)=-1} 1/p < ∞`.  Direction
-  switched; `logProfile` demoted to dead scaffolding.
-* **2026-09-24 (lap 3)** — the sharp Mertens chain (`sum_log_prime_div_le_log`: `∑_{p≤x} log p/p
-  ≤ log x` for `x ≥ 10¹⁰`), `sum_primeWeight_mul_log_div_le` with no `log N` term, the sharp
-  Gronwall step, and the general weight comparison for an antitone profile.  Refuted the limsup
-  shortcut.
-* **2026-09-24 (lap 2)** — the recursive profile `logProfile` and `abs_logMean_le_logProfile`;
-  refuted the step-function deficit bootstrap.
-* **2026-09-24 (lap 1)** — route C opened: Mertens' first theorem proved from scratch, plus the
-  log-weighted functional relation `σ(N)log N = ∑_p (log p/p) f(p) σ(⌊N/p⌋) + O(1)`.
-* **2026-09-24 (lap 0)** — routes A/B; `Identity.lean`, `OmegaE.lean`, `General.lean` all
-  sorry-free (hyperbola reindexing, Turán–Kubilius, the functional relation on an arbitrary
-  prime set).
+* **2026-09-24 (lap 7, review + proof)** — **route correction**: mathlib v4.33.1 has `ζ`'s
+  continuation, its simple pole, `ζ ≠ 0` on `re s ≥ 1`, the log-Euler product, `L(Λ,s)=-ζ'/ζ`
+  and `continuousOn_neg_logDeriv_LFunctionTrivChar₁`; only a *Tauberian* theorem is missing.
+  The elementary Erdős–Selberg PNT plan is dropped.  New sorry-free `Wirsing/Pretentious.lean`
+  proves `∑_p (1 - f(p)\cos(t\log p))/p = ∞` for **every** real `t` — the "missing uniformity"
+  that laps 2, 3 and 6 each named and each declared unavailable.  New `Wirsing/Weighted.lean`
+  decomposes the next step (the same statement in the Mertens weight `\log p/p`, at rate
+  `\gg \log N`) into two sub-`sorry`s and proves the `f`-transfer between them.
+* **2026-09-24 (lap 6)** — the convergent case closed (`exists_hasMeanValue_of_summable`,
+  axiom-clean); `Wirsing/Rigidity.lean` (rigidity at a near-extremal point); the exact Abel
+  identity `S(N) = N L(N) - ∑_{M<N} L(M)`; `Selberg.lean` (the arithmetic identity
+  `Λ·\log + Λ*Λ = μ*\log²`).  **Route-decisive**: the headline implies PNT, since `λ` is an
+  instance.
+* **2026-09-24 (lap 5)** — the first crux closed: `L(N) = o(\log N)` in the divergent case
+  (`tendsto_logMean_div_log_atTop_zero`), by the lap-4 potential route.
+* **2026-09-24 (lap 4)** — the potential route `Φ(N) = ∑_{n≤N}|L(n)|/n`; `Wirsing/Decay.lean`.
+* **2026-09-24 (lap 3)** — the sharp Mertens chain (`sum_log_prime_div_le_log`); the limsup
+  shortcut refuted.
+* **2026-09-24 (lap 2)** — `logProfile` (now dead scaffolding); the step-function deficit
+  bootstrap refuted.
+* **2026-09-24 (lap 1)** — Mertens' first theorem from scratch; the log-weighted functional
+  relation.
+* **2026-09-24 (lap 0)** — `Identity.lean`, `OmegaE.lean` (Turán–Kubilius), `General.lean`.
 
 ## Outstanding
 
 ### Short-term (mirrors `PENDING_WORK.md`)
-1. `Wirsing/Decay.lean` step B — the Fubini comparison
-   `∑_{p≤N}(log p/p) g(⌊N/p⌋) = ∑_{n≤N} g(n)/n + O(log N)` for `1/m`-Lipschitz `g`.
-2. Steps C–F — the telescoping of `Φ/(log N)²`, the summability of the deficit, the window
-   lower bound, and the contradiction with `∑_{f(p)=-1} 1/p = ∞`.
-3. Delete the now-redundant `tendsto_logProfile_div_log_atTop_zero` sorry once step F lands.
+1. `Wirsing.exists_tsum_vonMangoldt_twisted_ge` — `∑_n Λ(n)n^{-1-x}(1-\cos(t\log n)) ≥ 1/x - C`
+   for `t ≠ 0`, from `continuousOn_neg_logDeriv_LFunctionTrivChar₁` (level 1) plus
+   `riemannZeta_ne_zero_of_one_le_re`.
+2. `Wirsing.exists_sum_primeWeight_one_sub_cos_ge` — transfer it to
+   `∑_{p≤N}(\log p/p)(1-\cos(t\log p)) ≥ \log N/4 - C` by Abel summation at `x = 1/\log N`,
+   using `Mertens.abs_sum_vonMangoldt_div_sub_log_le` for the tail.
 
 ### Long-term
-* `Wirsing.tendsto_mean_atTop_zero_of_logMean` — the Tauberian step `L = o(log N) ⇒ σ → 0`.
-* `Wirsing.exists_hasMeanValue_of_summable` — the Wintner half.
+* Feed the weighted deficit into the route-C relation to break the `A ≤ A` stall, i.e. prove
+  `Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero`.
+* If a genuine Tauberian step is still needed there, Newman's theorem on top of mathlib's `ζ`
+  (a ~1-page complex-analysis formalisation), **not** PNT from scratch.
 
 ### To completion
 `#print axioms Erdos239.erdos_239` free of `sorryAx`.
@@ -56,12 +63,17 @@ refuted two single-scale iteration schemes; lap 4 replaced the whole iteration s
 
 | headline theorem | paper claim | `#print axioms` shows | status |
 | --- | --- | --- | --- |
-| `Erdos239.erdos_239` | unconditional (Wirsing 1967) | `propext, sorryAx, Classical.choice, Quot.sound` | 🔴 `sorryAx` — 3 open `sorry`s in `Wirsing/Main.lean`; no cited axioms anywhere in the tree |
+| `Erdos239.erdos_239` | unconditional (Wirsing 1967) | `propext, sorryAx, Classical.choice, Quot.sound` | 🔴 `sorryAx` — 3 open `sorry`s (1 in `Wirsing/Main.lean`, 2 in `Wirsing/Weighted.lean`) |
+| `Wirsing.exists_hasMeanValue_of_summable` | unconditional (Wintner) | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Wirsing.tendsto_logMean_div_log_atTop_zero` | unconditional (Halász, log form) | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Wirsing.not_summable_one_sub_mul_cos_of_not_summable` | unconditional | `propext, Classical.choice, Quot.sound` | ✅ clean |
 
-Math-axiom count (🟢+🟡+🟠): **0**.  The project carries no cited axioms at all — the only
-debt is the three disclosed `sorry`s, which is why `sorryAx` is the single 🔴 entry.
+Math-axiom count (🟢+🟡+🟠): **0**.  The project carries no cited axioms; the only debt is the
+three disclosed `sorry`s, which is why `sorryAx` is the single 🔴 entry.  The sorry count in
+`src/` rose from 1 to 3 this lap **by decomposition**, which is progress: the crux now has two
+named sub-goals whose mathlib inputs are identified by name.
 
 ## Pointers
 
 `DIRECTION.md` (binding directive) · `PENDING_WORK.md` (attack path) ·
-`HANDOFF-erdos-239-2026-09-24-lap4.md` (newest baton) · `KICKOFF-2026-09-24-erdos-239.md`
+`HANDOFF-erdos-239-2026-09-24-lap7.md` (newest baton) · `KICKOFF-2026-09-24-erdos-239.md`
