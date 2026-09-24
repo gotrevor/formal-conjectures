@@ -41,13 +41,61 @@ with `f(p) = -1 + (1 + f(p))`; `Ψ` and `B` both cancel.  The model case `f(p) =
 The defect weight `1 + f(p)` vanishes exactly on the primes counted by the divergent series
 of the hypothesis, so this identity is the exact place where the hypothesis enters.
 
+### Proved this lap: the whole Gronwall step, and one scale of the iteration
+
+In `Wirsing/Log.lean`, all sorry-free:
+
+* `abs_logMean_mul_log_le_of_forall` — a bound `|L(M)| ≤ φ(M)` for all `M ≤ N` propagates
+  through the engine identity to `|L(N)| log N ≤ ∑_p (log p/p)(1 + f p) φ(⌊N/p⌋) + O(log N)`.
+* `sum_one_div_two_sq_le`, `sq_log_succ_le`, `sq_log_le_sum_log_div` —
+  `(log N)²/2 ≤ ∑_{k ≤ N} log k / k + 1`, by induction, no integral comparison.
+* `sum_one_div_mul_profile_le`, `sum_primeWeight_mul_profile_le` —
+  `∑_{p ≤ N} (log p/p)(1 + log⌊N/p⌋) ≤ (log N)²/2 + O(log N)`.
+* `badProfile`, `sum_one_sub_eq_two_mul_badProfile`, `abs_logMean_mul_log_le_of_profile` —
+  for `φ(M) = α(1 + log M)`,
+  `|L(N)| log N ≤ α (log N)² − 2α · badProfile f N + O((1+α)(1 + log N))`,
+  `badProfile f N = ∑_{p ≤ N, f p = -1} (log p/p)(1 + log⌊N/p⌋)`.
+* `sub_log_le_one_add_log_div`, `badLogSum`, `log_two_mul_badPrimeSum_le_badLogSum`,
+  `mul_badLogSum_le_badProfile` — `badProfile f N ≥ (log N − log K) r(K)` for `K ≤ N`, where
+  `r(K) = ∑_{p ≤ K, f p = -1} log p/p ≥ log 2 · E(K)` is unbounded under the hypothesis.
+* `abs_logMean_le_of_profile` — the two combined: if `|L(M)| ≤ α(1 + log M)` for all `M ≤ N`
+  and `2 log K ≤ log N`, then `|L(N)| ≤ α log N − α r(K) + 2C(α)`.
+
+Note the `α (log N)²` term is exactly the trivial bound: the factor `2` from `1 + f(p) = 2`
+on the good primes makes `sum_primeWeight_mul_profile_le` tight.  The whole gain of the
+route is `badProfile`, i.e. the mass the defect weight removes.
+
+### Refuted this lap: the step-function deficit bootstrap
+
+The obvious way to iterate `abs_logMean_le_of_profile` is to feed the improved bound back as
+the profile `φ(M) = α(1 + log M) − s·[M ≥ N₁]`.  With `u = log N`, `u₁ = log N₁` and
+`K = N/N₁` the step gives, for `s ≤ α u₁`,
+
+    |L(N)| ≤ α u − 2s(1 − u₁/u) + 2C,
+
+so with `u ≥ T u₁` the deficit maps `s ↦ 2s(1 − 1/T) − 2C` while `u ↦ T u`.  The ratio of
+multipliers `2(1 − 1/T)/T` is maximised at `T = 2`, where it equals `1/2 < 1`.  **The deficit
+can therefore never grow relative to `log N`, for any choice of `T`**, and the scheme cannot
+improve `α`.  Do not retry it.
+
+The correction is that the induction profile must vary continuously, as in the underlying
+ODE: with `ℓ(u) = L(e^u)`, `ψ` the profile and `Ψ(u) = ∫_0^u ψ`,
+
+    u ψ(u) = 2Ψ(u) − 2∫_0^u ψ(u − v) dr(v) + C u,
+
+whose solution decays like `exp(−4∫^u R₂(v)/v³ dv)`, `R₂ = ∫_0^· r`, and
+`∫^∞ R₂(v)/v³ dv = ∞` is equivalent to `∑_{f(p) = -1} 1/p = ∞`.  The formal shape to aim for
+is a `ψ : ℕ → ℝ` defined by strong recursion mirroring `abs_logMean_mul_log_le_of_forall`
+(so that `|L(N)| ≤ ψ(N)` is immediate by strong induction), with the analytic work isolated
+in `ψ(N)/log N → 0`.
+
 ### Next, in order
 
-1. **Halász in logarithmic form**: `L(N) = o(log N)` when `∑_{p} (1 - f p)/p = ∞`.
-   Feed the engine identity into a Gronwall/limsup induction on `A = limsup |L(N)|/log N`.
-   The crude step (`|L(⌊N/p⌋)| ≤ 1 + log(N/p)`, Mertens partial summation) only reproves
-   `|L(N)| ≤ log N`: a genuine iteration is required, exploiting that `u ↦ L(e^u)` is
-   1-Lipschitz (`abs_logMean_sub_le`).
+1. **Halász in logarithmic form** (`Wirsing.tendsto_logMean_div_log_atTop_zero`):
+   define the recursive profile `ψ` above, prove `|L(N)| ≤ ψ(N)` by strong induction from
+   `abs_logMean_mul_log_le_of_forall`, and prove `ψ(N) = o(log N)` from the divergence of
+   `∑_{f(p) = -1} 1/p`.  All the number theory needed is already proved; what remains is the
+   analysis of the recursion.
 2. **Tauberian step `L ⇒ σ`**: from `L(N) = o(log N)` and
    `abs_mean_mul_log_sub_sum_prime_le` (`σ(N)log N = ∑_p (log p/p) f(p) σ(⌊N/p⌋) + O(1)`),
    deduce `mean f N → 0`.  Note `L(N) - σ(N) = ∑_{n<N} σ(n)/(n+1)`, so step 1 says the
