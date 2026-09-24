@@ -413,4 +413,82 @@ theorem sum_div_mul_log_eq (N : ℕ) :
     push_cast
     ring
 
+/-- The harmonic bound `∑_{n ≤ M} 1/n ≤ 1 + log M`. -/
+@[category API, AMS 11]
+theorem sum_one_div_le (M : ℕ) : ∑ n ∈ Icc 1 M, (1 : ℝ) / n ≤ 1 + Real.log M := by
+  have h := harmonic_le_one_add_log M
+  rw [harmonic_eq_sum_Icc] at h
+  push_cast at h
+  simpa [one_div] using h
+
+/-- The multiples of `p` in `[1, M]` are exactly `p * j` for `j ≤ ⌊M/p⌋`. -/
+@[category API, AMS 11]
+theorem filter_dvd_eq_image {p M : ℕ} (hp : 0 < p) :
+    {m ∈ Icc 1 M | p ∣ m} = (Icc 1 (M / p)).image (fun j ↦ p * j) := by
+  ext m
+  simp only [Finset.mem_filter, Finset.mem_Icc, Finset.mem_image]
+  constructor
+  · rintro ⟨⟨hm1, hmM⟩, j, rfl⟩
+    have hj1 : 1 ≤ j := by
+      rcases Nat.eq_zero_or_pos j with rfl | h
+      · simp at hm1
+      · exact h
+    exact ⟨j, ⟨hj1, (Nat.le_div_iff_mul_le hp).2 (by rw [Nat.mul_comm]; exact hmM)⟩, rfl⟩
+  · rintro ⟨j, ⟨hj1, hjM⟩, rfl⟩
+    rw [Nat.le_div_iff_mul_le hp] at hjM
+    refine ⟨⟨Nat.one_le_iff_ne_zero.2 (Nat.mul_ne_zero hp.ne' (by omega)), ?_⟩, ⟨j, rfl⟩⟩
+    rw [Nat.mul_comm]; exact hjM
+
+/--
+Shifting by a prime in the logarithmic average:
+$\sum_{m \le M} f(pm)/m$ differs from $f(p) L(M)$ by at most $(2/p)(1 + \log M)$.
+-/
+@[category API, AMS 11]
+theorem abs_sum_div_shift_prime_sub_le (hf : IsPMOneMultiplicative f) {p M : ℕ}
+    (hp : p.Prime) :
+    |(∑ m ∈ Icc 1 M, f (p * m) / m) - f p * logMean f M| ≤ 2 / p * (1 + Real.log M) := by
+  classical
+  have hpR : (0 : ℝ) < p := by exact_mod_cast hp.pos
+  have hdiff : (∑ m ∈ Icc 1 M, f (p * m) / m) - f p * logMean f M
+      = ∑ m ∈ Icc 1 M, (f (p * m) - f p * f m) / m := by
+    rw [logMean, Finset.mul_sum, ← Finset.sum_sub_distrib]
+    exact Finset.sum_congr rfl fun m _ ↦ by ring
+  have hvanish : ∀ m ∈ Icc 1 M, m ∉ {m ∈ Icc 1 M | p ∣ m} → (f (p * m) - f p * f m) / m = 0 := by
+    intro m hm hm'
+    simp only [Finset.mem_filter] at hm'
+    have hcop : Nat.Coprime p m := (Nat.Prime.coprime_iff_not_dvd hp).2 fun h ↦ hm' ⟨hm, h⟩
+    rw [hf.map_mul_of_coprime p m hcop, sub_self, zero_div]
+  rw [hdiff, ← Finset.sum_subset (Finset.filter_subset _ _) hvanish,
+    filter_dvd_eq_image hp.pos,
+    Finset.sum_image (fun a _ b _ h ↦ Nat.eq_of_mul_eq_mul_left hp.pos h)]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  calc ∑ j ∈ Icc 1 (M / p), |(f (p * (p * j)) - f p * f (p * j)) / (p * j : ℕ)|
+      ≤ ∑ j ∈ Icc 1 (M / p), (2 : ℝ) / p * (1 / j) := by
+        refine Finset.sum_le_sum fun j hj ↦ ?_
+        have hj1 : 1 ≤ j := (mem_Icc.1 hj).1
+        have hjR : (0 : ℝ) < j := by exact_mod_cast hj1
+        have h1 := abs_eq_one_of_one_le f hf (Nat.mul_pos hp.pos (Nat.mul_pos hp.pos hj1))
+        have h2 := abs_eq_one_of_one_le f hf hp.one_lt.le
+        have h3 := abs_eq_one_of_one_le f hf (Nat.mul_pos hp.pos hj1)
+        rw [abs_div, Nat.cast_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ (p : ℝ) * j)]
+        have hnum : |f (p * (p * j)) - f p * f (p * j)| ≤ 2 := by
+          calc |f (p * (p * j)) - f p * f (p * j)| ≤ |f (p * (p * j))| + |f p * f (p * j)| :=
+                abs_sub _ _
+          _ = 2 := by rw [h1, abs_mul, h2, h3]; norm_num
+        have hprod : (2 : ℝ) / p * (1 / j) = 2 / ((p : ℝ) * j) := by field_simp
+        rw [hprod]
+        exact (div_le_div_iff_of_pos_right (by positivity)).2 hnum
+  _ = (2 : ℝ) / p * ∑ j ∈ Icc 1 (M / p), (1 : ℝ) / j := (Finset.mul_sum _ _ _).symm
+  _ ≤ 2 / p * (1 + Real.log M) := by
+        refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+        refine (sum_one_div_le (M / p)).trans ?_
+        have : ((M / p : ℕ) : ℝ) ≤ M := by
+          exact_mod_cast Nat.div_le_self M p
+        have hlog : Real.log ((M / p : ℕ) : ℝ) ≤ Real.log M := by
+          rcases Nat.eq_zero_or_pos (M / p) with h | h
+          · rw [h]
+            simpa using Real.log_natCast_nonneg M
+          · exact Real.log_le_log (by exact_mod_cast h) this
+        linarith
+
 end Wirsing
