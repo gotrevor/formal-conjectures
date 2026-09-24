@@ -815,4 +815,69 @@ theorem abs_sum_one_div_mul_logMean_sub_le (hf : IsPMOneMultiplicative f) (N : �
         _ = 1 / (m : ℝ) := mul_one _
   _ ≤ 1 + Real.log N := sum_one_div_le N
 
+section Abel
+
+variable (w g : ℕ → ℝ)
+
+/-- **Summation by parts** with partial sums taken over `Icc 1 n`. -/
+@[category API, AMS 11]
+theorem sum_Icc_by_parts (N : ℕ) :
+    ∑ k ∈ Icc 1 N, w k * g k
+      = (∑ k ∈ Icc 1 N, w k) * g N
+        - ∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, w j) * (g (k + 1) - g k) := by
+  induction N with
+  | zero => simp
+  | succ N ih =>
+    have hW : ∑ k ∈ Icc 1 (N + 1), w k = (∑ k ∈ Icc 1 N, w k) + w (N + 1) :=
+      Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1) _
+    have hL : ∑ k ∈ Icc 1 (N + 1), w k * g k
+        = (∑ k ∈ Icc 1 N, w k * g k) + w (N + 1) * g (N + 1) :=
+      Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1) _
+    have hIco : ∑ k ∈ Ico 1 (N + 1), (∑ j ∈ Icc 1 k, w j) * (g (k + 1) - g k)
+        = (∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, w j) * (g (k + 1) - g k))
+          + (∑ j ∈ Icc 1 N, w j) * (g (N + 1) - g N) := by
+      rcases Nat.eq_zero_or_pos N with rfl | hN
+      · simp
+      · exact Finset.sum_Ico_succ_top (by omega : 1 ≤ N) _
+    rw [hL, ih, hW, hIco]
+    ring
+
+/--
+Comparing two weight systems: if their partial sums agree up to `c`, the weighted sums of
+`g` agree up to `c` times the size plus the total variation of `g`.
+-/
+@[category API, AMS 11]
+theorem abs_sum_weight_sub_le (w' : ℕ → ℝ) (N : ℕ) (c : ℝ)
+    (hc : ∀ n ≤ N, |(∑ k ∈ Icc 1 n, w k) - ∑ k ∈ Icc 1 n, w' k| ≤ c) :
+    |(∑ k ∈ Icc 1 N, w k * g k) - ∑ k ∈ Icc 1 N, w' k * g k|
+      ≤ c * |g N| + c * ∑ k ∈ Ico 1 N, |g (k + 1) - g k| := by
+  rw [sum_Icc_by_parts w g N, sum_Icc_by_parts w' g N]
+  have hrw : ((∑ k ∈ Icc 1 N, w k) * g N
+        - ∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, w j) * (g (k + 1) - g k))
+      - ((∑ k ∈ Icc 1 N, w' k) * g N
+        - ∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, w' j) * (g (k + 1) - g k))
+      = ((∑ k ∈ Icc 1 N, w k) - ∑ k ∈ Icc 1 N, w' k) * g N
+        - ∑ k ∈ Ico 1 N,
+            ((∑ j ∈ Icc 1 k, w j) - ∑ j ∈ Icc 1 k, w' j) * (g (k + 1) - g k) := by
+    have hsum : (∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, w j) * (g (k + 1) - g k))
+        - ∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, w' j) * (g (k + 1) - g k)
+        = ∑ k ∈ Ico 1 N,
+            ((∑ j ∈ Icc 1 k, w j) - ∑ j ∈ Icc 1 k, w' j) * (g (k + 1) - g k) := by
+      rw [← Finset.sum_sub_distrib]
+      exact Finset.sum_congr rfl fun k _ ↦ by ring
+    rw [← hsum]
+    ring
+  rw [hrw]
+  refine (abs_sub _ _).trans (add_le_add ?_ ?_)
+  · rw [abs_mul]
+    exact mul_le_mul_of_nonneg_right (hc N le_rfl) (abs_nonneg _)
+  · refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun k hk ↦ ?_
+    have hkN : k ≤ N := le_of_lt (mem_Ico.1 hk).2
+    rw [abs_mul]
+    exact mul_le_mul_of_nonneg_right (hc k hkN) (abs_nonneg _)
+
+end Abel
+
 end Wirsing
