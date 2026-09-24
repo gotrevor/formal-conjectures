@@ -1024,4 +1024,46 @@ theorem abs_logMean_mul_log_le (hf : IsPMOneMultiplicative f)
     ring
   rwa [hzero, sub_zero] at h
 
+/--
+**The induction step of route C.**  If `|L(M)| ≤ φ(M)` for every `M ≤ N`, the engine
+identity turns that into a bound for `|L(N)| \log N` with the defect weights
+`(\log p / p)(1 + f p)`, which are nonnegative and vanish on the primes with `f(p) = -1`.
+
+This is the inequality that the Gronwall iteration for
+`Wirsing.tendsto_logMean_div_log_atTop_zero` is applied to.
+-/
+@[category API, AMS 11]
+theorem abs_logMean_mul_log_le_of_forall (hf : IsPMOneMultiplicative f) {N : ℕ} (φ : ℕ → ℝ)
+    (hφ : ∀ M ≤ N, |logMean f M| ≤ φ M) :
+    |logMean f N| * Real.log N
+      ≤ (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * ((1 + f p) * φ (N / p)))
+        + (27 + 2 * Real.log 4) * (1 + Real.log N) := by
+  classical
+  have hlog : 0 ≤ Real.log N := Real.log_natCast_nonneg N
+  have hmain := abs_logMean_mul_log_sub_defect_le f hf N
+  have hD : |∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * ((1 + f p) * logMean f (N / p))|
+      ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * ((1 + f p) * φ (N / p)) := by
+    refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun p hp ↦ ?_)
+    have hpmem := mem_filter.1 hp
+    have hpp : p.Prime := hpmem.2
+    have hp1 : 1 ≤ p := hpp.one_lt.le.trans' (by norm_num)
+    have hpR : (1 : ℝ) ≤ p := by exact_mod_cast hpp.one_lt.le
+    have hwnn : 0 ≤ Real.log p / p :=
+      div_nonneg (Real.log_nonneg hpR) (by positivity)
+    have hfp := hf.pmOne p hp1
+    have hsnn : 0 ≤ 1 + f p := by rcases hfp with h | h <;> rw [h] <;> norm_num
+    have hdiv : N / p ≤ N := Nat.div_le_self _ _
+    have hle : |logMean f (N / p)| ≤ φ (N / p) := hφ _ hdiv
+    rw [abs_mul, abs_of_nonneg hwnn, abs_mul, abs_of_nonneg hsnn]
+    exact mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hle hsnn) hwnn
+  have habs : |logMean f N * Real.log N| ≤
+      |∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * ((1 + f p) * logMean f (N / p))|
+        + (27 + 2 * Real.log 4) * (1 + Real.log N) := by
+    have := abs_sub_abs_le_abs_sub (logMean f N * Real.log N)
+      (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * ((1 + f p) * logMean f (N / p)))
+    linarith
+  rw [abs_mul, abs_of_nonneg hlog] at habs
+  linarith [hD]
+
 end Wirsing
