@@ -318,10 +318,9 @@ theorem card_badPrimesLE_le (N : ℕ) : (#(badPrimesLE f N) : ℝ) ≤ N := by
 
 open scoped Classical in
 @[category API, AMS 11]
-theorem exists_turan_kubilius :
-    ∃ C : ℝ, ∀ N : ℕ, ∑ n ∈ Icc 1 N, ((omegaBad f n : ℝ) - badPrimeSum f N) ^ 2
-      ≤ C * N * (badPrimeSum f N + 1) := by
-  refine ⟨3, fun N ↦ ?_⟩
+theorem turan_kubilius (N : ℕ) :
+    ∑ n ∈ Icc 1 N, ((omegaBad f n : ℝ) - badPrimeSum f N) ^ 2
+      ≤ 3 * N * (badPrimeSum f N + 1) := by
   have hcardIcc : ((#(Icc 1 N) : ℕ) : ℝ) = N := by rw [Nat.card_Icc]; simp
   have hexp : ∑ n ∈ Icc 1 N, ((omegaBad f n : ℝ) - badPrimeSum f N) ^ 2
       = (∑ n ∈ Icc 1 N, (omegaBad f n : ℝ) ^ 2)
@@ -341,6 +340,15 @@ theorem exists_turan_kubilius :
   rw [hexp]
   nlinarith [mul_le_mul_of_nonneg_left h2 (by linarith : (0 : ℝ) ≤ 2 * badPrimeSum f N),
     mul_nonneg hE hN, mul_nonneg hE hE]
+
+/--
+The Turán–Kubilius inequality for the prime set `E = {p : f p = -1}`.
+-/
+@[category API, AMS 11]
+theorem exists_turan_kubilius :
+    ∃ C : ℝ, ∀ N : ℕ, ∑ n ∈ Icc 1 N, ((omegaBad f n : ℝ) - badPrimeSum f N) ^ 2
+      ≤ C * N * (badPrimeSum f N + 1) :=
+  ⟨3, turan_kubilius f⟩
 
 /-- Telescoping bound `∑_{2 ≤ k ≤ N} 1/k² ≤ 1 - 1/N`. -/
 @[category API, AMS 11]
@@ -439,10 +447,9 @@ The error comes only from the `m ≤ N/p` divisible by `p`, of which there are a
 and `∑_p 1/p² ≤ 1`.
 -/
 @[category API, AMS 11]
-theorem exists_sum_mul_omegaBad (hf : IsPMOneMultiplicative f) :
-    ∃ C : ℝ, ∀ N : ℕ, |(∑ n ∈ Icc 1 N, f n * omegaBad f n)
-      - ∑ p ∈ badPrimesLE f N, f p * partialSum f (N / p)| ≤ C * N := by
-  refine ⟨2, fun N ↦ ?_⟩
+theorem sum_mul_omegaBad_approx (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |(∑ n ∈ Icc 1 N, f n * omegaBad f n)
+      - ∑ p ∈ badPrimesLE f N, f p * partialSum f (N / p)| ≤ 2 * N := by
   rw [sum_mul_omegaBad_eq, ← Finset.sum_sub_distrib]
   refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
   have key : ∀ p ∈ badPrimesLE f N,
@@ -483,9 +490,72 @@ theorem exists_sum_mul_omegaBad (hf : IsPMOneMultiplicative f) :
   have hN : (0 : ℝ) ≤ N := Nat.cast_nonneg N
   nlinarith [sum_badPrimesLE_one_div_sq_le f N, hN]
 
+/-- The hyperbola estimate, in existential form. -/
+@[category API, AMS 11]
+theorem exists_sum_mul_omegaBad (hf : IsPMOneMultiplicative f) :
+    ∃ C : ℝ, ∀ N : ℕ, |(∑ n ∈ Icc 1 N, f n * omegaBad f n)
+      - ∑ p ∈ badPrimesLE f N, f p * partialSum f (N / p)| ≤ C * N :=
+  ⟨2, sum_mul_omegaBad_approx f hf⟩
+
+@[category API, AMS 11]
+theorem sum_sq_eq (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    ∑ n ∈ Icc 1 N, f n ^ 2 = N := by
+  have : ∀ n ∈ Icc 1 N, f n ^ 2 = 1 := by
+    intro n hn
+    simp only [Finset.mem_Icc] at hn
+    rcases hf.pmOne n hn.1 with h | h <;> rw [h] <;> norm_num
+  rw [Finset.sum_congr rfl this, Finset.sum_const, Nat.card_Icc, nsmul_eq_mul]
+  simp
+
+@[category API, AMS 11]
+theorem abs_partialSum_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |partialSum f N| ≤ N := by
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  have : ∀ n ∈ Icc 1 N, |f n| = 1 := fun n hn ↦
+    abs_eq_one_of_one_le f hf (Finset.mem_Icc.1 hn).1
+  rw [Finset.sum_congr rfl this, Finset.sum_const, Nat.card_Icc, nsmul_eq_mul]
+  simp
+
+@[category API, AMS 11]
+theorem abs_mean_le_one (hf : IsPMOneMultiplicative f) (N : ℕ) : |mean f N| ≤ 1 := by
+  rcases Nat.eq_zero_or_pos N with rfl | hN
+  · simp [mean]
+  · have hNR : (0 : ℝ) < N := by exact_mod_cast hN
+    rw [mean_eq_partialSum_div, abs_div, abs_of_nonneg hNR.le, div_le_one hNR]
+    exact abs_partialSum_le f hf N
+
+open scoped Classical in
+/-- Cauchy–Schwarz applied to `∑_{n ≤ N} f(n) (ω_E(n) - E(N))`. -/
+@[category API, AMS 11]
+theorem abs_sum_mul_omegaBad_sub_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |∑ n ∈ Icc 1 N, f n * ((omegaBad f n : ℝ) - badPrimeSum f N)|
+      ≤ 3 * N * Real.sqrt (badPrimeSum f N + 1) := by
+  have hE := badPrimeSum_nonneg f N
+  have hB : (0 : ℝ) ≤ badPrimeSum f N + 1 := by linarith
+  have hBsq : Real.sqrt (badPrimeSum f N + 1) ^ 2 = badPrimeSum f N + 1 := Real.sq_sqrt hB
+  have hB0 : (0 : ℝ) ≤ Real.sqrt (badPrimeSum f N + 1) := Real.sqrt_nonneg _
+  have hN : (0 : ℝ) ≤ N := Nat.cast_nonneg N
+  have hCS := Finset.sum_mul_sq_le_sq_mul_sq (Icc 1 N) f
+    (fun n ↦ (omegaBad f n : ℝ) - badPrimeSum f N)
+  rw [sum_sq_eq f hf] at hCS
+  have hTK := turan_kubilius f N
+  have hkey : (∑ n ∈ Icc 1 N, f n * ((omegaBad f n : ℝ) - badPrimeSum f N)) ^ 2
+      ≤ (3 * N * Real.sqrt (badPrimeSum f N + 1)) ^ 2 := by
+    refine hCS.trans ?_
+    have : (3 * (N : ℝ) * Real.sqrt (badPrimeSum f N + 1)) ^ 2
+        = 9 * N ^ 2 * (badPrimeSum f N + 1) := by
+      rw [mul_pow, mul_pow, hBsq]; ring
+    rw [this]
+    nlinarith [hTK, hN, hE]
+  rw [← Real.sqrt_sq_eq_abs]
+  calc Real.sqrt ((∑ n ∈ Icc 1 N, f n * ((omegaBad f n : ℝ) - badPrimeSum f N)) ^ 2)
+      ≤ Real.sqrt ((3 * N * Real.sqrt (badPrimeSum f N + 1)) ^ 2) :=
+        Real.sqrt_le_sqrt hkey
+    _ = 3 * N * Real.sqrt (badPrimeSum f N + 1) := Real.sqrt_sq (by positivity)
+
 /--
 The functional relation: with `σ(N) = S(N)/N`,
-`|σ(N) · E(N) + ∑_{p ∈ E, p ≤ N} σ(N/p)/p| ≪ √(E(N) + 1) + 1`.
+`|σ(N)·E(N) + ∑_{p ∈ E, p ≤ N} σ(⌊N/p⌋)/p| ≤ C (√(E(N)+1) + 1)`.
 
 Obtained from `exists_turan_kubilius` by Cauchy–Schwarz together with
 `exists_sum_mul_omegaBad` and `f p = -1` on `E`.
@@ -496,6 +566,120 @@ theorem exists_functional_relation (hf : IsPMOneMultiplicative f) :
       |mean f N * badPrimeSum f N
         + ∑ p ∈ badPrimesLE f N, mean f (N / p) / p|
         ≤ C * (Real.sqrt (badPrimeSum f N + 1) + 1) := by
-  sorry
+  classical
+  have habs : ∀ a b : ℝ, |a - b| ≤ |a| + |b| := fun a b ↦ by
+    rw [sub_eq_add_neg]; exact (abs_add_le a (-b)).trans_eq (by rw [abs_neg])
+  refine ⟨3, fun N hN ↦ ?_⟩
+  have hNR : (0 : ℝ) < N := by exact_mod_cast hN
+  set B := Real.sqrt (badPrimeSum f N + 1) with hBdef
+  have hB0 : (0 : ℝ) ≤ B := Real.sqrt_nonneg _
+  have hexp : ∑ n ∈ Icc 1 N, f n * ((omegaBad f n : ℝ) - badPrimeSum f N)
+      = (∑ n ∈ Icc 1 N, f n * omegaBad f n) - badPrimeSum f N * partialSum f N := by
+    rw [partialSum, Finset.mul_sum, ← Finset.sum_sub_distrib]
+    exact Finset.sum_congr rfl fun n _ ↦ by ring
+  have hA := abs_sum_mul_omegaBad_sub_le f hf N
+  rw [hexp] at hA
+  have hC := sum_mul_omegaBad_approx f hf N
+  have hfp : ∀ p ∈ badPrimesLE f N,
+      f p * partialSum f (N / p) = -partialSum f (N / p) := fun p hp ↦ by
+    rw [(mem_badPrimesLE_iff f |>.1 hp).2.2]; ring
+  rw [Finset.sum_congr rfl hfp, Finset.sum_neg_distrib, sub_neg_eq_add] at hC
+  -- Step 1: combine the two estimates at the level of the partial sums `S`.
+  have h1 : |badPrimeSum f N * partialSum f N
+      + ∑ p ∈ badPrimesLE f N, partialSum f (N / p)| ≤ 3 * N * B + 2 * N := by
+    have heq : badPrimeSum f N * partialSum f N
+        + ∑ p ∈ badPrimesLE f N, partialSum f (N / p)
+        = ((∑ n ∈ Icc 1 N, f n * (omegaBad f n : ℝ))
+            + ∑ p ∈ badPrimesLE f N, partialSum f (N / p))
+          - ((∑ n ∈ Icc 1 N, f n * (omegaBad f n : ℝ))
+            - badPrimeSum f N * partialSum f N) := by ring
+    rw [heq]
+    calc |((∑ n ∈ Icc 1 N, f n * (omegaBad f n : ℝ))
+            + ∑ p ∈ badPrimesLE f N, partialSum f (N / p))
+          - ((∑ n ∈ Icc 1 N, f n * (omegaBad f n : ℝ))
+            - badPrimeSum f N * partialSum f N)|
+        ≤ |(∑ n ∈ Icc 1 N, f n * (omegaBad f n : ℝ))
+            + ∑ p ∈ badPrimesLE f N, partialSum f (N / p)|
+          + |(∑ n ∈ Icc 1 N, f n * (omegaBad f n : ℝ))
+            - badPrimeSum f N * partialSum f N| := habs _ _
+      _ ≤ 2 * N + 3 * N * B := add_le_add hC hA
+      _ = 3 * N * B + 2 * N := by ring
+  -- Step 2: divide by `N`.
+  have h2 : |mean f N * badPrimeSum f N
+      + ∑ p ∈ badPrimesLE f N, partialSum f (N / p) / N| ≤ 3 * B + 2 := by
+    have hdiv : mean f N * badPrimeSum f N
+        + ∑ p ∈ badPrimesLE f N, partialSum f (N / p) / N
+        = (badPrimeSum f N * partialSum f N
+          + ∑ p ∈ badPrimesLE f N, partialSum f (N / p)) / N := by
+      rw [add_div, Finset.sum_div, mean_eq_partialSum_div]; ring
+    rw [hdiv, abs_div, abs_of_pos hNR, div_le_iff₀ hNR]
+    calc |badPrimeSum f N * partialSum f N
+        + ∑ p ∈ badPrimesLE f N, partialSum f (N / p)| ≤ 3 * N * B + 2 * N := h1
+      _ = (3 * B + 2) * N := by ring
+  -- Step 3: replace `S(⌊N/p⌋)/N` by `σ(⌊N/p⌋)/p`.
+  have h3 : |∑ p ∈ badPrimesLE f N,
+      (partialSum f (N / p) / N - mean f (N / p) / p)| ≤ 1 := by
+    refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+    have hterm : ∀ p ∈ badPrimesLE f N,
+        |partialSum f (N / p) / N - mean f (N / p) / p| ≤ 1 / N := by
+      intro p hp
+      obtain ⟨hpN, hprime, -⟩ := mem_badPrimesLE_iff f |>.1 hp
+      have hppos : 0 < p := hprime.pos
+      have hpR : (0 : ℝ) < p := by exact_mod_cast hppos
+      rcases Nat.eq_zero_or_pos (N / p) with hk | hk
+      · rw [hk]
+        simp [partialSum, mean]
+      · have hkR : (0 : ℝ) < ((N / p : ℕ) : ℝ) := by exact_mod_cast hk
+        have hpos : (0 : ℝ) < (N : ℝ) * (((N / p : ℕ) : ℝ) * p) := by positivity
+        have hkey : partialSum f (N / p) / N - mean f (N / p) / p
+            = partialSum f (N / p) * (((N / p : ℕ) : ℝ) * p - N)
+              / ((N : ℝ) * (((N / p : ℕ) : ℝ) * p)) := by
+          rw [mean_eq_partialSum_div, div_div]
+          field_simp
+        have hle : ((N / p : ℕ) : ℝ) * p ≤ N := by exact_mod_cast Nat.div_mul_le_self N p
+        have hgt : (N : ℝ) < ((N / p : ℕ) : ℝ) * p + p := by
+          have hnat : N < (N / p + 1) * p := by
+            have h1' := Nat.div_add_mod N p
+            have h2' := Nat.mod_lt N hppos
+            calc N = p * (N / p) + N % p := h1'.symm
+              _ < p * (N / p) + p := by omega
+              _ = (N / p + 1) * p := by ring
+          have := (Nat.cast_lt (α := ℝ)).2 hnat
+          push_cast at this
+          linarith
+        have habsS : |partialSum f (N / p)| ≤ ((N / p : ℕ) : ℝ) :=
+          abs_partialSum_le f hf _
+        have hfac : |((N / p : ℕ) : ℝ) * p - N| ≤ p := by
+          rw [abs_le]; constructor <;> linarith
+        have h5 : |partialSum f (N / p) * (((N / p : ℕ) : ℝ) * p - N)|
+            ≤ ((N / p : ℕ) : ℝ) * p := by
+          rw [abs_mul]
+          exact mul_le_mul habsS hfac (abs_nonneg _) hkR.le
+        rw [hkey, abs_div, abs_of_pos hpos, div_le_div_iff₀ hpos hNR]
+        nlinarith [h5, hNR, hkR, hpR]
+    refine (Finset.sum_le_sum hterm).trans ?_
+    rw [Finset.sum_const, nsmul_eq_mul]
+    have hc := card_badPrimesLE_le f N
+    have hmul : (#(badPrimesLE f N) : ℝ) * (1 / N) ≤ (N : ℝ) * (1 / N) :=
+      mul_le_mul_of_nonneg_right hc (by positivity)
+    have hone : (N : ℝ) * (1 / N) = 1 := by field_simp
+    linarith [hmul, hone]
+  -- Combine.
+  have hsplit : mean f N * badPrimeSum f N
+      + ∑ p ∈ badPrimesLE f N, mean f (N / p) / p
+      = (mean f N * badPrimeSum f N
+        + ∑ p ∈ badPrimesLE f N, partialSum f (N / p) / N)
+      - ∑ p ∈ badPrimesLE f N, (partialSum f (N / p) / N - mean f (N / p) / p) := by
+    rw [Finset.sum_sub_distrib]; ring
+  rw [hsplit]
+  calc |(mean f N * badPrimeSum f N
+      + ∑ p ∈ badPrimesLE f N, partialSum f (N / p) / N)
+      - ∑ p ∈ badPrimesLE f N, (partialSum f (N / p) / N - mean f (N / p) / p)|
+      ≤ |mean f N * badPrimeSum f N
+        + ∑ p ∈ badPrimesLE f N, partialSum f (N / p) / N|
+        + |∑ p ∈ badPrimesLE f N, (partialSum f (N / p) / N - mean f (N / p) / p)| :=
+        habs _ _
+    _ ≤ (3 * B + 2) + 1 := add_le_add h2 h3
+    _ = 3 * (B + 1) := by ring
 
 end Wirsing

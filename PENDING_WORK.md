@@ -66,16 +66,43 @@ Steps 1–4 are stated as named `sorry`s in
   — **PROVED** 2026-09-24,
 * `Wirsing.exists_turan_kubilius` (step 1) — **PROVED** 2026-09-24, with `C = 3`,
 * `Wirsing.exists_sum_mul_omegaBad` (step 2) — **PROVED** 2026-09-24, with `C = 2`,
-* `Wirsing.exists_functional_relation` (step 3).
+* `Wirsing.exists_functional_relation` (step 3) — **PROVED** 2026-09-24, with `C = 3`.
 
-Steps 0, 1 and 2 are done.  **Step 3 (`exists_functional_relation`) is the next target**:
-assemble Turán–Kubilius (via Cauchy–Schwarz, `Finset.inner_mul_le_norm_mul_norm` or
-`Finset.sum_div_pow_mul_fract...`; the plain form `|∑ a_n b_n| ≤ √(∑a²)√(∑b²)` is
-`Finset.inner_mul_le_norm_mul_norm` / `Finset.sum_sqrt_mul_sqrt_le`) with
-`exists_sum_mul_omegaBad`, using `f p = -1` on `E` and `|f n| = 1`.  The bookkeeping
-`S(N/p)/N = mean f (N/p)/p + O(1/N)` costs another `O(1)` after summing over `p ≤ N`.
+`OmegaE.lean` is now sorry-free.
 
-Step 4 (relation ⟹ `σ → 0`) is still open and is where the research difficulty now lives.
+Steps 0–3 are done and `OmegaE.lean` is sorry-free.  The **only** remaining obligation of
+the crux is step 4:
+
+> from `E(N) → ∞` and
+> `|σ(N)·E(N) + ∑_{p ∈ E, p ≤ N} σ(⌊N/p⌋)/p| ≤ 3(√(E(N)+1) + 1)`,
+> conclude `σ(N) → 0`.
+
+Equivalently, dividing by `E(N)`: `σ(N) + ⟨σ(N/p)⟩_E → 0`, where `⟨·⟩_E` is the average with
+weights `1/p`, `p ∈ E`, `p ≤ N`, normalised by `E(N)`.
+
+### What is known about step 4
+
+* The heuristic is sound: writing `σ(e^u) = A cos(τu)` the relation forces
+  `1 + ⟨p^{-iτ}⟩ = 0`, impossible for every real `τ`, so `A = 0`.  Making this rigorous is
+  the Halász/Wirsing content.
+* The naive limsup argument fails: `|σ(N)| ≤ ⟨|σ(N/p)|⟩ + o(1)` gives only `A ≤ A`.
+* A promising refinement: near-maximal `|σ(N)|` forces `σ(N/p) ≈ -σ(N)` for almost all the
+  weight, hence `σ(N/(pq)) ≈ σ(N)`; a contradiction follows if `E` contains pairs `(p, q)`
+  with `q/p² ∈ [1, 1+ε]` carrying positive weight.  That is **not** automatic for a general
+  `E`, so this needs more.
+* **The key extra freedom, not yet exploited.** Nothing in steps 0–3 uses `f p = -1` except
+  the last rewrite in `exists_functional_relation`.  The same argument run with an
+  *arbitrary* set `S` of primes gives
+  `∑_{p ∈ S} f(p) σ(⌊N/p⌋)/p - σ(N) ∑_{p ∈ S} 1/p = O(√(∑_{p ∈ S} 1/p) + 1)`.
+  Two consequences:
+  - taking `S ⊆ E` with `∑_{p ∈ S} 1/p = ∞` lets one choose a sub-family of `E` with
+    controlled multiplicative structure;
+  - taking `S` inside `{p : f p = 1}` says `σ` is *slowly varying along `S`*, which is the
+    Lipschitz-type input Halász's proof needs.
+
+  **Next concrete step: generalise `OmegaE.lean` from the hard-coded predicate
+  `f p = -1` to an arbitrary prime predicate `P`.**  Every lemma except the final
+  rewrite goes through verbatim with `f p` kept symbolic.
 
 ## Build note
 
