@@ -21,6 +21,7 @@ public import FormalConjectures.ErdosProblems.Wirsing.Log
 public import FormalConjectures.ErdosProblems.Wirsing.Decay
 public import FormalConjectures.ErdosProblems.Wirsing.Wintner
 public import FormalConjectures.ErdosProblems.Wirsing.Rigidity
+public import FormalConjectures.ErdosProblems.Wirsing.Pretentious
 
 /-!
 # Wirsing's mean value theorem: assembly

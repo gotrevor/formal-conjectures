@@ -1,5 +1,82 @@
 # PENDING WORK — Erdős 239
 
+## LAP 7 (2026-09-24): the analytic input is in mathlib, and the uniformity is PROVED
+
+### The correction
+
+Laps 2–6 all recorded, in one form or another, that the classical route for real `f` is
+"gated on analytic machinery not available in mathlib".  **That premise was false.**
+Mathlib v4.33.1 (this project's pinned dependency) already contains:
+
+| what | mathlib name |
+| --- | --- |
+| analytic continuation of `ζ` | `differentiableAt_riemannZeta`, `analyticOn_riemannZeta` |
+| simple pole at `s = 1` | `riemannZeta_residue_one` |
+| `ζ(s) ≠ 0` on `re s ≥ 1` | `riemannZeta_ne_zero_of_one_le_re` |
+| log-Euler product | `riemannZeta_eulerProduct_exp_log` |
+| `L(Λ, s) = -ζ'/ζ` | `LSeries_vonMangoldt_eq_deriv_riemannZeta_div` |
+| summability of the Euler logs | `DirichletCharacter.summable_neg_log_one_sub_mul_prime_cpow` |
+
+Mathlib has **no** Tauberian theorem and **no** PNT, which is what the lap-6 survey actually
+found; the survey then over-generalised that to "no analytic machinery", and the plan drifted
+to formalising the Erdős–Selberg elementary PNT from scratch.  That plan is dropped.
+
+### Proved this lap (sorry-free): `Wirsing/Pretentious.lean`
+
+`#print axioms`: `propext, Classical.choice, Quot.sound`.
+
+* `one_sub_cos_two_mul_le` — `1 - \cos 2θ ≤ 4(1 - ε\cos θ)` for `ε = ±1`; the trigonometric
+  form of `|z² - w²| ≤ 2|z - w|` on the unit circle.
+* `tendsto_tsum_primes_rpow` — `∑_p p^{-(1+x)} → ∞` as `x → 0⁺` (from
+  `Nat.Primes.not_summable_one_div`).
+* `norm_sq_one_sub_prime_cpow` — `|1 - p^{-y-it}|² = (1 - p^{-y})² + 2p^{-y}(1 - \cos(t\log p))`.
+* `summable_neg_log_one_sub_prime_cpow`, `summable_neg_log_norm`, `log_norm_riemannZeta` —
+  `\log‖ζ(s)‖ = ∑_p -\log|1 - p^{-s}|` for `re s > 1`.
+* `log_norm_sub_log_norm_le` — the termwise comparison
+  `\log|1 - p^{-y-it}| - \log(1 - p^{-y}) ≤ 4(1 - \cos(t\log p))p^{-y}` for `y ≥ 1`.
+* `norm_one_sub_prime_cpow_ofReal`, `tsum_rpow_le_log_norm_riemannZeta` —
+  `∑_p p^{-y} ≤ \log ζ(y)`.
+* `log_norm_riemannZeta_sub_le` — the summed comparison
+  `\log‖ζ(y)‖ - \log‖ζ(y+it)‖ ≤ 4∑_p (1-\cos(t\log p))/p` (when the right side converges).
+* **`not_summable_one_sub_cos`** — for `t ≠ 0`, `∑_p (1 - \cos(t\log p))/p = ∞`.
+* **`not_summable_one_sub_mul_cos`**, **`not_summable_one_sub_mul_cos_of_not_summable`** —
+  for a `{±1}`-valued multiplicative `f` whose `∑_p (1-f(p))/p` diverges,
+  `∑_p (1 - f(p)\cos(t\log p))/p = ∞` for **every** real `t`.
+
+The last is `D(f, n^{it}) = ∞` for all `t`: `f` is pretentious to no character.  It is
+*exactly* the "missing uniformity" that laps 2, 3 and 6 each named as the blocker and each
+declared unavailable.  It needs only **continuity** of `ζ` at `1 + it`, not the non-vanishing.
+
+The place where real-valuedness enters is now pinned down and machine-checked: `f(p)` is a
+*sign*, so `f(p)² = 1`, so divergence at `2t` transfers to divergence at `t`.  For
+`f(n) = n^{iθ}` this fails at `t = θ`, which is the counterexample the crux must exclude.
+
+### The route from here
+
+The crux `Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero` is still open and is still
+PNT-strength (the lap-6 finding stands — `λ` is an instance).  The route is now:
+
+1. **DONE** — `D(f, n^{it}) = ∞` for every `t`.
+2. **NEXT** — feed it into the route-C resonance obstruction.  The relation
+   `σ(N)\log N = ∑_p (\log p/p) f(p) σ(⌊N/p⌋) + O(1)` stalls at `A ≤ A` because the test
+   function `σ(e^u) = A\cos(τu + φ)` makes the averaging operator's symbol `1 + ν̂(τ)` vanish.
+   The symbol is `∑_p (\log p/p)(1 - f(p)\cos(τ\log p))/\log N`, and step 1 says the
+   *unweighted* version diverges.  The weighted version needs a Mertens-type partial
+   summation; that is the next concrete Lean target.
+3. The Tauberian/Fourier step from "every twist has small logarithmic mean" to `σ → 0`.
+   This is where a genuine Tauberian theorem (Newman's, on top of mathlib's `ζ`) may still
+   be needed; if so it is now a well-scoped ~1-page complex-analysis formalisation, not a
+   PNT-from-scratch project.
+
+### Do not
+
+* Do not resume the elementary Selberg / Erdős–Selberg PNT plan (`Selberg.lean` stays as
+  sorry-free scaffolding, off the path).
+* Do not add `PrimeNumberTheoremAnd` as a dependency (it is on disk under `.lake/packages/`
+  but pinned to toolchain v4.32.2 against a different mathlib, and it is not upstreamable).
+* Do not repeat the three refuted Mertens-weight transfers or the window chaining.
+
+
 ## ROUTE-DECISIVE FINDING (lap 6): Erdős 239 implies the Prime Number Theorem
 
 The Liouville function `λ` is multiplicative and `±1`-valued, so it is an instance of the
@@ -707,10 +784,16 @@ weights `1/p`, `p ∈ E`, `p ≤ N`, normalised by `E(N)`.
 
   Note also the classical route for real `f`: the pretentious triangle inequality gives
   `D(f,1) ≤ 2 D(f, n^{iτ})`, so `∑_p (1 - f(p)cos(τ log p))/p = ∞` for every `τ`, which is
-  exactly the missing uniformity.  Its usual proof needs `∑_p (1 - cos(2τ log p))/p = ∞`,
-  i.e. Mertens plus `ζ(1 + it) ≠ 0` — **not available in mathlib**, so that route is gated
-  on building analytic machinery.  The elementary substitute is what Wirsing/Hildebrand
-  supply and what the online request asks for.
+  exactly the missing uniformity.
+
+  **CORRECTED, lap 7 (2026-09-24).**  This paragraph used to end "its usual proof needs
+  Mertens plus `ζ(1 + it) ≠ 0` — *not available in mathlib*, so that route is gated on
+  building analytic machinery."  **That was wrong**, and it misdirected laps 2–6.  Mathlib
+  v4.33.1 has the whole analytic toolkit (see the lap-7 section at the top of this file), and
+  the statement is now **proved**, sorry-free, in
+  `FormalConjectures/ErdosProblems/Wirsing/Pretentious.lean`:
+  `Wirsing.not_summable_one_sub_mul_cos_of_not_summable`.  It turned out not even to need
+  `ζ(1 + it) ≠ 0`, only *continuity* of `ζ` at `1 + it`.
 
 ## Route C (log-weighted / Wirsing's integral equation) — OPENED 2026-09-24
 
