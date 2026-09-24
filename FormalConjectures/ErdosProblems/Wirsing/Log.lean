@@ -956,6 +956,115 @@ theorem abs_sum_prime_sub_sum_one_div_logMean_le (hf : IsPMOneMultiplicative f) 
           (mul_le_mul_of_nonneg_left hvar hcnn)
   _ = 2 * c * (1 + Real.log N) := by ring
 
+/-- `∑_{k ≤ N} 1/(2k²) ≤ 1`, by telescoping `1/k² ≤ 1/(k-1) - 1/k`. -/
+@[category API, AMS 11]
+theorem sum_one_div_two_sq_le (N : ℕ) : ∑ k ∈ Icc 1 N, (1 : ℝ) / (2 * k ^ 2) ≤ 1 := by
+  have key : ∀ M : ℕ, 1 ≤ M → ∑ k ∈ Icc 1 M, (1 : ℝ) / (2 * k ^ 2) ≤ 1 - 1 / (2 * (M : ℝ)) := by
+    intro M hM
+    induction M, hM using Nat.le_induction with
+    | base => norm_num
+    | succ M hM ih =>
+      have hMR : (1 : ℝ) ≤ (M : ℝ) := by exact_mod_cast hM
+      rw [Finset.sum_Icc_succ_top (by omega : 1 ≤ M + 1)]
+      have hcast : ((M + 1 : ℕ) : ℝ) = (M : ℝ) + 1 := by push_cast; ring
+      rw [hcast]
+      have hstep : (1 : ℝ) / (2 * ((M : ℝ) + 1) ^ 2) ≤ 1 / (2 * (M : ℝ)) - 1 / (2 * ((M : ℝ) + 1)) := by
+        rw [div_sub_div _ _ (by positivity) (by positivity),
+          div_le_div_iff₀ (by positivity) (by positivity)]
+        nlinarith [hMR]
+      linarith [ih]
+  rcases Nat.eq_zero_or_pos N with rfl | hN
+  · simp
+  have hNR : (0 : ℝ) < (N : ℝ) := by exact_mod_cast hN
+  have hpos : (0 : ℝ) < 1 / (2 * (N : ℝ)) := by positivity
+  linarith [key N hN]
+
+/-- `(log (N+1))²/2 ≤ ∑_{k ≤ N} log k / k + ∑_{k ≤ N} 1/(2k²)`. -/
+@[category API, AMS 11]
+theorem sq_log_succ_le (N : ℕ) :
+    Real.log (N + 1) ^ 2 / 2
+      ≤ (∑ k ∈ Icc 1 N, Real.log k / k) + ∑ k ∈ Icc 1 N, (1 : ℝ) / (2 * k ^ 2) := by
+  induction N with
+  | zero => norm_num
+  | succ N ih =>
+    have hpos : (0 : ℝ) < N + 1 := by positivity
+    have hpos2 : (0 : ℝ) < N + 2 := by positivity
+    have hne : ((N : ℝ) + 1) ≠ 0 := ne_of_gt hpos
+    have hdiv : Real.log ((N + 2) / (N + 1)) = Real.log (N + 2) - Real.log (N + 1) :=
+      Real.log_div (ne_of_gt hpos2) hne
+    have hstep : Real.log (N + 2) - Real.log (N + 1) ≤ 1 / (N + 1) := by
+      have := Real.log_le_sub_one_of_pos (show (0:ℝ) < (N + 2) / (N + 1) by positivity)
+      rw [hdiv] at this
+      have harith : ((N : ℝ) + 2) / (N + 1) - 1 = 1 / (N + 1) := by
+        field_simp
+        ring
+      linarith [this, harith.le, harith.ge]
+    have hnn1 : 0 ≤ Real.log ((N : ℝ) + 1) := Real.log_nonneg (by linarith)
+    have hnn2 : 0 ≤ Real.log ((N : ℝ) + 2) := Real.log_nonneg (by linarith)
+    have hmono : Real.log ((N : ℝ) + 1) ≤ Real.log ((N : ℝ) + 2) :=
+      Real.log_le_log hpos (by linarith)
+    have hkey : Real.log ((N : ℝ) + 2) ^ 2 / 2 - Real.log ((N : ℝ) + 1) ^ 2 / 2
+        ≤ Real.log ((N : ℝ) + 1) / (N + 1) + 1 / (2 * ((N : ℝ) + 1) ^ 2) := by
+      have hfac : Real.log ((N : ℝ) + 2) ^ 2 - Real.log ((N : ℝ) + 1) ^ 2
+          = (Real.log (N + 2) - Real.log (N + 1)) * (Real.log (N + 2) + Real.log (N + 1)) := by
+        ring
+      have hbd : Real.log ((N : ℝ) + 2) + Real.log ((N : ℝ) + 1)
+          ≤ 2 * Real.log ((N : ℝ) + 1) + 1 / (N + 1) := by linarith
+      have hd0 : 0 ≤ Real.log ((N : ℝ) + 2) - Real.log ((N : ℝ) + 1) := by linarith
+      have hprod : (Real.log ((N:ℝ) + 2) - Real.log (N + 1)) * (Real.log (N + 2) + Real.log (N + 1))
+          ≤ (1 / ((N : ℝ) + 1)) * (2 * Real.log ((N : ℝ) + 1) + 1 / (N + 1)) := by
+        refine mul_le_mul hstep hbd (by linarith) (by positivity)
+      have hrw : (1 / ((N : ℝ) + 1)) * (2 * Real.log ((N : ℝ) + 1) + 1 / (N + 1))
+          = 2 * (Real.log ((N : ℝ) + 1) / (N + 1) + 1 / (2 * ((N : ℝ) + 1) ^ 2)) := by
+        field_simp
+      nlinarith [hfac, hprod, hrw]
+    rw [Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1),
+      Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1)]
+    have hcast1 : ((N + 1 : ℕ) : ℝ) = (N : ℝ) + 1 := by push_cast; ring
+    rw [hcast1]
+    have hcast2 : Real.log ((N : ℝ) + 1 + 1) = Real.log ((N : ℝ) + 2) := by
+      congr 1
+      ring
+    rw [hcast2]
+    linarith [ih, hkey]
+
+/-- `(log N)²/2 ≤ ∑_{k ≤ N} log k / k + 1`: the lower bound for the log-weighted harmonic
+sum, with no integral comparison. -/
+@[category API, AMS 11]
+theorem sq_log_le_sum_log_div (N : ℕ) :
+    Real.log N ^ 2 / 2 ≤ (∑ k ∈ Icc 1 N, Real.log k / k) + 1 := by
+  have h1 := sq_log_succ_le N
+  have h2 := sum_one_div_two_sq_le N
+  have h3 : Real.log (N : ℝ) ≤ Real.log ((N : ℝ) + 1) := by
+    rcases Nat.eq_zero_or_pos N with rfl | hN
+    · simp
+    · have : (0 : ℝ) < N := by exact_mod_cast hN
+      exact Real.log_le_log this (by linarith)
+  have h4 : 0 ≤ Real.log (N : ℝ) := Real.log_natCast_nonneg N
+  nlinarith [h1, h2, h3, h4]
+
+/-- The harmonic profile: `∑_{k ≤ N} (1/k)(1 + log N - log k) ≤ (log N)²/2 + 2 log N + 2`.
+
+This is the value of the right-hand side of `abs_logMean_mul_log_le_of_forall` for the
+profile `φ(M) = 1 + log M`, after the prime weights have been replaced by the harmonic
+weights.  The gain of the Gronwall iteration is the difference between this and the trivial
+`(1 + log N)·log N`. -/
+@[category API, AMS 11]
+theorem sum_one_div_mul_profile_le (N : ℕ) :
+    ∑ k ∈ Icc 1 N, (1 : ℝ) / k * (1 + Real.log N - Real.log k)
+      ≤ Real.log N ^ 2 / 2 + 2 * Real.log N + 2 := by
+  have hsplit : ∑ k ∈ Icc 1 N, (1 : ℝ) / k * (1 + Real.log N - Real.log k)
+      = (1 + Real.log N) * (∑ k ∈ Icc 1 N, (1 : ℝ) / k)
+        - ∑ k ∈ Icc 1 N, Real.log k / k := by
+    rw [Finset.mul_sum, ← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl fun k _ ↦ ?_
+    field_simp
+  have h1 := sum_one_div_le (M := N)
+  have h2 := sq_log_le_sum_log_div N
+  have h3 : 0 ≤ Real.log (N : ℝ) := Real.log_natCast_nonneg N
+  rw [hsplit]
+  nlinarith [h1, h2, h3]
+
 /--
 **The engine identity of route C.**  For every `±1`-valued multiplicative `f`,
 $$L(N)\log N = \sum_{p \le N} \frac{\log p}{p}\,(1 + f(p))\,L(\lfloor N/p\rfloor) + O(\log N).$$
