@@ -89,6 +89,53 @@ is a `ψ : ℕ → ℝ` defined by strong recursion mirroring `abs_logMean_mul_l
 (so that `|L(N)| ≤ ψ(N)` is immediate by strong induction), with the analytic work isolated
 in `ψ(N)/log N → 0`.
 
+### The state of the crux after the sharp chain (2026-09-24, lap 3)
+
+Proved and sorry-free, in `FormalConjecturesForMathlib/NumberTheory/Mertens.lean`:
+
+* `sum_log_le_sharp`, `sum_log_ge_sharp` — Stirling to `x log x - x ± (log x + 1)`.
+* `E₁Λ_le_sharp` — `∑_{d ≤ x} Λ(d)/d ≤ log x + (log 4 - 1) + (2√x log x + log x + 1)/x`.
+* `sum_vonMangoldt_div_nonprime_ge` — the proper prime powers carry mass `≥ 1/2`.
+* `sum_log_prime_div_le_log` — **`∑_{p ≤ x} log p / p ≤ log x` for `x ≥ 10^10`.**
+
+and in `Wirsing/Log.lean`:
+
+* `sum_log_div_le_sq_log` — `∑_{k ≤ N} log k / k ≤ (log N)²/2 + 2` (two-sided with the
+  earlier lower bound).
+* `sum_primeWeight_mul_log_div_le` — `∑_{p ≤ N} (log p/p) log⌊N/p⌋ ≤ (log N)²/2 + O(1)`,
+  **with no `log N` term**, by Abel summation (the `A(N) log N` term cancels identically).
+* `badDefect`, `abs_logMean_mul_log_le_of_profile_sharp` — the sharp Gronwall step: for the
+  profile `α log M + β`,
+  `|L(N)| log N ≤ α (log N)² + 2β log N - 2·badDefect f α β N + O(1 + α + β)`.
+
+Why the sharp chain was needed: the induction is **marginal**.  Both `(log N)²` terms cancel,
+so the Mertens error enters only through its average `∫_0^{log x} E`, and a two-sided `O(1)`
+bound contributes `O(log x)` there and destroys the induction.  `E ≤ 0` contributes `≤ 0`.
+
+### Refuted: the limsup shortcut
+
+With `A = limsup |L(N)|/log N` and the profile `α = A + ε`, the deficit bound
+`badDefect ≥ (α(log N - log K - 1) + β) r(K)` inserted into the sharp step gives
+`|L(N)| ≤ α log N - 2α r(K) + O(1)`, so after dividing by `log N` the deficit term is
+`2α r(K)/log N → 0`.  **The gain is a constant against `α log N`, so no single scale
+improves `A`, however large `r(K)` is.**  This is the same wall as the refuted step-function
+bootstrap, seen from the limsup side.
+
+### What actually closes it: the multi-scale recursion
+
+The gain is converted from a constant into a proportion by the doubling of `β` across
+scales.  With `u = log N` the step reads `β(u) = 2β(u/2) - 2α r(u/2) + O(1)`, whose solution
+is `β(u) ≈ -2α ∑_{j ≥ 1} 2^{j-1} r(u/2^j) ≈ -c α u` once `r` is bounded below, i.e.
+`α_eff = α + β(u)/u = α(1 - c)`: a genuine multiplicative contraction, and `c` grows with
+`r`.  This matches the ODE
+`u ψ(u) = 2∫_0^u ψ(u-v) dμ(v) - 2∫_0^u ψ(u-v) dr(v) + Cu`,
+whose solution decays like `exp(-2∫ r(v/2)/v² dv)`, divergent exactly when
+`∑_{f(p) = -1} 1/p = ∞`.
+
+So the remaining formal task is the multi-scale induction: an `N`-dependent `β`, i.e. a
+strong induction over scales rather than a single application of the step.  All of its
+inputs are proved.
+
 ### Next, in order
 
 1. **Halász in logarithmic form** (`Wirsing.tendsto_logMean_div_log_atTop_zero`):
