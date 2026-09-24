@@ -60,6 +60,36 @@ So `∑_{k ≤ N} S(⌊N/k⌋) = N L(N) + O(N) = o(N \log N)` is available.  **T
 place where `L(N) = o(\log N)` bites on the mean side**, and it is not vacuous: the sum has
 `N` terms of size up to `N`, so the trivial bound is `N \log N`, and we now beat it.
 
+
+### Refuted this lap: iterating the route-B relation (do not retry)
+
+`Wirsing.exists_functional_relation` / `Wirsing.functional_relation_on` already **are**
+Hildebrand's engine: Turán–Kubilius plus Cauchy–Schwarz give
+
+    |σ(N) E(N) + ∑_{p ∈ E, p ≤ N} σ(⌊N/p⌋)/p|  ≤  C(√(E(N) + 1) + 1),          (R)
+
+with `E(N) = ∑_{p ≤ N, f(p) = -1} 1/p`.  Three ways of pushing (R) were checked and all fail,
+for one reason:
+
+**(R) is exactly consistent with `|σ(y)| ≍ γ E(y)^{-1/2}`.**  If `|σ(y)| ≈ γ/√(E(y))` then
+`∑_p |σ(⌊N/p⌋)|/p ≈ γ E(N)/√(E(N)) = γ√(E(N))`, which is the same size as both `σ(N)E(N)`
+and the error term.  So (R) has `γ E^{-1/2}` as a *fixed point*, and no iteration of it can
+contract below that — which is precisely the strength of [Hi86]'s conclusion, not a step
+towards it.  Concretely:
+
+* bounding `|σ(⌊N/p⌋)| ≤ A` in (R) gives `A ≤ A + C/√E` (the recorded `A ≤ A` stall);
+* Cauchy–Schwarz on the prime sum gives `σ(N)²E(N) ≤ ∑_p σ(⌊N/p⌋)²/p + O(√E)`, i.e. the same
+  stall for `σ²` with constant `1`;
+* applying (R) at two scales (`N` and `N/q`) flips the sign twice and reproduces (R).
+
+The signed log-average information `L(N) = o(\log N)` does **not** break the stall either:
+weighting (R) by `1/N` and summing to `X` makes both sides `o(E(X)\log X)`, compatibly.
+
+Conclusion: the missing ingredient is a **joint** second moment — Cauchy–Schwarz in `p` *and*
+in `N` simultaneously (the "inversion of the order of summation in `∑_{n ≤ x} f(n)\log n`"
+that [Hi86] is described as using).  That is what `ON-LINE-REQUEST.md` now asks for, and it is
+the only remaining gap in the divergent case: every other input is formalised here.
+
 ### Next attack, in order
 
 1. Turn `∑_{k ≤ N} S(⌊N/k⌋) = o(N \log N)` into information about `σ`.  Writing
