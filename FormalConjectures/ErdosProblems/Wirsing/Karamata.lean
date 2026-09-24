@@ -220,4 +220,89 @@ theorem tendsto_functional_polynomial (ha : ∀ n, 0 ≤ a n) (ha0 : a 0 = 0)
     simp only [Polynomial.eval_monomial]
     exact (functional_const_mul r (fun u ↦ u ^ k)).symm
 
+/-- The Karamata functional is subtractive in `g`. -/
+@[category API, AMS 11]
+theorem functional_sub (ha : ∀ n, 0 ≤ a n) {x : ℝ} (hx : 0 < x)
+    (hsum : Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {g h : ℝ → ℝ} {M M' : ℝ}
+    (hg : ∀ u ∈ Set.Icc (0 : ℝ) 1, |g u| ≤ M) (hh : ∀ u ∈ Set.Icc (0 : ℝ) 1, |h u| ≤ M') :
+    functional a x (fun u ↦ g u - h u) = functional a x g - functional a x h := by
+  have hneg : ∀ u ∈ Set.Icc (0 : ℝ) 1, |(-1 : ℝ) * h u| ≤ M' := by
+    intro u hu; simpa using hh u hu
+  have := functional_add ha hx hsum hg hneg
+  rw [functional_const_mul (-1 : ℝ) h] at this
+  simpa [sub_eq_add_neg] using this
+
+/--
+**Karamata's limit for continuous test functions.**  If `x S(x) → c` then
+`Λ_x(g) → c\int_0^1 g` for every `g` continuous on `[0,1]`.
+
+Weierstrass approximation plus the uniform bound `|Λ_x(g)| ≤ ‖g‖_∞ · x S(x)`.
+-/
+@[category API, AMS 11]
+theorem tendsto_functional_continuousOn (ha : ∀ n, 0 ≤ a n) (ha0 : a 0 = 0)
+    (hsum : ∀ x : ℝ, 0 < x → Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {c : ℝ}
+    (hlim : Tendsto (fun x ↦ x * series a x) (𝓝[>] (0 : ℝ)) (𝓝 c)) {g : ℝ → ℝ}
+    (hg : ContinuousOn g (Set.Icc 0 1)) :
+    Tendsto (fun x ↦ functional a x g) (𝓝[>] (0 : ℝ))
+      (𝓝 (c * ∫ u in (0 : ℝ)..1, g u)) := by
+  obtain ⟨Mg, hMg⟩ := exists_bound_of_continuousOn hg
+  have hgint : IntervalIntegrable g MeasureTheory.volume 0 1 :=
+    hg.intervalIntegrable_of_Icc zero_le_one
+  refine Metric.tendsto_nhds.2 fun ε hε ↦ ?_
+  set K := |c| + 2 with hK
+  have hKpos : 0 < K := by positivity
+  set δ := ε / (3 * K) with hδ
+  have hδpos : 0 < δ := by positivity
+  obtain ⟨P, hP⟩ := exists_polynomial_near_of_continuousOn 0 1 g hg δ hδpos
+  obtain ⟨MP, hMP⟩ := exists_bound_of_continuousOn (g := fun u ↦ P.eval u)
+    P.continuous.continuousOn
+  -- the polynomial limit
+  have hpoly := tendsto_functional_polynomial ha ha0 hsum hlim P
+  have hev1 : ∀ᶠ x in 𝓝[>] (0 : ℝ),
+      |functional a x (fun u ↦ P.eval u) - c * ∫ u in (0 : ℝ)..1, P.eval u| < ε / 3 :=
+    Metric.tendsto_nhds.1 hpoly (ε / 3) (by positivity)
+  have hev2 : ∀ᶠ x in 𝓝[>] (0 : ℝ), |x * series a x| < K := by
+    have := Metric.tendsto_nhds.1 hlim 1 one_pos
+    filter_upwards [this] with x hx
+    have : |x * series a x - c| < 1 := hx
+    have h1 := abs_sub_abs_le_abs_sub (x * series a x) c
+    have h2 : |c| ≤ |c| := le_refl _
+    calc |x * series a x| ≤ |c| + 1 := by linarith [abs_sub_abs_le_abs_sub (x * series a x) c]
+      _ < K := by rw [hK]; linarith
+  -- the integral comparison
+  have hintdiff : |(∫ u in (0 : ℝ)..1, P.eval u) - ∫ u in (0 : ℝ)..1, g u| ≤ δ := by
+    rw [← intervalIntegral.integral_sub (P.continuous.intervalIntegrable 0 1) hgint]
+    have hbd : ∀ u ∈ Set.uIoc (0 : ℝ) 1, ‖P.eval u - g u‖ ≤ δ := by
+      intro u hu
+      rw [Set.uIoc_of_le zero_le_one] at hu
+      exact le_of_lt (hP u ⟨le_of_lt hu.1, hu.2⟩)
+    simpa using intervalIntegral.norm_integral_le_of_norm_le_const hbd
+  filter_upwards [hev1, hev2, self_mem_nhdsWithin] with x h1 h2 hx
+  have hxpos : (0 : ℝ) < x := hx
+  -- |Λ_x(g) - Λ_x(P)| ≤ δ · x S(x)
+  have hdiff : |functional a x g - functional a x (fun u ↦ P.eval u)| ≤ δ * (x * series a x) := by
+    rw [← functional_sub ha hxpos (hsum x hxpos) hMg hMP]
+    refine abs_functional_le ha hxpos (hsum x hxpos) (M := δ) fun u hu ↦ ?_
+    rw [abs_sub_comm]
+    exact le_of_lt (hP u hu)
+  have hSnn : 0 ≤ x * series a x := by
+    refine mul_nonneg hxpos.le (tsum_nonneg fun n ↦ ?_)
+    exact mul_nonneg (ha n) (Real.rpow_nonneg (Nat.cast_nonneg n) _)
+  have hdiff2 : |functional a x g - functional a x (fun u ↦ P.eval u)| < ε / 3 := by
+    have h3 : x * series a x < K := lt_of_le_of_lt (le_abs_self _) h2
+    have hδK : δ * K = ε / 3 := by rw [hδ]; field_simp
+    nlinarith [hdiff, hδpos, hSnn]
+  have hintdiff2 : |c * (∫ u in (0 : ℝ)..1, P.eval u) - c * ∫ u in (0 : ℝ)..1, g u| < ε / 3 := by
+    rw [← mul_sub, abs_mul]
+    have hlt : |c| < K := by rw [hK]; linarith [abs_nonneg c]
+    have hδK : K * δ = ε / 3 := by rw [hδ]; field_simp
+    nlinarith [hintdiff, abs_nonneg c, abs_nonneg ((∫ u in (0 : ℝ)..1, P.eval u) -
+      ∫ u in (0 : ℝ)..1, g u), hδpos]
+  rw [Real.dist_eq]
+  have t1 := abs_sub_le (functional a x g) (functional a x (fun u ↦ P.eval u))
+    (c * ∫ u in (0 : ℝ)..1, g u)
+  have t2 := abs_sub_le (functional a x (fun u ↦ P.eval u))
+    (c * ∫ u in (0 : ℝ)..1, P.eval u) (c * ∫ u in (0 : ℝ)..1, g u)
+  linarith
+
 end Karamata
