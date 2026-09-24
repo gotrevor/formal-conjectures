@@ -212,7 +212,6 @@ theorem tendsto_functional_polynomial (ha : ∀ n, 0 ≤ a n) (ha0 : a 0 = 0)
     have hint : (∫ u in (0 : ℝ)..1, (Polynomial.monomial k r).eval u) = r / ((k : ℝ) + 1) := by
       simp only [Polynomial.eval_monomial]
       rw [intervalIntegral.integral_const_mul, integral_pow]
-      push_cast
       ring
     rw [hint, show c * (r / ((k : ℝ) + 1)) = r * (c / ((k : ℝ) + 1)) by ring]
     refine ((tendsto_functional_pow ha0 hlim k).const_mul r).congr' ?_
@@ -322,14 +321,14 @@ noncomputable def bracketHigh (θ η u : ℝ) : ℝ :=
   min 1 (max 0 ((u - θ + η) / η)) / max u (θ / 2)
 
 @[category API, AMS 11]
-theorem continuous_bracketLow {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) :
+theorem continuous_bracketLow {θ η : ℝ} (hθ : 0 < θ) (_hη : 0 < η) :
     Continuous (bracketLow θ η) := by
   refine Continuous.div (by fun_prop) (by fun_prop) fun u ↦ ?_
   have : θ / 2 ≤ max u (θ / 2) := le_max_right _ _
   positivity
 
 @[category API, AMS 11]
-theorem continuous_bracketHigh {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) :
+theorem continuous_bracketHigh {θ η : ℝ} (hθ : 0 < θ) (_hη : 0 < η) :
     Continuous (bracketHigh θ η) := by
   refine Continuous.div (by fun_prop) (by fun_prop) fun u ↦ ?_
   have : θ / 2 ≤ max u (θ / 2) := le_max_right _ _
@@ -347,7 +346,7 @@ theorem bracketHigh_nonneg {θ η : ℝ} (hθ : 0 < θ) (u : ℝ) : 0 ≤ bracke
 
 /-- The shape shared by the two brackets: `r / \max(u, θ/2) \le 2/θ` for `r \in [0,1]`. -/
 @[category API, AMS 11]
-theorem div_max_le {θ : ℝ} (hθ : 0 < θ) {r u : ℝ} (hr0 : 0 ≤ r) (hr1 : r ≤ 1) :
+theorem div_max_le {θ : ℝ} (hθ : 0 < θ) {r u : ℝ} (_hr0 : 0 ≤ r) (hr1 : r ≤ 1) :
     r / max u (θ / 2) ≤ 2 / θ := by
   have hd : θ / 2 ≤ max u (θ / 2) := le_max_right _ _
   have hd0 : (0 : ℝ) < θ / 2 := by positivity
@@ -483,5 +482,62 @@ theorem integral_bracketHigh_le {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) (hη
   rw [hsplit, h1, zero_add]
   rw [h3, h4] at h2
   linarith
+
+/-! ### The Karamata value of the test function -/
+
+/-- For `n ≥ 1` the point `n^{-x}` lies above `θ` exactly when `n ≤ (1/θ)^{1/x}`. -/
+@[category API, AMS 11]
+theorem le_rpow_neg_iff {θ x : ℝ} (hθ : 0 < θ) (hx : 0 < x) {n : ℕ} (hn : 1 ≤ n) :
+    θ ≤ (n : ℝ) ^ (-x) ↔ (n : ℝ) ≤ (1 / θ) ^ (1 / x) := by
+  have hn0 : (0 : ℝ) < n := by exact_mod_cast hn
+  have hxx : x ≠ 0 := ne_of_gt hx
+  have hpx : (0 : ℝ) < (n : ℝ) ^ x := Real.rpow_pos_of_pos hn0 x
+  have hrn : ((n : ℝ) ^ x) ^ (1 / x) = (n : ℝ) := by
+    rw [← Real.rpow_mul hn0.le, mul_one_div, div_self hxx, Real.rpow_one]
+  have hrb : ((1 / θ) ^ (1 / x)) ^ x = 1 / θ := by
+    rw [← Real.rpow_mul (by positivity), one_div_mul_cancel hxx, Real.rpow_one]
+  rw [Real.rpow_neg hn0.le, le_inv_comm₀ hθ hpx]
+  constructor
+  · intro h
+    calc (n : ℝ) = ((n : ℝ) ^ x) ^ (1 / x) := hrn.symm
+      _ ≤ (1 / θ) ^ (1 / x) := by
+          refine Real.rpow_le_rpow hpx.le ?_ (by positivity)
+          rwa [one_div]
+  · intro h
+    calc (n : ℝ) ^ x ≤ ((1 / θ) ^ (1 / x)) ^ x := Real.rpow_le_rpow hn0.le h hx.le
+      _ = 1 / θ := hrb
+      _ = θ⁻¹ := one_div θ
+
+/--
+**The Karamata value of the test function.**  `Λ_x(\mathrm{testFun}\ θ)` is exactly the
+partial sum `x\sum_{n \le (1/θ)^{1/x}} a_n`.
+-/
+@[category API, AMS 11]
+theorem functional_testFun (ha0 : a 0 = 0) {θ x : ℝ} (hθ : 0 < θ) (hx : 0 < x) :
+    functional a x (testFun θ) = x * ∑ n ∈ Finset.Icc 1 ⌊(1 / θ) ^ (1 / x)⌋₊, a n := by
+  set B := (1 / θ) ^ (1 / x) with hB
+  have hB0 : (0 : ℝ) ≤ B := Real.rpow_nonneg (by positivity) _
+  have hmem : ∀ n : ℕ, 1 ≤ n →
+      (n ∈ Finset.Icc 1 ⌊B⌋₊ ↔ θ ≤ (n : ℝ) ^ (-x)) := by
+    intro n hn
+    rw [Finset.mem_Icc, le_rpow_neg_iff hθ hx hn, Nat.le_floor_iff hB0]
+    simp [hn, hB]
+  have hzero : ∀ n ∉ Finset.Icc 1 ⌊B⌋₊,
+      a n * (n : ℝ) ^ (-x) * testFun θ ((n : ℝ) ^ (-x)) = 0 := by
+    intro n hn
+    rcases Nat.eq_zero_or_pos n with rfl | hn1
+    · simp [ha0]
+    · have : ¬ θ ≤ (n : ℝ) ^ (-x) := fun h ↦ hn ((hmem n hn1).2 h)
+      simp [testFun, this]
+  have heq : ∀ n ∈ Finset.Icc 1 ⌊B⌋₊,
+      a n * (n : ℝ) ^ (-x) * testFun θ ((n : ℝ) ^ (-x)) = a n := by
+    intro n hn
+    have hn1 : 1 ≤ n := (Finset.mem_Icc.1 hn).1
+    have hn0 : (0 : ℝ) < (n : ℝ) ^ (-x) :=
+      Real.rpow_pos_of_pos (by exact_mod_cast hn1) _
+    have hle : θ ≤ (n : ℝ) ^ (-x) := (hmem n hn1).1 hn
+    rw [testFun, if_pos hle]
+    field_simp
+  rw [functional, tsum_eq_sum hzero, Finset.sum_congr rfl heq]
 
 end Karamata
