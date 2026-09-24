@@ -159,4 +159,52 @@ theorem abs_sum_vonMangoldt_div_sub_log_le {x : ℝ} (hx : 1 ≤ x) :
   rw [abs_le]
   constructor <;> linarith
 
+/-- The telescoping step behind `sum_log_div_sq_le`: with $a(x) = (\log x + 2)/x$ one has
+$\log(x+1)/(x+1)^2 \le a(x) - a(x+1)$. -/
+private lemma log_div_sq_le_telescope {x : ℝ} (hx : 1 ≤ x) :
+    log (x + 1) / (x + 1) ^ 2 ≤ (log x + 2) / x - (log (x + 1) + 2) / (x + 1) := by
+  have hx0 : (0 : ℝ) < x := by linarith
+  have hx1 : (0 : ℝ) < x + 1 := by linarith
+  have hL : 0 ≤ log x := log_nonneg hx
+  have hLM : log x ≤ log (x + 1) := log_le_log hx0 (by linarith)
+  have hstep : log (x + 1) - log x ≤ 1 / x := by
+    have h := log_le_sub_one_of_pos (show (0 : ℝ) < (x + 1) / x by positivity)
+    rw [log_div (by linarith) (by linarith)] at h
+    have he : (x + 1) / x - 1 = 1 / x := by field_simp; ring
+    rw [he] at h
+    exact h
+  rw [div_sub_div _ _ (ne_of_gt hx0) (ne_of_gt hx1), div_le_div_iff₀ (by positivity) (by positivity)]
+  have hx2 : x * (log (x + 1) - log x) ≤ 1 := by
+    rw [mul_comm]
+    calc (log (x + 1) - log x) * x ≤ (1 / x) * x := by nlinarith
+    _ = 1 := by field_simp
+  nlinarith [sq_nonneg (x + 1), mul_nonneg hL hx0.le, mul_nonneg hL (sq_nonneg (x + 1))]
+
+/-- $\sum_{2 \le n \le N} \log n / n^2 \le 2$. -/
+theorem sum_log_div_sq_le (N : ℕ) : ∑ n ∈ Icc 2 N, log n / (n : ℝ) ^ 2 ≤ 2 := by
+  set A : ℕ → ℝ := fun i ↦ (log (i + 1) + 2) / (i + 1) with hA
+  have hAnn : ∀ i : ℕ, 0 ≤ A i := by
+    intro i
+    have : (0 : ℝ) < (i : ℝ) + 1 := by positivity
+    have hlog : 0 ≤ log ((i : ℝ) + 1) := log_nonneg (by linarith)
+    positivity
+  have key : ∀ i : ℕ, log ((i : ℝ) + 2) / ((i : ℝ) + 2) ^ 2 ≤ A i - A (i + 1) := by
+    intro i
+    have h := log_div_sq_le_telescope (x := (i : ℝ) + 1) (by linarith [Nat.cast_nonneg (α := ℝ) i])
+    simp only [hA]
+    push_cast
+    convert h using 3 <;> ring
+  rw [(by rfl : Icc 2 N = Ico 2 (N + 1)), Finset.sum_Ico_eq_sum_range]
+  calc ∑ i ∈ range (N + 1 - 2), log ((2 + i : ℕ) : ℝ) / (((2 + i : ℕ) : ℕ) : ℝ) ^ 2
+      ≤ ∑ i ∈ range (N + 1 - 2), (A i - A (i + 1)) := by
+        refine sum_le_sum fun i _ ↦ ?_
+        have h := key i
+        have hc : ((2 + i : ℕ) : ℝ) = (i : ℝ) + 2 := by push_cast; ring
+        rw [hc]
+        exact h
+  _ = A 0 - A (N + 1 - 2) := Finset.sum_range_sub' A _
+  _ ≤ 2 := by
+        have h0 : A 0 = 2 := by simp [hA]
+        linarith [hAnn (N + 1 - 2), h0]
+
 end Mertens
