@@ -785,4 +785,34 @@ theorem abs_harmonicSum_div_sub_le {N m : ℕ} (hm : 1 ≤ m) (hmN : m ≤ N) :
   rw [hlogdiff, abs_le]
   constructor <;> linarith
 
+/--
+The hyperbola identity in usable form:
+$$\sum_{k \le N} \frac{1}{k} L(\lfloor N/k \rfloor)
+  = L(N)\log N - \sum_{n \le N}\frac{f(n)}{n}\log n + O(\log N).$$
+-/
+@[category API, AMS 11]
+theorem abs_sum_one_div_mul_logMean_sub_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |(∑ k ∈ Icc 1 N, (1 : ℝ) / k * logMean f (N / k))
+      - (logMean f N * Real.log N - ∑ n ∈ Icc 1 N, (f n / n) * Real.log n)|
+      ≤ 1 + Real.log N := by
+  have hmain : logMean f N * Real.log N - ∑ n ∈ Icc 1 N, (f n / n) * Real.log n
+      = ∑ m ∈ Icc 1 N, f m / m * (Real.log N - Real.log m) := by
+    rw [logMean, Finset.sum_mul, ← Finset.sum_sub_distrib]
+    exact Finset.sum_congr rfl fun m _ ↦ by ring
+  rw [sum_one_div_mul_logMean_eq f N, hmain, ← Finset.sum_sub_distrib]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  calc ∑ m ∈ Icc 1 N, |f m / m * harmonicSum (N / m) - f m / m * (Real.log N - Real.log m)|
+      ≤ ∑ m ∈ Icc 1 N, (1 : ℝ) / m := by
+        refine Finset.sum_le_sum fun m hm ↦ ?_
+        have hm1 : 1 ≤ m := (mem_Icc.1 hm).1
+        have hmN : m ≤ N := (mem_Icc.1 hm).2
+        have hmR : (0 : ℝ) < m := by exact_mod_cast hm1
+        rw [← mul_sub, abs_mul, abs_div, abs_eq_one_of_one_le f hf hm1,
+          abs_of_nonneg hmR.le]
+        calc 1 / (m : ℝ) * |harmonicSum (N / m) - (Real.log N - Real.log m)|
+            ≤ 1 / (m : ℝ) * 1 :=
+              mul_le_mul_of_nonneg_left (abs_harmonicSum_div_sub_le hm1 hmN) (by positivity)
+        _ = 1 / (m : ℝ) := mul_one _
+  _ ≤ 1 + Real.log N := sum_one_div_le N
+
 end Wirsing
