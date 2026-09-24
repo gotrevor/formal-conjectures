@@ -18,6 +18,95 @@ It is now reduced to `Wirsing.exists_hasMeanValue` in
    Elementary for `±1`-valued `f`: `g = f * μ` has `∑_n |g n|/n < ∞`, so Wintner's mean
    value theorem applies. Not the crux, but a genuine multi-week chunk.
 
+## THE POTENTIAL ROUTE (lap 4, 2026-09-24) — the live attack
+
+A complete elementary proof of the crux, checked end to end on paper.  Every input is already
+formalised in this repo.  It supersedes the `logProfile` multi-scale recursion.
+
+Notation: `g(n) = |L(n)| = |logMean f n|`, `u_N = log N`, `Φ(N) = ∑_{n ≤ N} g(n)/n`,
+`D(N) = ∑_{p ≤ N, f p = -1} (log p / p) g(⌊N/p⌋) ≥ 0`.
+
+Note `g(1) = 1`, `0 ≤ g(n) ≤ 1 + log n`, and **`|g(n) - g(n-1)| ≤ 1/n`** because
+`L(n) - L(n-1) = f(n)/n` and `|f(n)| = 1`.  That Lipschitz property is what the whole route
+runs on, and it is why `g = |L|` is used directly instead of a recursive majorant.
+
+### Step A — the engine, with `φ = |L|` itself
+
+`abs_logMean_mul_log_le_of_forall_le f hf (fun M ↦ |logMean f M|) (fun _ _ ↦ le_rfl)`:
+
+    g(N) log N ≤ ∑_{p ≤ N} (log p/p)(1 + f p) g(⌊N/p⌋) + C₀(1 + log N).
+
+### Step B — the Fubini comparison (do this first)
+
+For any `g` with `|g(m) - g(m-1)| ≤ 1/m` for `m ≥ 2`:
+
+    |∑_{p ≤ N} (log p/p) g(⌊N/p⌋) - ∑_{n ≤ N} g(n)/n| ≤ |g 1|·(log 4 + 9) + c₂ log N.
+
+*Proof.*  Telescope `g(M) = g(1) + ∑_{m=2}^{M} δ(m)`, `δ(m) = g(m) - g(m-1)`, on both sides
+and swap the order of summation (the region is `{(p,m) : pm ≤ N, m ≥ 2}` on the left and
+`{(m,n) : m ≤ n ≤ N, m ≥ 2}` on the right).  This gives
+
+    LHS = g(1)·P(N)  + ∑_{m=2}^{N} δ(m)·P(⌊N/m⌋),          P(M) = ∑_{p ≤ M} log p/p,
+    RHS = g(1)·H(N)  + ∑_{m=2}^{N} δ(m)·(H(N) - H(m-1)),   H = harmonicSum.
+
+Both inner factors are `log(N/m) + O(1)`: use `Mertens.abs_sum_log_prime_div_sub_log_le`,
+`log_le_harmonicSum`, `sum_one_div_le`, and `N/(2m) ≤ ⌊N/m⌋ ≤ N/m`.  Finally
+`∑_{m=2}^{N}|δ(m)| ≤ ∑_{m=2}^{N} 1/m ≤ log N`.  **No Abel summation, no total variation.**
+
+### Step C — the closed inequality
+
+`(1 + f p) = 2 - (1 - f p)` and `1 - f p = 2·[f p = -1]`, so A + B give
+
+    g(N) log N ≤ 2Φ(N) - 2D(N) + C₁(1 + log N).
+
+### Step D — telescope `F(N) = Φ(N)/(log N)²`
+
+`Φ(N) - Φ(N-1) = g(N)/N`, `u_N - u_{N-1} ≥ 1/N`, `u_{N-1} ≤ u_N`, so
+
+    F(N) - F(N-1) ≤ g(N)/(N u_N²) - 2Φ(N-1)/(N u_N² u_{N-1})
+                  ≤ -2D(N)/(N u_N³) + C₁(1+u_N)/(N u_N³) + 2 g(N)/(N² u_N³).
+
+Both error terms are summable: `∑ 1/(N u_N²) ≤ 1/log(N₀-1)` by telescoping
+`1/log(N-1) - 1/log N ≥ 1/(N (log N)²)`, and `∑ g(N)/(N² u_N³) = O(∑ 1/N²)`.  Since `F ≥ 0`,
+summing from `N₀` gives, for every `M`,
+
+    F(M) + 2∑_{N ≤ M} D(N)/(N u_N³) ≤ F(N₀) + E∞ =: 2B,
+
+hence (i) `∑_N D(N)/(N (log N)³) ≤ B < ∞` and (ii) `F` is bounded and **converges**, to some
+`ℓ ≥ 0` (the increments are `≤` a summable positive series).
+
+### Step E — the window lower bound
+
+Fix a bad prime `p`, `T = log p`, and look only at `N ∈ [p², p³)`, i.e. `M = ⌊N/p⌋ ∈ [p, p²)`.
+There `log N ≤ 3T`, and `∑_{N : ⌊N/p⌋ = M} 1/N ≥ 1/(M+1) ≥ 1/(2M)`, so
+
+    ∑_N D(N)/(N u_N³) ≥ ∑_{p bad} (log p/p) · (1/(27T³)) · ½ (Φ(p²-1) - Φ(p-1)).
+
+If `ℓ > 0` then for `p` large `Φ(p²) ≥ (ℓ-η)(2T)²` and `Φ(p) ≤ (ℓ+η)T²` with `η = ℓ/8`, so
+the bracket is `≥ 2ℓT²` and each term is `≥ (log p/p)·ℓ/(27 log p) = ℓ/(27p)`.
+
+### Step F — the contradiction and the conclusion
+
+`∑_{p bad} 1/p = ∞` (this is the hypothesis, via `badPrimeSum → ∞`), so step E forces
+`∑_N D(N)/(N u_N³) = ∞`, contradicting step D(i).  Hence `ℓ = 0`, i.e. `Φ(N) = o((log N)²)`.
+Step C then gives `g(N) log N ≤ 2Φ(N) + C₁(1 + log N)`, so `g(N)/log N → 0`.  ∎
+
+### Why this closes what the earlier schemes could not
+
+The refuted schemes tried to improve `limsup |L|/log N` at a *single* scale, where the deficit
+`r(K)` is only a constant gain against `α log N`.  Here the deficit is never converted into an
+improved constant at all: it is *accumulated* across all scales with the weight `1/(N (log N)³)`
+coming from `(Φ/u²)'`, and a constant gain per scale summed against that weight is exactly
+`∑ 1/p`.  The divergence hypothesis is used once, at the very end, as divergence — not as a
+lower bound at one scale.
+
+### Files
+
+New: `FormalConjectures/ErdosProblems/Wirsing/Decay.lean`.  When step F lands, delete the
+redundant `Wirsing.tendsto_logProfile_div_log_atTop_zero` from `Main.lean` and prove
+`tendsto_logMean_div_log_atTop_zero` directly.  `logProfile` and the `badDefect`/sharp-Gronwall
+lemmas in `Log.lean` stay (sorry-free), but are no longer on the path.
+
 ## Attack on the crux — route C (log-weighted), current
 
 Routes A and B are recorded below for the record; **route C is the live attack**.
