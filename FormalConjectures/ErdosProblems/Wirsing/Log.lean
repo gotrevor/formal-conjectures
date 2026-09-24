@@ -380,4 +380,37 @@ theorem sum_Icc_div_mul_log (N : ℕ) :
   push_cast
   field_simp
 
+/--
+Abel summation for the logarithmic average, as an exact identity:
+$$\sum_{n \le N} \frac{f(n)}{n}\log n
+  = L(N)\log N - \sum_{k < N} L(k)\bigl(\log(k+1) - \log k\bigr).$$
+-/
+@[category API, AMS 11]
+theorem sum_div_mul_log_eq (N : ℕ) :
+    ∑ n ∈ Icc 1 N, (f n / n) * Real.log n
+      = logMean f N * Real.log N
+        - ∑ k ∈ Ico 1 N, logMean f k * (Real.log (k + 1) - Real.log k) := by
+  induction N with
+  | zero => simp [logMean]
+  | succ N ih =>
+    have hL : logMean f (N + 1) = logMean f N + f (N + 1) / (N + 1) := by
+      rw [logMean, logMean, Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1)]
+      push_cast
+      ring
+    have hsum : ∑ n ∈ Icc 1 (N + 1), (f n / n) * Real.log n
+        = (∑ n ∈ Icc 1 N, (f n / n) * Real.log n)
+          + (f (N + 1) / (N + 1)) * Real.log (N + 1) := by
+      rw [Finset.sum_Icc_succ_top (by omega : 1 ≤ N + 1)]
+      push_cast
+      ring
+    have hIco : ∑ k ∈ Ico 1 (N + 1), logMean f k * (Real.log (k + 1) - Real.log k)
+        = (∑ k ∈ Ico 1 N, logMean f k * (Real.log (k + 1) - Real.log k))
+          + logMean f N * (Real.log (N + 1) - Real.log N) := by
+      rcases Nat.eq_zero_or_pos N with rfl | hN
+      · simp [logMean]
+      · rw [Finset.sum_Ico_succ_top (by omega : 1 ≤ N)]
+    rw [hsum, ih, hL, hIco]
+    push_cast
+    ring
+
 end Wirsing
