@@ -1866,4 +1866,111 @@ theorem abs_logMean_mul_log_le_of_profile_sharp (hf : IsPMOneMultiplicative f) {
   rw [hsplit] at hmain
   nlinarith [hmain, h1, h2, hα, hβ]
 
+open scoped Classical in
+/--
+**The sharp weight comparison for an arbitrary profile.**  If `g` is nonincreasing,
+nonnegative, and `log`-Lipschitz with constant `α`, then the prime weights `log p / p` are
+dominated by the `log`-increments `log k - log (k-1)`, with an error of size `O(α + g N)`
+and **no `log N` term**.
+
+This is the general form of `Wirsing.sum_primeWeight_mul_log_div_le`, and it is what lets the
+Gronwall iteration be run with a decaying profile rather than only a linear one.  The proof
+is Abel summation plus `A(k) ≤ log k` (`Wirsing.sum_primeWeight_le_log_add`); the Lipschitz
+hypothesis is what keeps the crude regime `k < 10 ^ 10` contributing only `O(α)`.
+-/
+@[category API, AMS 11]
+theorem sum_primeWeight_mul_le_of_antitone (g : ℕ → ℝ) (α : ℝ) (hα : 0 ≤ α) (N : ℕ)
+    (hgnn : ∀ k, 0 ≤ g k)
+    (hganti : ∀ k, g (k + 1) ≤ g k)
+    (hglip : ∀ k, 1 ≤ k → g k - g (k + 1) ≤ α * (Real.log (k + 1) - Real.log k)) :
+    ∑ k ∈ Icc 1 N, primeWeight k * g k
+      ≤ (Real.log N * g N + ∑ k ∈ Ico 1 N, Real.log k * (g k - g (k + 1)))
+        + (Real.log 4 + 8) * 10 ^ 10 * (g N + 2 * α) := by
+  classical
+  set c := Real.log 4 + 8 with hc
+  have hcnn : (0 : ℝ) ≤ c := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    rw [hc]; linarith
+  have habel := sum_Icc_by_parts primeWeight g N
+  have hrw : ∑ k ∈ Icc 1 N, primeWeight k * g k
+      = (∑ k ∈ Icc 1 N, primeWeight k) * g N
+        + ∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, primeWeight j) * (g k - g (k + 1)) := by
+    rw [habel, sub_eq_add_neg, ← Finset.sum_neg_distrib]
+    congr 1
+    exact Finset.sum_congr rfl fun k _ ↦ by ring
+  rw [hrw]
+  rcases Nat.eq_zero_or_pos N with rfl | hN
+  · have h0 : (0 : ℝ) ≤ c * 10 ^ 10 * (g 0 + 2 * α) := by
+      have := hgnn 0
+      positivity
+    simp only [Nat.cast_zero, Real.log_zero, zero_mul, zero_add,
+      show Icc 1 0 = (∅ : Finset ℕ) from rfl, show Ico 1 0 = (∅ : Finset ℕ) from rfl,
+      Finset.sum_empty]
+    linarith [h0]
+  -- the boundary term
+  have hbd : (∑ k ∈ Icc 1 N, primeWeight k) * g N
+      ≤ Real.log N * g N + c * 10 ^ 10 * g N := by
+    have h := sum_primeWeight_le_log_add (k := N) hN
+    have hNR : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+    have hratio : (10 : ℝ) ^ 10 / (N : ℝ) ≤ 10 ^ 10 := by
+      rw [div_le_iff₀ (by linarith)]
+      nlinarith [hNR]
+    have hg := hgnn N
+    have h1 : (∑ k ∈ Icc 1 N, primeWeight k) * g N
+        ≤ (Real.log N + c * (10 ^ 10 / (N : ℝ))) * g N := mul_le_mul_of_nonneg_right h hg
+    have h2 : (Real.log N + c * (10 ^ 10 / (N : ℝ))) * g N
+        ≤ (Real.log N + c * 10 ^ 10) * g N := by
+      refine mul_le_mul_of_nonneg_right ?_ hg
+      nlinarith [hratio, hcnn]
+    calc (∑ k ∈ Icc 1 N, primeWeight k) * g N ≤ (Real.log N + c * 10 ^ 10) * g N := by
+          linarith
+    _ = Real.log N * g N + c * 10 ^ 10 * g N := by ring
+  -- the Abel terms
+  have hterms : ∑ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, primeWeight j) * (g k - g (k + 1))
+      ≤ (∑ k ∈ Ico 1 N, Real.log k * (g k - g (k + 1))) + c * 10 ^ 10 * (2 * α) := by
+    have hpoint : ∀ k ∈ Ico 1 N, (∑ j ∈ Icc 1 k, primeWeight j) * (g k - g (k + 1))
+        ≤ Real.log k * (g k - g (k + 1)) + c * 10 ^ 10 * (α / (k : ℝ) ^ 2) := by
+      intro k hk
+      have hk1 : 1 ≤ k := (mem_Ico.1 hk).1
+      have hkR : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk1
+      have hdnn : 0 ≤ g k - g (k + 1) := by linarith [hganti k]
+      have hPbd := sum_primeWeight_le_log_add (k := k) hk1
+      have hlip := hglip k hk1
+      have hdlt : Real.log ((k : ℝ) + 1) - Real.log k ≤ 1 / (k : ℝ) := by
+        have h1 : Real.log (((k : ℝ) + 1) / k) ≤ ((k : ℝ) + 1) / k - 1 :=
+          Real.log_le_sub_one_of_pos (by positivity)
+        have h2 : Real.log (((k : ℝ) + 1) / k) = Real.log ((k : ℝ) + 1) - Real.log k :=
+          Real.log_div (by positivity) (by positivity)
+        have h3 : ((k : ℝ) + 1) / k - 1 = 1 / (k : ℝ) := by
+          field_simp
+          ring
+        rw [h2] at h1
+        linarith [h1, h3.le, h3.ge]
+      have hlip' : g k - g (k + 1) ≤ α * (1 / (k : ℝ)) := by
+        nlinarith [hlip, hdlt, hα]
+      have hmul : (∑ j ∈ Icc 1 k, primeWeight j) * (g k - g (k + 1))
+          ≤ (Real.log k + c * (10 ^ 10 / (k : ℝ))) * (g k - g (k + 1)) :=
+        mul_le_mul_of_nonneg_right hPbd hdnn
+      have hsecond : c * (10 ^ 10 / (k : ℝ)) * (g k - g (k + 1))
+          ≤ c * 10 ^ 10 * (α / (k : ℝ) ^ 2) := by
+        have hx : (0 : ℝ) ≤ c * (10 ^ 10 / (k : ℝ)) := by positivity
+        have := mul_le_mul_of_nonneg_left hlip' hx
+        calc c * (10 ^ 10 / (k : ℝ)) * (g k - g (k + 1))
+            ≤ c * (10 ^ 10 / (k : ℝ)) * (α * (1 / (k : ℝ))) := this
+        _ = c * 10 ^ 10 * (α / (k : ℝ) ^ 2) := by field_simp
+      nlinarith [hmul, hsecond]
+    refine le_trans (Finset.sum_le_sum hpoint) ?_
+    rw [Finset.sum_add_distrib]
+    have hrest : ∑ k ∈ Ico 1 N, c * 10 ^ 10 * (α / (k : ℝ) ^ 2) ≤ c * 10 ^ 10 * (2 * α) := by
+      have hrw2 : ∀ k : ℕ, c * 10 ^ 10 * (α / (k : ℝ) ^ 2)
+          = (c * 10 ^ 10 * α) * (1 / (k : ℝ) ^ 2) := fun k ↦ by ring
+      rw [Finset.sum_congr rfl fun k _ ↦ hrw2 k, ← Finset.mul_sum]
+      have hsum : ∑ k ∈ Ico 1 N, (1 : ℝ) / (k : ℝ) ^ 2 ≤ 2 :=
+        le_trans (Finset.sum_le_sum_of_subset_of_nonneg Finset.Ico_subset_Icc_self
+          (fun j _ _ ↦ by positivity)) (sum_one_div_sq_le N)
+      have hfac : (0 : ℝ) ≤ c * 10 ^ 10 * α := by positivity
+      nlinarith [hsum, hfac]
+    linarith
+  linarith [hbd, hterms]
+
 end Wirsing
