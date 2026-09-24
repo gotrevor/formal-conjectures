@@ -315,4 +315,214 @@ theorem rectInt_div_self {h : ℂ → ℂ} {U : Set ℂ} {a b c d : ℝ} (hU : I
   rw [hsplit, hzero, rectInt_inv ha hb hc hd, zero_add]
   ring
 
+/-! ### The Newman kernel -/
+
+/--
+**Newman's kernel** `k(z) = 1/z + z/R^2`.  It has a simple pole at `0` with residue `1`, and
+on the top and bottom edges of the square `[-R,R]^2` its modulus is `O(|\mathrm{Re}\,z|/R^2)`
+— the cancellation that drives Newman's proof.
+-/
+noncomputable def newmanKernel (R : ℝ) (z : ℂ) : ℂ := z⁻¹ + z / (R : ℂ) ^ 2
+
+/-- `k(z) = (z^2 + R^2)/(zR^2)`. -/
+@[category API, AMS 30]
+theorem newmanKernel_eq {R : ℝ} (hR : R ≠ 0) {z : ℂ} (hz : z ≠ 0) :
+    newmanKernel R z = (z ^ 2 + (R : ℂ) ^ 2) / (z * (R : ℂ) ^ 2) := by
+  have hR' : ((R : ℂ)) ≠ 0 := by exact_mod_cast hR
+  rw [newmanKernel]
+  field_simp
+  ring
+
+/-- `z^2 + R^2 = (z + iR)(z - iR)`. -/
+@[category API, AMS 30]
+theorem sq_add_sq_eq_mul (R : ℝ) (z : ℂ) :
+    z ^ 2 + (R : ℂ) ^ 2 = (z + (R : ℂ) * Complex.I) * (z - (R : ℂ) * Complex.I) := by
+  have : (Complex.I : ℂ) ^ 2 = -1 := Complex.I_sq
+  ring_nf
+  rw [this]
+  ring
+
+/--
+**The horizontal-edge bound.**  If `|\mathrm{Im}\,z| = R` and `|\mathrm{Re}\,z| \le R` then
+$$\|k(z)\| \le \frac{3|\mathrm{Re}\,z|}{R^2}.$$
+
+One of the factors `z \pm iR` is the real number `\mathrm{Re}\,z`, and the other has modulus
+at most `(1 + \sqrt2)R \le 3R`.  The factor `|\mathrm{Re}\,z|` is what cancels the `1/x` in
+the Laplace tail bound.
+-/
+@[category API, AMS 30]
+theorem norm_newmanKernel_horiz {R : ℝ} (hR : 0 < R) {z : ℂ} (him : |z.im| = R)
+    (hre : |z.re| ≤ R) : ‖newmanKernel R z‖ ≤ 3 * |z.re| / R ^ 2 := by
+  have hnz : R ≤ ‖z‖ := by
+    calc R = |z.im| := him.symm
+      _ ≤ ‖z‖ := Complex.abs_im_le_norm z
+  have hz0 : z ≠ 0 := by
+    intro h
+    rw [h] at hnz
+    simp at hnz
+    linarith
+  -- the "small" factor is real, the other has modulus at most `3R`
+  have hsplit : ∃ u v : ℂ, z ^ 2 + (R : ℂ) ^ 2 = u * v ∧ ‖u‖ = |z.re| ∧ ‖v‖ ≤ 3 * R := by
+    have hbig : ∀ w : ℂ, w = z + (R : ℂ) * Complex.I ∨ w = z - (R : ℂ) * Complex.I →
+        ‖w‖ ≤ 3 * R := by
+      intro w hw
+      have hzn : ‖z‖ ≤ 2 * R := by
+        have h1 : ‖z‖ ^ 2 = z.re ^ 2 + z.im ^ 2 := by
+          rw [Complex.sq_norm, Complex.normSq_apply]; ring
+        have h2 : z.re ^ 2 ≤ R ^ 2 := by nlinarith [abs_nonneg z.re, sq_abs z.re]
+        have h3 : z.im ^ 2 = R ^ 2 := by rw [← sq_abs, him]
+        nlinarith [norm_nonneg z, hR]
+      have hRI : ‖(R : ℂ) * Complex.I‖ = R := by
+        simp [abs_of_pos hR]
+      rcases hw with hw | hw <;> rw [hw]
+      · calc ‖z + (R : ℂ) * Complex.I‖ ≤ ‖z‖ + ‖(R : ℂ) * Complex.I‖ := norm_add_le _ _
+          _ ≤ 2 * R + R := by rw [hRI]; linarith
+          _ = 3 * R := by ring
+      · calc ‖z - (R : ℂ) * Complex.I‖ ≤ ‖z‖ + ‖(R : ℂ) * Complex.I‖ := norm_sub_le _ _
+          _ ≤ 2 * R + R := by rw [hRI]; linarith
+          _ = 3 * R := by ring
+    rcases abs_eq hR.le |>.1 him with h | h
+    · refine ⟨z - (R : ℂ) * Complex.I, z + (R : ℂ) * Complex.I, ?_, ?_,
+        hbig _ (Or.inl rfl)⟩
+      · rw [sq_add_sq_eq_mul]; ring
+      · have : z - (R : ℂ) * Complex.I = (z.re : ℂ) := by
+          apply Complex.ext <;> simp [h]
+        rw [this, Complex.norm_real, Real.norm_eq_abs]
+    · refine ⟨z + (R : ℂ) * Complex.I, z - (R : ℂ) * Complex.I, sq_add_sq_eq_mul R z, ?_,
+        hbig _ (Or.inr rfl)⟩
+      · have : z + (R : ℂ) * Complex.I = (z.re : ℂ) := by
+          apply Complex.ext <;> simp [h]
+        rw [this, Complex.norm_real, Real.norm_eq_abs]
+  obtain ⟨u, v, huv, hu, hv⟩ := hsplit
+  rw [newmanKernel_eq hR.ne' hz0, huv, norm_div, norm_mul, norm_mul, hu]
+  have hRn : ‖((R : ℂ)) ^ 2‖ = R ^ 2 := by
+    rw [norm_pow, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hR]
+  rw [hRn]
+  have hden : 0 < ‖z‖ * R ^ 2 := by positivity
+  rw [div_le_div_iff₀ hden (by positivity : (0:ℝ) < R ^ 2)]
+  have hx0 : 0 ≤ |z.re| := abs_nonneg _
+  calc |z.re| * ‖v‖ * R ^ 2 ≤ |z.re| * (3 * R) * R ^ 2 := by
+        exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hv hx0) (by positivity)
+    _ = 3 * |z.re| * (R * R ^ 2) := by ring
+    _ ≤ 3 * |z.re| * (‖z‖ * R ^ 2) := by
+        exact mul_le_mul_of_nonneg_left
+          (mul_le_mul_of_nonneg_right hnz (by positivity)) (by positivity)
+
+/--
+**The vertical-edge bound.**  If `|\mathrm{Re}\,z| = R` and `|\mathrm{Im}\,z| \le R` then
+`\|k(z)\| \le 3/R`.
+-/
+@[category API, AMS 30]
+theorem norm_newmanKernel_vert {R : ℝ} (hR : 0 < R) {z : ℂ} (hre : |z.re| = R)
+    (him : |z.im| ≤ R) : ‖newmanKernel R z‖ ≤ 3 / R := by
+  have hnz : R ≤ ‖z‖ := by
+    calc R = |z.re| := hre.symm
+      _ ≤ ‖z‖ := Complex.abs_re_le_norm z
+  have hzpos : 0 < ‖z‖ := lt_of_lt_of_le hR hnz
+  have hzn : ‖z‖ ≤ 2 * R := by
+    have h1 : ‖z‖ ^ 2 = z.re ^ 2 + z.im ^ 2 := by
+      rw [Complex.sq_norm, Complex.normSq_apply]; ring
+    have h2 : z.re ^ 2 = R ^ 2 := by rw [← sq_abs, hre]
+    have h3 : z.im ^ 2 ≤ R ^ 2 := by nlinarith [abs_nonneg z.im, sq_abs z.im]
+    nlinarith [norm_nonneg z, hR]
+  have hRn : ‖((R : ℂ)) ^ 2‖ = R ^ 2 := by
+    rw [norm_pow, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hR]
+  have h1 : ‖z⁻¹‖ ≤ 1 / R := by
+    rw [norm_inv, inv_eq_one_div, div_le_div_iff₀ hzpos hR]
+    linarith
+  have h2 : ‖z / (R : ℂ) ^ 2‖ ≤ 2 / R := by
+    rw [norm_div, hRn, div_le_div_iff₀ (by positivity) hR]
+    nlinarith
+  calc ‖newmanKernel R z‖ ≤ ‖z⁻¹‖ + ‖z / (R : ℂ) ^ 2‖ := norm_add_le _ _
+    _ ≤ 1 / R + 2 / R := add_le_add h1 h2
+    _ = 3 / R := by ring
+
+/-! ### The residue of `h · k` -/
+
+/--
+Along a path avoiding `0`, `h(z)k(z)` splits as an analytic part plus `h(0)/z`.
+-/
+@[category API, AMS 30]
+theorem integral_path_kernel {h : ℂ → ℂ} {K : Set ℂ} {γ : ℝ → ℂ} {a b : ℝ} (R : ℝ)
+    (hds : ContinuousOn (dslope h 0) K) (hh : ContinuousOn h K) (hγ : ContinuousOn γ [[a, b]])
+    (hmem : ∀ t ∈ [[a, b]], γ t ∈ K) (hne : ∀ t ∈ [[a, b]], γ t ≠ 0) :
+    (∫ t : ℝ in a..b, h (γ t) * newmanKernel R (γ t))
+      = (∫ t : ℝ in a..b, (dslope h 0 (γ t) + h (γ t) * γ t / (R : ℂ) ^ 2))
+        + h 0 * ∫ t : ℝ in a..b, (γ t)⁻¹ := by
+  have hsplit : ∀ t ∈ [[a, b]], h (γ t) * newmanKernel R (γ t)
+      = (dslope h 0 (γ t) + h (γ t) * γ t / (R : ℂ) ^ 2) + h 0 * (γ t)⁻¹ := by
+    intro t ht
+    have hz : γ t ≠ 0 := hne t ht
+    rw [dslope_of_ne _ hz, slope_def_field, sub_zero, newmanKernel]
+    field_simp
+    ring
+  have hc1 : ContinuousOn (fun t : ℝ ↦ dslope h 0 (γ t) + h (γ t) * γ t / (R : ℂ) ^ 2)
+      [[a, b]] := by
+    exact ((hds.comp hγ hmem).add (((hh.comp hγ hmem).mul hγ).div_const _))
+  have h1 : IntervalIntegrable (fun t : ℝ ↦ dslope h 0 (γ t) + h (γ t) * γ t / (R : ℂ) ^ 2)
+      MeasureTheory.volume a b := hc1.intervalIntegrable
+  have h2 : IntervalIntegrable (fun t : ℝ ↦ h 0 * (γ t)⁻¹) MeasureTheory.volume a b :=
+    (IntervalIntegrable.const_mul (hγ.inv₀ hne).intervalIntegrable _)
+  rw [intervalIntegral.integral_congr hsplit, intervalIntegral.integral_add h1 h2,
+    intervalIntegral.integral_const_mul]
+
+/--
+**Newman's residue on a rectangle.**  If `h` is holomorphic on an open set containing the
+closed rectangle and the origin is interior, then
+$$\oint_{\partial Q} h(z)k(z)\,dz = 2\pi i\,h(0).$$
+
+The `z/R^2` half of the kernel contributes nothing, and the `1/z` half contributes the
+residue.
+-/
+@[category API, AMS 30]
+theorem rectInt_mul_kernel {h : ℂ → ℂ} {U : Set ℂ} {a b c d : ℝ} (R : ℝ) (hU : IsOpen U)
+    (hsub : rect a b c d ⊆ U) (hh : DifferentiableOn ℂ h U)
+    (ha : a < 0) (hb : 0 < b) (hc : c < 0) (hd : 0 < d) :
+    rectInt (fun z ↦ h z * newmanKernel R z) a b c d = 2 * Real.pi * Complex.I * h 0 := by
+  have h0mem : (0 : ℂ) ∈ rect a b c d := by
+    refine mem_rect_iff.2 ⟨?_, ?_⟩ <;> simp [Set.mem_uIcc]
+    · exact Or.inl ⟨ha.le, hb.le⟩
+    · exact Or.inl ⟨hc.le, hd.le⟩
+  have hUnhds : U ∈ nhds (0 : ℂ) := hU.mem_nhds (hsub h0mem)
+  have hds : DifferentiableOn ℂ (dslope h 0) U :=
+    (Complex.differentiableOn_dslope hUnhds).2 hh
+  have hA : DifferentiableOn ℂ (fun z ↦ dslope h 0 z + h z * z / (R : ℂ) ^ 2) U :=
+    hds.add ((hh.mul differentiableOn_id).div_const _)
+  have hzero : rectInt (fun z ↦ dslope h 0 z + h z * z / (R : ℂ) ^ 2) a b c d = 0 :=
+    rectInt_eq_zero (hA.mono hsub)
+  have hcds : ContinuousOn (dslope h 0) U := hds.continuousOn
+  have hch : ContinuousOn h U := hh.continuousOn
+  have hac : a ∈ [[a, b]] := Set.left_mem_uIcc
+  have hbc : b ∈ [[a, b]] := Set.right_mem_uIcc
+  have hcc : c ∈ [[c, d]] := Set.left_mem_uIcc
+  have hdc : d ∈ [[c, d]] := Set.right_mem_uIcc
+  have hhoriz : ∀ e : ℝ, e ≠ 0 → e ∈ [[c, d]] →
+      (∫ x : ℝ in a..b, h ((x : ℂ) + e * Complex.I) * newmanKernel R ((x : ℂ) + e * Complex.I))
+        = (∫ x : ℝ in a..b, (dslope h 0 ((x : ℂ) + e * Complex.I)
+            + h ((x : ℂ) + e * Complex.I) * ((x : ℂ) + e * Complex.I) / (R : ℂ) ^ 2))
+          + h 0 * ∫ x : ℝ in a..b, ((x : ℂ) + e * Complex.I)⁻¹ := by
+    intro e he hem
+    refine integral_path_kernel R hcds hch (continuous_horiz e).continuousOn ?_ ?_
+    · exact fun t ht ↦ hsub (horiz_mem_rect ht hem)
+    · intro t _ hcon
+      exact he (by simpa using congrArg Complex.im hcon)
+  have hvert : ∀ e : ℝ, e ≠ 0 → e ∈ [[a, b]] →
+      (∫ y : ℝ in c..d, h ((e : ℂ) + y * Complex.I) * newmanKernel R ((e : ℂ) + y * Complex.I))
+        = (∫ y : ℝ in c..d, (dslope h 0 ((e : ℂ) + y * Complex.I)
+            + h ((e : ℂ) + y * Complex.I) * ((e : ℂ) + y * Complex.I) / (R : ℂ) ^ 2))
+          + h 0 * ∫ y : ℝ in c..d, ((e : ℂ) + y * Complex.I)⁻¹ := by
+    intro e he hem
+    refine integral_path_kernel R hcds hch (continuous_vert e).continuousOn ?_ ?_
+    · exact fun t ht ↦ hsub (vert_mem_rect hem ht)
+    · intro t _ hcon
+      exact he (by simpa using congrArg Complex.re hcon)
+  have hsplit : rectInt (fun z ↦ h z * newmanKernel R z) a b c d
+      = rectInt (fun z ↦ dslope h 0 z + h z * z / (R : ℂ) ^ 2) a b c d
+        + h 0 * rectInt (fun z ↦ z⁻¹) a b c d := by
+    simp only [rectInt]
+    rw [hhoriz c hc.ne hcc, hhoriz d hd.ne' hdc, hvert b hb.ne' hbc, hvert a ha.ne hac]
+    ring
+  rw [hsplit, hzero, rectInt_inv ha hb hc hd, zero_add]
+  ring
+
 end Newman
