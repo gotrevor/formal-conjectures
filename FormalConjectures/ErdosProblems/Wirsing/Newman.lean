@@ -258,4 +258,104 @@ theorem norm_tail_mul_kernel_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| 
         positivity
     _ = 2 * C / R ^ 2 := hfin
 
+/-! ### The truncated transform on the left-hand arc -/
+
+/-- `\int_0^T e^{bt}\,dt = (e^{bT}-1)/b` for `b > 0`. -/
+@[category API, AMS 26]
+theorem integral_exp_mul_uIoc {b : ℝ} (hb : 0 < b) (T : ℝ) :
+    ∫ t in (0 : ℝ)..T, Real.exp (b * t) = (Real.exp (b * T) - 1) / b := by
+  have hderiv : ∀ x ∈ Set.uIcc (0 : ℝ) T,
+      HasDerivAt (fun t : ℝ ↦ Real.exp (b * t) / b) (Real.exp (b * x)) x := by
+    intro x _
+    have h := (((hasDerivAt_id x).const_mul b).exp).div_const b
+    simpa [mul_comm, hb.ne'] using h
+  have hint : IntervalIntegrable (fun x : ℝ ↦ Real.exp (b * x)) MeasureTheory.volume 0 T := by
+    apply Continuous.intervalIntegrable
+    fun_prop
+  rw [intervalIntegral.integral_eq_sub_of_hasDerivAt hderiv hint]
+  simp
+  ring
+
+/--
+**The truncated transform on the left.**  The entire function
+`g_T(z) = \int_0^T F(t)e^{-zt}\,dt` satisfies, for `\mathrm{Re}\,z = x < 0`,
+$$\|g_T(z)\| \le \frac{Ce^{-xT}}{-x}.$$
+
+This is the mirror of `Newman.norm_integral_Ioi_le`, and it is why the left half of Newman's
+contour contributes the same `O(C/R)`: `g_T` is entire, so its contour there may be deformed
+to the left semicircle, where the very same balance applies.
+-/
+@[category API, AMS 30]
+theorem norm_integral_Ioc_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C) {z : ℂ}
+    (hz : z.re < 0) {T : ℝ} (hT : 0 ≤ T) :
+    ‖∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖
+      ≤ C * Real.exp (-z.re * T) / (-z.re) := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  set b := -z.re with hb
+  have hbpos : 0 < b := by simpa [hb] using hz
+  have hbound : ∀ t : ℝ, ‖(F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ ≤ C * Real.exp (b * t) := by
+    intro t
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, Complex.norm_exp]
+    have hre : (-z * (t : ℂ)).re = b * t := by simp [hb]
+    rw [hre]
+    exact mul_le_mul_of_nonneg_right (hFb t) (Real.exp_pos _).le
+  have hgint : MeasureTheory.IntegrableOn (fun t : ℝ ↦ C * Real.exp (b * t))
+      (Set.Ioc (0 : ℝ) T) := by
+    apply Continuous.integrableOn_Ioc
+    fun_prop
+  have hval : ∫ t in Set.Ioc (0 : ℝ) T, C * Real.exp (b * t)
+      = C * ((Real.exp (b * T) - 1) / b) := by
+    rw [← intervalIntegral.integral_of_le hT, intervalIntegral.integral_const_mul,
+      integral_exp_mul_uIoc hbpos T]
+  calc ‖∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖
+      ≤ ∫ t in Set.Ioc (0 : ℝ) T, C * Real.exp (b * t) :=
+        MeasureTheory.norm_integral_le_of_norm_le hgint
+          (Filter.Eventually.of_forall fun t ↦ hbound t)
+    _ = C * ((Real.exp (b * T) - 1) / b) := hval
+    _ ≤ C * Real.exp (b * T) / b := by
+        have h1 : C * ((Real.exp (b * T) - 1) / b) = (C * (Real.exp (b * T) - 1)) / b := by
+          ring
+        rw [h1, div_le_div_iff_of_pos_right hbpos]
+        nlinarith [hC0]
+
+/--
+**The Newman balance on the left.**  Exactly the same `2C/R^2`, uniformly in `T`.
+
+Together with `Newman.norm_tail_mul_kernel_le` this bounds both semicircles of the contour by
+`C/R` after integration, which is the whole quantitative content of
+`Newman.tendsto_integral_of_analyticOn`; what is left is the Cauchy bookkeeping and the
+dominated-convergence step for the analytic continuation on `\mathrm{Re}\,z \le 0`.
+-/
+@[category API, AMS 30]
+theorem norm_trunc_mul_kernel_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C) {z : ℂ} {R T : ℝ}
+    (hR : 0 < R) (hz : ‖z‖ = R) (hzre : z.re < 0) (hT : 0 ≤ T) :
+    ‖(∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))) *
+        Complex.exp (z * (T : ℂ)) * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z)‖
+      ≤ 2 * C / R ^ 2 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hbpos : 0 < -z.re := by linarith
+  have htr := norm_integral_Ioc_le hFb hzre hT
+  have hexp : ‖Complex.exp (z * (T : ℂ))‖ = Real.exp (z.re * T) := by
+    rw [Complex.norm_exp]; congr 1; simp
+  rw [norm_mul, norm_mul, hexp, norm_kernel hR hz, abs_of_neg hzre]
+  have hprod : (C * Real.exp (-z.re * T) / (-z.re)) * Real.exp (z.re * T) = C / (-z.re) := by
+    rw [show -z.re * T = -(z.re * T) by ring, Real.exp_neg]
+    field_simp
+  have hstep : ‖∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ *
+      Real.exp (z.re * T) ≤ C / (-z.re) := by
+    calc ‖∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ *
+          Real.exp (z.re * T)
+        ≤ (C * Real.exp (-z.re * T) / (-z.re)) * Real.exp (z.re * T) :=
+          mul_le_mul_of_nonneg_right htr (Real.exp_pos _).le
+      _ = C / (-z.re) := hprod
+  have hzne : z.re ≠ 0 := ne_of_lt hzre
+  have hfin : (C / (-z.re)) * (2 * -z.re / R ^ 2) = 2 * C / R ^ 2 := by
+    field_simp
+  calc ‖∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ *
+        Real.exp (z.re * T) * (2 * -z.re / R ^ 2)
+      ≤ (C / (-z.re)) * (2 * -z.re / R ^ 2) := by
+        refine mul_le_mul_of_nonneg_right hstep ?_
+        positivity
+    _ = 2 * C / R ^ 2 := hfin
+
 end Newman
