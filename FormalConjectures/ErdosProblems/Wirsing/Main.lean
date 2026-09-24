@@ -16,7 +16,7 @@ limitations under the License.
 module
 
 public import FormalConjecturesUtil
-public import FormalConjectures.ErdosProblems.Wirsing.OmegaE
+public import FormalConjectures.ErdosProblems.Wirsing.General
 
 /-!
 # Wirsing's mean value theorem: assembly

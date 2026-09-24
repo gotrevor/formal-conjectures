@@ -105,9 +105,35 @@ weights `1/p`, `p ∈ E`, `p ≤ N`, normalised by `E(N)`.
   - taking `S` inside `{p : f p = 1}` says `σ` is *slowly varying along `S`*, which is the
     Lipschitz-type input Halász's proof needs.
 
-  **Next concrete step: generalise `OmegaE.lean` from the hard-coded predicate
-  `f p = -1` to an arbitrary prime predicate `P`.**  Every lemma except the final
-  rewrite goes through verbatim with `f p` kept symbolic.
+  **DONE 2026-09-24**: `FormalConjectures/ErdosProblems/Wirsing/General.lean` (sorry-free)
+  carries the whole argument for an arbitrary finite set `S` of primes with `p ≤ N`:
+  `Wirsing.turan_kubilius_on`, `Wirsing.sum_mul_omegaOn_approx`, and
+
+      Wirsing.functional_relation_on :
+        |mean f N * recipSum S - ∑ p ∈ S, f p * mean f (N / p) / p|
+          ≤ 3 * (√(recipSum S + 1) + 1)
+
+  With `S` **fixed** and `N → ∞` this is a relation for the bounded sequence `σ` alone:
+  writing `ν` for the probability measure on `{log p : p ∈ S}` with weights `(1/p)/L_S`,
+  and `T` for the corresponding averaging operator, it says `‖σ - T_f σ‖ ≤ δ` with
+  `δ = 3(√(L_S+1)+1)/L_S → 0` as `L_S → ∞`.  For `S ⊆ E` this is `σ + Tσ ≈ 0`, so
+  `σ ≈ (-1)^k T^k σ` with error `k δ`.
+
+  **Where the remaining difficulty sits.**  Iterating alone does not finish: `‖T‖ ≤ 1`, so
+  `|T^k σ| ≤ A` and one only recovers `A ≤ A`.  Testing `σ(e^u) = A cos(τu)` shows the
+  obstruction is exactly `1 + ν̂(τ) ≈ 0`, i.e. `∑_p w_p (1 + cos(τ log p)) ≈ 0`.  Note
+  `1 + cos ≥ 0`, so this is an average of non-negative terms — a *positivity* statement,
+  which is what makes it attackable.  Exact equality `ν̂(τ) = -1` needs `τ log p ∈ π(2ℤ+1)`
+  for every `p ∈ S`, forcing `p_i^{2m_j+1} = p_j^{2m_i+1}`, impossible by unique
+  factorisation once `|S| ≥ 2`.  What is missing is a *quantitative, uniform over `|τ| ≤ T`*
+  version of that, plus the Tauberian step from the Fourier heuristic to all bounded `σ`.
+
+  Note also the classical route for real `f`: the pretentious triangle inequality gives
+  `D(f,1) ≤ 2 D(f, n^{iτ})`, so `∑_p (1 - f(p)cos(τ log p))/p = ∞` for every `τ`, which is
+  exactly the missing uniformity.  Its usual proof needs `∑_p (1 - cos(2τ log p))/p = ∞`,
+  i.e. Mertens plus `ζ(1 + it) ≠ 0` — **not available in mathlib**, so that route is gated
+  on building analytic machinery.  The elementary substitute is what Wirsing/Hildebrand
+  supply and what the online request asks for.
 
 ## Build note
 
