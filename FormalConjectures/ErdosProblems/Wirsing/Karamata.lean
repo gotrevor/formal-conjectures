@@ -305,4 +305,97 @@ theorem tendsto_functional_continuousOn (ha : ∀ n, 0 ≤ a n) (ha0 : a 0 = 0)
     (c * ∫ u in (0 : ℝ)..1, P.eval u) (c * ∫ u in (0 : ℝ)..1, g u)
   linarith
 
+/-! ### The discontinuous test function and its continuous brackets -/
+
+/-- The test function `u \mapsto u^{-1}\mathbf 1_{[\theta,1]}(u)`, whose Karamata value is
+`x\sum_{n \le \theta^{-1/x}} a_n`. -/
+noncomputable def testFun (θ u : ℝ) : ℝ := if θ ≤ u then 1 / u else 0
+
+/-- A continuous function below `Karamata.testFun θ`, rising from `0` to `u^{-1}` on
+`[θ, θ+η]`. -/
+noncomputable def bracketLow (θ η u : ℝ) : ℝ :=
+  min 1 (max 0 ((u - θ) / η)) / max u (θ / 2)
+
+/-- A continuous function above `Karamata.testFun θ`, rising from `0` to `u^{-1}` on
+`[θ-η, θ]`. -/
+noncomputable def bracketHigh (θ η u : ℝ) : ℝ :=
+  min 1 (max 0 ((u - θ + η) / η)) / max u (θ / 2)
+
+@[category API, AMS 11]
+theorem continuous_bracketLow {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) :
+    Continuous (bracketLow θ η) := by
+  refine Continuous.div (by fun_prop) (by fun_prop) fun u ↦ ?_
+  have : θ / 2 ≤ max u (θ / 2) := le_max_right _ _
+  positivity
+
+@[category API, AMS 11]
+theorem continuous_bracketHigh {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) :
+    Continuous (bracketHigh θ η) := by
+  refine Continuous.div (by fun_prop) (by fun_prop) fun u ↦ ?_
+  have : θ / 2 ≤ max u (θ / 2) := le_max_right _ _
+  positivity
+
+@[category API, AMS 11]
+theorem bracketLow_nonneg {θ η : ℝ} (hθ : 0 < θ) (u : ℝ) : 0 ≤ bracketLow θ η u := by
+  have hd : 0 < max u (θ / 2) := lt_of_lt_of_le (by positivity) (le_max_right _ _)
+  exact div_nonneg (le_min zero_le_one (le_max_left _ _)) hd.le
+
+@[category API, AMS 11]
+theorem bracketHigh_nonneg {θ η : ℝ} (hθ : 0 < θ) (u : ℝ) : 0 ≤ bracketHigh θ η u := by
+  have hd : 0 < max u (θ / 2) := lt_of_lt_of_le (by positivity) (le_max_right _ _)
+  exact div_nonneg (le_min zero_le_one (le_max_left _ _)) hd.le
+
+/-- The shape shared by the two brackets: `r / \max(u, θ/2) \le 2/θ` for `r \in [0,1]`. -/
+@[category API, AMS 11]
+theorem div_max_le {θ : ℝ} (hθ : 0 < θ) {r u : ℝ} (hr0 : 0 ≤ r) (hr1 : r ≤ 1) :
+    r / max u (θ / 2) ≤ 2 / θ := by
+  have hd : θ / 2 ≤ max u (θ / 2) := le_max_right _ _
+  have hd0 : (0 : ℝ) < θ / 2 := by positivity
+  rw [div_le_div_iff₀ (lt_of_lt_of_le hd0 hd) hθ]
+  nlinarith
+
+@[category API, AMS 11]
+theorem bracketLow_le {θ η : ℝ} (hθ : 0 < θ) (u : ℝ) : bracketLow θ η u ≤ 2 / θ :=
+  div_max_le hθ (le_min zero_le_one (le_max_left _ _)) (min_le_left _ _)
+
+@[category API, AMS 11]
+theorem bracketHigh_le {θ η : ℝ} (hθ : 0 < θ) (u : ℝ) : bracketHigh θ η u ≤ 2 / θ :=
+  div_max_le hθ (le_min zero_le_one (le_max_left _ _)) (min_le_left _ _)
+
+@[category API, AMS 11]
+theorem abs_bracketLow_le {θ η : ℝ} (hθ : 0 < θ) (u : ℝ) : |bracketLow θ η u| ≤ 2 / θ := by
+  rw [abs_of_nonneg (bracketLow_nonneg hθ u)]; exact bracketLow_le hθ u
+
+@[category API, AMS 11]
+theorem abs_bracketHigh_le {θ η : ℝ} (hθ : 0 < θ) (u : ℝ) : |bracketHigh θ η u| ≤ 2 / θ := by
+  rw [abs_of_nonneg (bracketHigh_nonneg hθ u)]; exact bracketHigh_le hθ u
+
+/-- The lower bracket is below the test function. -/
+@[category API, AMS 11]
+theorem bracketLow_le_testFun {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) (u : ℝ) :
+    bracketLow θ η u ≤ testFun θ u := by
+  rcases lt_or_ge u θ with hu | hu
+  · have : (u - θ) / η < 0 := div_neg_of_neg_of_pos (by linarith) hη
+    have hmax : max 0 ((u - θ) / η) = 0 := max_eq_left this.le
+    simp [bracketLow, testFun, hmax, not_le.2 hu]
+  · have hmaxu : max u (θ / 2) = u := max_eq_left (by linarith)
+    have hnum : min 1 (max 0 ((u - θ) / η)) ≤ 1 := min_le_left _ _
+    simp only [bracketLow, testFun, if_pos hu, hmaxu]
+    rw [div_le_div_iff_of_pos_right (by linarith : (0:ℝ) < u)]
+    exact hnum
+
+/-- The test function is below the upper bracket. -/
+@[category API, AMS 11]
+theorem testFun_le_bracketHigh {θ η : ℝ} (hθ : 0 < θ) (hη : 0 < η) (u : ℝ) :
+    testFun θ u ≤ bracketHigh θ η u := by
+  rcases lt_or_ge u θ with hu | hu
+  · simp only [testFun, if_neg (not_le.2 hu)]
+    exact bracketHigh_nonneg hθ u
+  · have hmaxu : max u (θ / 2) = u := max_eq_left (by linarith)
+    have h1 : 1 ≤ (u - θ + η) / η := by
+      rw [le_div_iff₀ hη]; linarith
+    have hnum : min 1 (max 0 ((u - θ + η) / η)) = 1 :=
+      min_eq_left (le_max_of_le_right h1)
+    simp [bracketHigh, testFun, if_pos hu, hmaxu, hnum]
+
 end Karamata
