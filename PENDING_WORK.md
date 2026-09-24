@@ -1,5 +1,91 @@
 # PENDING WORK — Erdős 239
 
+## LAP 6 (2026-09-24): the convergent case is CLOSED; the crux has a new route
+
+`Wirsing.exists_hasMeanValue_of_summable` is sorry-free (`#print axioms`: propext,
+Classical.choice, Quot.sound).  `Wirsing.summable_abs_wintnerCoeff_div` went through the
+lap-5 recipe with one simplification: use the *smooth number* form
+`EulerProduct.summable_and_hasSum_smoothNumbers_prod_primesBelow_tsum` and
+`Nat.mem_smoothNumbers_of_lt`, so a finite `u : Finset ℕ` is handled by taking
+`M = u.sup id + 1`; `Finset.subtype` + `Finset.sum_subtype_eq_sum_filter` moves the partial
+sum into the subtype, and `summable_of_sum_le` finishes.
+
+**The only remaining sorry in `src/` is the Tauberian crux**
+`Wirsing.tendsto_mean_atTop_zero_of_logMean` in `Main.lean`.
+
+## THE RIGIDITY ROUTE (lap 6) — the live attack on the crux
+
+The refutations of lap 5 stand: no `O(1)`-error functional relation for `σ` alone can close,
+because everything is consistent with `|σ| ≍ A` for a fixed `A > 0`.  The new observation is
+that the stall `A ≤ A` is an *equality case*, and equality cases are rigid.
+
+Write `σ(N) = mean f N`, `A = \limsup|σ| ∈ [0,1]`, `w(p) = \log p/p`, `s = \pm 1`.  Assume
+`A > 0` for contradiction.
+
+### Step 1 — rigidity at a near-extremal point (**DONE, `Wirsing/Rigidity.lean`**)
+
+If `|σ(M)| ≤ A + δ` for all `M ≥ M₀` and `A - δ ≤ s σ(N)`, then
+
+    ∑_{p ≤ N/M₀} w(p)·(A + δ - s f(p) σ(⌊N/p⌋))  ≤  2δ log N + rigidityConst M₀,
+
+with every term nonnegative (`sum_deficit_le`, `rigidity_term_nonneg`).  Hence
+(`sum_bad_weight_le`) the primes with `s f(p)σ(⌊N/p⌋) < A - ρ` carry weight
+`≤ (2δ log N + O_{M₀}(1))/ρ`.  Taking `ρ = \sqrt δ`: for all but `O(\sqrt δ \log N)` of the
+Mertens weight,
+
+    |σ(⌊N/p⌋)| ≥ A - \sqrt δ      and      f(p) = s · sign σ(⌊N/p⌋).          (R)
+
+The proof is only the functional relation `abs_mean_mul_log_sub_sum_prime_le` plus
+`Mertens.abs_sum_log_prime_div_sub_log_le` twice (at `N` and at `⌊N/M₀⌋`); the cut-off `M₀`
+costs `log(2M₀)`.
+
+**Why this is not another `A ≤ A`.**  The first half of (R) says the near-maximum is attained
+at *almost every* quotient.  The Halász obstruction `σ(N) = \cos(θ\log N)` has `|σ| ≈ A` only
+near its peaks — a set of log-density bounded away from `1` — so it is already excluded.  The
+second half of (R) is a character-like equation, and it is the place where `f` real-valued
+(`f(p) = ±1`, so `f(p)` can only be a *sign*, never a phase `p^{iθ}`) finally enters.
+
+### Steps 2-4 — the plan (on paper; next lap's work)
+
+Let `s(M) = sign σ(M)` on the near-extremal set, `u = \log M`.
+
+2. **Few sign changes.**  `σ` is log-Lipschitz (`|σ(N) - σ(M)| ≤ 2(N-M)/N`), so crossing from
+   `+(A-ρ)` to `-(A-ρ)` takes an interval of log-length `≳ A` on which `|σ| ≤ A/2`.  By (R)
+   that set has weight `O(\sqrt δ \log N)`, so `σ` has at most `O(\sqrt δ/A)\log N` sign
+   changes below `N`: `s` is *blocky*.
+3. **The correlation is a character.**  Most `M ≤ N` are themselves near-extremal by (R), so
+   (R) may be applied at each of them: `s(M) s(⌊M/p⌋) = f(p)` for most pairs.  Equivalently
+   `C(v) = ` (weighted average over `u` of) `s(u)s(u-v)` satisfies `C(\log p) ≈ f(p) ∈ {±1}`
+   for most `p`.  Blockiness from step 2 makes `C` Lipschitz with a small constant and
+   `C(0) = 1`, so `C ≈ 1` on a long initial range, and `C(v)C(v') = C(v - v')` on the rest:
+   a `{±1}`-valued approximate character of `(ℝ,+)`, hence `≡ 1`.
+4. **The contradiction.**  `C ≡ 1` forces `s` essentially constant, so `|σ| ≈ A` with a fixed
+   sign on almost all of `[M₀, N]`, whence
+   `|∑_{k ≤ N} σ(⌊N/k⌋)/k| ≈ A \log N`.  But `abs_sum_mean_div_sub_logMean_le` (lap 5) makes
+   that quantity `L(N) + O(1) = o(\log N)` by the hypothesis `h`.  Contradiction, so `A = 0`.
+
+Note this route consumes `h` (`L(N) = o(\log N)`) in step 4 and *does not need* `hdiv`, which
+is consistent: `hdiv` is already used to produce `h`.  An alternative step 4 uses `hdiv`
+instead — step 3 also forces `f(p) = 1` for every prime `p` whose log-position is inside the
+range where `C ≈ 1`, contradicting `∑_{f(p) = -1} 1/p = ∞` if that range can be pushed to all
+of `[0, \log N]`.  Prefer the `h` version: it needs no control of where the bad primes sit.
+
+### Next attack, in order
+
+1. Formalise step 2 (`few sign changes`) as a statement about the weight of
+   `{p : |σ(⌊N/p⌋)| < A/2}` versus the number of sign changes of `σ`.  The log-Lipschitz
+   bound `|σ(N) - σ(M)| ≤ 2(N - M)/N` needs to be proved first (it is not yet in the repo;
+   it follows from `|S(N) - S(M)| ≤ N - M` and `|σ| ≤ 1`).
+2. Step 4 is independent of steps 2-3 and is the cheapest to formalise: *given* that
+   `s σ(M) ≥ A - ρ` for all `M ∈ [M₀, N]` outside a set of `1/k`-weight `≤ η log N`, derive
+   the contradiction with `abs_sum_mean_div_sub_logMean_le`.  Do it early, as it fixes the
+   exact shape step 3 has to deliver.
+3. Step 3 is the hard one.  The transfer from the Mertens weight `\log p/p` (in which (R)
+   lives) to the `1/k` weight (in which step 4 lives) is the main technical risk; do **not**
+   attempt a pointwise transfer, which would need primes in short intervals.
+
+---
+
 ## LAP 5 (2026-09-24): THE CRUX IS CLOSED
 
 `Wirsing.tendsto_logMean_div_log_atTop_zero` — `L(N) = o(\log N)` in the divergent case — is

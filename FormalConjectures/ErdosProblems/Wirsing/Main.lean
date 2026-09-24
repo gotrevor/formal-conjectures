@@ -20,6 +20,7 @@ public import FormalConjectures.ErdosProblems.Wirsing.General
 public import FormalConjectures.ErdosProblems.Wirsing.Log
 public import FormalConjectures.ErdosProblems.Wirsing.Decay
 public import FormalConjectures.ErdosProblems.Wirsing.Wintner
+public import FormalConjectures.ErdosProblems.Wirsing.Rigidity
 
 /-!
 # Wirsing's mean value theorem: assembly
@@ -78,10 +79,17 @@ development.  Two obstructions were identified:
   main term `σ(N)\log N` is itself at most `\log N`.  On the logarithmic side the same errors
   were affordable because `L(N)` may be as large as `\log N`.
 
-So the gain must come from a second moment.  [Hi86] proves the quantitative form
-`|σ(x)| ≤ γ(1 + ∑_{p ≤ x}(1 - f(p))/p)^{-1/2}`; the square root is the signature of the
-Cauchy-Schwarz step, and `Wirsing.tendsto_logMean_div_log_atTop_zero` enters through the
-relation `S(x)\log x \sim x L(x)`, valid for real `f`.  See `PENDING_WORK.md`.
+The gain comes instead from **rigidity at a near-extremal point**, developed in
+`Wirsing/Rigidity.lean`.  With `A = \limsup|σ|` and `N` a point where `|σ(N)| \ge A - δ`,
+`Wirsing.sum_deficit_le` shows that the functional relation at `N` is nearly an equality in
+every term, so by `Wirsing.sum_bad_weight_le` all but `O(\sqrt δ \log N)` of the Mertens
+weight of primes satisfies
+`f(p)σ(\lfloor N/p\rfloor) = s|σ(\lfloor N/p\rfloor)|` and `|σ(\lfloor N/p\rfloor)| \ge A - \sqrt δ`.
+The first statement is a character-like equation for `f`, and is where `f` being real-valued
+enters; the second says the near-maximum is attained at almost every quotient, which already
+excludes `σ(N) = \cos(θ\log N)` (that has `|σ| \approx A` only near its peaks).  The
+remaining steps, and why `L(N) = o(\log N)` and `hdiv` are both needed to close, are recorded
+in `PENDING_WORK.md`.
 -/
 @[category API, AMS 11]
 theorem tendsto_mean_atTop_zero_of_logMean (hf : IsPMOneMultiplicative f)
