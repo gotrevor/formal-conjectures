@@ -134,4 +134,128 @@ theorem tendsto_sum_log_prime_div_window {c : ℝ} (hc : 1 < c) :
       Real.log p / p) atTop (𝓝 (Real.log c)) := by
   sorry
 
+/-! ### The Newman kernel -/
+
+/--
+**The Newman kernel identity.**  On the circle `|z| = R` the kernel
+`(1 + z^2/R^2)/z` is *real*, and equals `2\,\mathrm{Re}(z)/R^2`.
+
+This one line is the whole miracle of Newman's proof.  On the right-hand arc the tail
+`G(z) - g_T(z)` is `O(Ce^{-xT}/x)` with `x = \mathrm{Re}(z) > 0`, while the kernel times
+`e^{zT}` has modulus `2xe^{xT}/R^2`; the `x` and the exponentials cancel exactly and the
+product is `2C/R^2`, uniformly in `T`.  Without the factor `1 + z^2/R^2` the kernel would be
+`1/R` and the estimate would fail.
+-/
+@[category API, AMS 30]
+theorem kernel_eq {z : ℂ} {R : ℝ} (hR : 0 < R) (hz : ‖z‖ = R) :
+    (1 + z ^ 2 / (R : ℂ) ^ 2) / z = 2 * (z.re : ℂ) / (R : ℂ) ^ 2 := by
+  have hz0 : z ≠ 0 := by
+    intro h; rw [h] at hz; simp at hz; linarith
+  have hRne : ((R : ℂ)) ≠ 0 := by simpa using ne_of_gt hR
+  have hR2 : ((R : ℂ)) ^ 2 = z * (starRingEnd ℂ) z := by
+    rw [Complex.mul_conj]
+    norm_cast
+    rw [← hz, Complex.normSq_eq_norm_sq]
+  have hadd : z + (starRingEnd ℂ) z = 2 * (z.re : ℂ) := by
+    have h := Complex.add_conj z
+    push_cast at h
+    linear_combination h
+  have hkey : ((R : ℂ)) ^ 2 + z ^ 2 = 2 * (z.re : ℂ) * z := by
+    rw [hR2]; linear_combination z * hadd
+  field_simp
+  linear_combination hkey
+
+/-- The modulus of the Newman kernel on `|z| = R` is `2|\mathrm{Re}\,z|/R^2`. -/
+@[category API, AMS 30]
+theorem norm_kernel {z : ℂ} {R : ℝ} (hR : 0 < R) (hz : ‖z‖ = R) :
+    ‖(1 + z ^ 2 / (R : ℂ) ^ 2) / z‖ = 2 * |z.re| / R ^ 2 := by
+  rw [kernel_eq hR hz]
+  rw [norm_div, norm_mul]
+  simp [abs_of_pos hR]
+
+/-! ### The Laplace tail on the right-hand arc -/
+
+/-- `\int_T^\infty e^{-bt}\,dt = e^{-bT}/b` for `b > 0`. -/
+@[category API, AMS 26]
+theorem integral_exp_neg_mul_Ioi {b : ℝ} (hb : 0 < b) (T : ℝ) :
+    ∫ t in Set.Ioi T, Real.exp (-b * t) = Real.exp (-b * T) / b := by
+  have hderiv : ∀ x ∈ Set.Ioi T,
+      HasDerivAt (fun t : ℝ ↦ -Real.exp (-b * t) / b) (Real.exp (-b * x)) x := by
+    intro x _
+    have h := (((hasDerivAt_id x).const_mul (-b)).exp).neg.div_const b
+    simpa [mul_comm, mul_div_assoc, hb.ne'] using h
+  have hcont : ContinuousWithinAt (fun t : ℝ ↦ -Real.exp (-b * t) / b) (Set.Ici T) T := by
+    fun_prop
+  have hlim : Filter.Tendsto (fun t : ℝ ↦ -Real.exp (-b * t) / b) Filter.atTop (𝓝 0) := by
+    have h1 : Filter.Tendsto (fun t : ℝ ↦ Real.exp (-b * t)) Filter.atTop (𝓝 0) :=
+      Real.tendsto_exp_atBot.comp (Filter.tendsto_id.const_mul_atTop_of_neg (by linarith))
+    simpa using (h1.neg.div_const b)
+  have := MeasureTheory.integral_Ioi_of_hasDerivAt_of_tendsto hcont hderiv
+    (exp_neg_integrableOn_Ioi T hb) hlim
+  rw [this]
+  ring
+
+/--
+**The Laplace tail bound.**  If `|F| \le C` then for `\mathrm{Re}\,z = x > 0`
+$$\Bigl\|\int_T^\infty F(t)e^{-zt}\,dt\Bigr\| \le \frac{Ce^{-xT}}{x}.$$
+
+Paired with `Newman.norm_kernel` this is what makes the right-hand arc contribute `O(C/R)`.
+-/
+@[category API, AMS 30]
+theorem norm_integral_Ioi_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C) {z : ℂ}
+    (hz : 0 < z.re) (T : ℝ) :
+    ‖∫ t in Set.Ioi T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖
+      ≤ C * Real.exp (-z.re * T) / z.re := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hbound : ∀ t : ℝ, ‖(F t : ℂ) * Complex.exp (-z * (t : ℂ))‖
+      ≤ C * Real.exp (-z.re * t) := by
+    intro t
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, Complex.norm_exp]
+    have hre : (-z * (t : ℂ)).re = -z.re * t := by simp
+    rw [hre]
+    exact mul_le_mul_of_nonneg_right (hFb t) (Real.exp_pos _).le
+  have hgint : MeasureTheory.IntegrableOn (fun t : ℝ ↦ C * Real.exp (-z.re * t))
+      (Set.Ioi T) := (exp_neg_integrableOn_Ioi T hz).const_mul C
+  calc ‖∫ t in Set.Ioi T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖
+      ≤ ∫ t in Set.Ioi T, C * Real.exp (-z.re * t) :=
+        MeasureTheory.norm_integral_le_of_norm_le hgint
+          (Filter.Eventually.of_forall fun t ↦ hbound t)
+    _ = C * Real.exp (-z.re * T) / z.re := by
+        rw [MeasureTheory.integral_const_mul, integral_exp_neg_mul_Ioi hz T]
+        ring
+
+/--
+**The Newman balance.**  On the right-hand arc the tail and the kernel multiply to `2C/R^2`,
+uniformly in `T`.  Integrating over the semicircle of length `\pi R` and dividing by `2\pi`
+gives the `C/R` bound that drives the whole proof.
+-/
+@[category API, AMS 30]
+theorem norm_tail_mul_kernel_le {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C) {z : ℂ} {R T : ℝ}
+    (hR : 0 < R) (hz : ‖z‖ = R) (hzre : 0 < z.re) :
+    ‖(∫ t in Set.Ioi T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))) *
+        Complex.exp (z * (T : ℂ)) * ((1 + z ^ 2 / (R : ℂ) ^ 2) / z)‖
+      ≤ 2 * C / R ^ 2 := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have htail := norm_integral_Ioi_le hFb hzre T
+  have hexp : ‖Complex.exp (z * (T : ℂ))‖ = Real.exp (z.re * T) := by
+    rw [Complex.norm_exp]; congr 1; simp
+  rw [norm_mul, norm_mul, hexp, norm_kernel hR hz, abs_of_pos hzre]
+  have hprod : (C * Real.exp (-z.re * T) / z.re) * Real.exp (z.re * T) = C / z.re := by
+    rw [show -z.re * T = -(z.re * T) by ring, Real.exp_neg]
+    field_simp
+  have hstep : ‖∫ t in Set.Ioi T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ *
+      Real.exp (z.re * T) ≤ C / z.re := by
+    calc ‖∫ t in Set.Ioi T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ * Real.exp (z.re * T)
+        ≤ (C * Real.exp (-z.re * T) / z.re) * Real.exp (z.re * T) :=
+          mul_le_mul_of_nonneg_right htail (Real.exp_pos _).le
+      _ = C / z.re := hprod
+  have hfin : (C / z.re) * (2 * z.re / R ^ 2) = 2 * C / R ^ 2 := by
+    field_simp
+  calc ‖∫ t in Set.Ioi T, (F t : ℂ) * Complex.exp (-z * (t : ℂ))‖ * Real.exp (z.re * T) *
+        (2 * z.re / R ^ 2)
+      ≤ (C / z.re) * (2 * z.re / R ^ 2) := by
+        refine mul_le_mul_of_nonneg_right hstep ?_
+        positivity
+    _ = 2 * C / R ^ 2 := hfin
+
 end Newman
