@@ -111,4 +111,77 @@ theorem eq_of_character_step_two (hf : IsPMOneMultiplicative f) {q r₀ r₁ r�
   rw [h2, h1, mul_assoc]
   rcases hf.pmOne q hq.pos with hv | hv <;> rw [hv] <;> norm_num
 
+/-! ### The good primes carry almost all of the Mertens weight -/
+
+/-- `\log N \le \log(2M_0) + \log\lfloor N/M_0\rfloor` when `M_0 \le N`. -/
+@[category API, AMS 11]
+theorem log_le_log_two_mul_add_log_div {M₀ N : ℕ} (hM₀ : 1 ≤ M₀) (hMN : M₀ ≤ N) :
+    Real.log N ≤ Real.log (2 * M₀) + Real.log (N / M₀ : ℕ) := by
+  have hq1 : 1 ≤ N / M₀ := Nat.one_le_div_iff (by omega) |>.2 hMN
+  have hnat : N < 2 * (M₀ * (N / M₀)) := by
+    have hmod : M₀ * (N / M₀) + N % M₀ = N := Nat.div_add_mod N M₀
+    have hlt : N % M₀ < M₀ := Nat.mod_lt _ (by omega)
+    have hge : M₀ ≤ M₀ * (N / M₀) := Nat.le_mul_of_pos_right _ (by omega)
+    set k := M₀ * (N / M₀) with hk
+    set r := N % M₀ with hr
+    omega
+  have hqR : (0 : ℝ) < (N / M₀ : ℕ) := by exact_mod_cast hq1
+  have hM1 : (1 : ℝ) ≤ (M₀ : ℝ) := by exact_mod_cast hM₀
+  have hM2 : (0 : ℝ) < 2 * (M₀ : ℝ) := by linarith
+  have hN0 : (0 : ℝ) < (N : ℝ) := by exact_mod_cast (by omega : 0 < N)
+  have hcast : (N : ℝ) ≤ (2 * (M₀ : ℝ)) * ((N / M₀ : ℕ) : ℝ) := by
+    have h : ((N : ℕ) : ℝ) ≤ ((2 * (M₀ * (N / M₀)) : ℕ) : ℝ) := by exact_mod_cast hnat.le
+    push_cast at h
+    linarith
+  calc Real.log N ≤ Real.log ((2 * (M₀ : ℝ)) * ((N / M₀ : ℕ) : ℝ)) :=
+        Real.log_le_log hN0 hcast
+    _ = Real.log (2 * M₀) + Real.log (N / M₀ : ℕ) :=
+        Real.log_mul (ne_of_gt hM2) (ne_of_gt hqR)
+
+/--
+**Step 1 of the chain: the good primes have almost full Mertens weight.**  At a near-extremal
+`N`, the primes `p` for which the rigidity relation is *not* nearly extremal carry weight
+`O((\delta\log N + 1)/\rho)` by `Wirsing.sum_bad_weight_le`, while `rigidityPrimes M₀ N`
+carries `\log N - \log(2M_0) + O(1)` by Mertens.  Subtracting:
+$$\sum_{p \text{ good}} \frac{\log p}{p} \ \ge\ \log N - \log(2M_0) - (\log 4 + 8)
+  - \frac{2\delta\log N + c(M_0)}{\rho + \delta}.$$
+
+With `δ → 0` and `ρ` fixed this is `(1 - o(1))\log N`, which is what steps 2–4 consume.
+-/
+@[category API, AMS 11]
+theorem sum_good_primeWeight_ge (hf : IsPMOneMultiplicative f) {A δ s ρ : ℝ} {M₀ N : ℕ}
+    (hA0 : 0 ≤ A) (hA1 : A ≤ 1) (hδ0 : 0 ≤ δ) (hδ1 : δ ≤ 1) (hρ : 0 < ρ)
+    (hM₀ : 1 ≤ M₀) (hMN : M₀ ≤ N) (hs : |s| = 1)
+    (hub : ∀ M, M₀ ≤ M → |mean f M| ≤ A + δ)
+    (hsN : A - δ ≤ s * mean f N) :
+    Real.log N - Real.log (2 * M₀) - (Real.log 4 + 8)
+        - (2 * δ * Real.log N + rigidityConst M₀) / (ρ + δ)
+      ≤ ∑ p ∈ (rigidityPrimes M₀ N).filter
+          (fun p ↦ A - ρ ≤ s * (f p * mean f (N / p))), Real.log p / p := by
+  classical
+  have hq1 : 1 ≤ N / M₀ := Nat.one_le_div_iff (by omega) |>.2 hMN
+  -- the total Mertens weight of `rigidityPrimes`
+  have htot : Real.log N - Real.log (2 * M₀) - (Real.log 4 + 8)
+      ≤ ∑ p ∈ rigidityPrimes M₀ N, Real.log p / p := by
+    have hme := Mertens.abs_sum_log_prime_div_sub_log_le (N := N / M₀) hq1
+    have h1 := (abs_le.1 hme).1
+    have h2 := log_le_log_two_mul_add_log_div hM₀ hMN
+    rw [rigidityPrimes]
+    linarith
+  -- the bad primes
+  have hbad := sum_bad_weight_le f hf hA0 hA1 hδ0 hδ1 hρ hM₀ hMN hs hub hsN
+  -- split
+  have hsplit : ∑ p ∈ (rigidityPrimes M₀ N).filter
+        (fun p ↦ s * (f p * mean f (N / p)) < A - ρ), Real.log p / p
+      + ∑ p ∈ (rigidityPrimes M₀ N).filter
+        (fun p ↦ ¬ (s * (f p * mean f (N / p)) < A - ρ)), Real.log p / p
+      = ∑ p ∈ rigidityPrimes M₀ N, Real.log p / p :=
+    Finset.sum_filter_add_sum_filter_not _ _ _
+  have hcongr : (rigidityPrimes M₀ N).filter
+        (fun p ↦ ¬ (s * (f p * mean f (N / p)) < A - ρ))
+      = (rigidityPrimes M₀ N).filter (fun p ↦ A - ρ ≤ s * (f p * mean f (N / p))) :=
+    Finset.filter_congr fun p _ ↦ by simp [not_lt]
+  rw [hcongr] at hsplit
+  linarith
+
 end Wirsing
