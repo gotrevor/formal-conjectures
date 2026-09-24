@@ -189,6 +189,44 @@ theorem integrableOn_laplace {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤
     show (-z * (t : ℂ)).re = -z.re * t by simp]
   exact mul_le_mul_of_nonneg_right (hFb t) (Real.exp_pos _).le
 
+/-- `\int_a^\infty e^{-wt}\,dt = e^{-wa}/w` for complex `w` with `\mathrm{Re}\,w > 0`. -/
+@[category API, AMS 30]
+theorem integral_cexp_neg_mul_Ioi {w : ℂ} (hw : 0 < w.re) (a : ℝ) :
+    ∫ t in Set.Ioi a, Complex.exp (-w * (t : ℂ)) = Complex.exp (-w * (a : ℂ)) / w := by
+  have hw0 : w ≠ 0 := by
+    intro h; rw [h] at hw; simp at hw
+  have hderiv : ∀ x ∈ Set.Ioi a,
+      HasDerivAt (fun t : ℝ ↦ -Complex.exp (-w * (t : ℂ)) / w) (Complex.exp (-w * (x : ℂ))) x := by
+    intro x _
+    have h0 : HasDerivAt (fun t : ℝ ↦ ((t : ℝ) : ℂ)) 1 x := by
+      simpa using (hasDerivAt_id x).ofReal_comp
+    have h1 : HasDerivAt (fun t : ℝ ↦ -w * ((t : ℝ) : ℂ)) (-w) x := by
+      simpa using h0.const_mul (-w)
+    have h2 := (h1.cexp).neg.div_const w
+    have hrw : -(Complex.exp (-w * (x : ℂ)) * -w) / w = Complex.exp (-w * (x : ℂ)) := by
+      field_simp
+    rwa [hrw] at h2
+  have hcont : ContinuousWithinAt (fun t : ℝ ↦ -Complex.exp (-w * (t : ℂ)) / w) (Set.Ici a) a := by
+    fun_prop
+  have hint : MeasureTheory.IntegrableOn (fun t : ℝ ↦ Complex.exp (-w * (t : ℂ))) (Set.Ioi a) := by
+    have := integrableOn_laplace (F := fun _ : ℝ ↦ (1 : ℝ)) (C := 1)
+      (fun t ↦ by norm_num) (MeasureTheory.locallyIntegrable_const 1) hw (a := a)
+    simpa using this
+  have hlim : Filter.Tendsto (fun t : ℝ ↦ -Complex.exp (-w * (t : ℂ)) / w) Filter.atTop (𝓝 0) := by
+    rw [tendsto_zero_iff_norm_tendsto_zero]
+    have hnorm : ∀ t : ℝ, ‖-Complex.exp (-w * (t : ℂ)) / w‖ = Real.exp (-w.re * t) / ‖w‖ := by
+      intro t
+      rw [norm_div, norm_neg, Complex.norm_exp]
+      congr 1
+      simp
+    simp only [hnorm]
+    have h1 : Filter.Tendsto (fun t : ℝ ↦ Real.exp (-w.re * t)) Filter.atTop (𝓝 0) :=
+      Real.tendsto_exp_atBot.comp (Filter.tendsto_id.const_mul_atTop_of_neg (by linarith))
+    simpa using h1.div_const ‖w‖
+  have := MeasureTheory.integral_Ioi_of_hasDerivAt_of_tendsto hcont hderiv hint hlim
+  rw [this]
+  ring
+
 /--
 **The tail identity.**  For `\mathrm{Re}\,z > 0` the Laplace transform minus its truncation
 at `T` is exactly the tail:
