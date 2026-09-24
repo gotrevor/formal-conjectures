@@ -411,6 +411,87 @@ theorem sum_vonMangoldt_rpow_head_ge {m : ℕ} (hm : 0 < m) {c : ℝ} (hc : 0 < 
         positivity
 
 /--
+**A Riemann-sum lower bound for a geometric sum.**  For `c > 0` and `m ≥ 1`,
+$$\sum_{i<m} e^{-c(i+1)/m} \ \ge\ \frac{m}{c}\,e^{-c/m}\,(1 - e^{-c}),$$
+which tends to the integral `(1 - e^{-c})/c` as `m \to \infty`.
+-/
+@[category API, AMS 11]
+theorem sum_range_exp_ge {m : ℕ} (hm : 0 < m) {c : ℝ} (hc : 0 < c) :
+    (m : ℝ) / c * Real.exp (-(c / m)) * (1 - Real.exp (-c))
+      ≤ ∑ i ∈ range m, Real.exp (-(c * (i + 1) / m)) := by
+  have hmR : (0 : ℝ) < (m : ℝ) := by exact_mod_cast hm
+  set q := Real.exp (-(c / m)) with hq
+  have hq0 : 0 < q := Real.exp_pos _
+  have hq1 : q < 1 := by
+    rw [hq]
+    refine Real.exp_lt_one_iff.2 ?_
+    have : 0 < c / (m : ℝ) := by positivity
+    linarith
+  have hqm : q ^ m = Real.exp (-c) := by
+    rw [hq, ← Real.exp_nat_mul]
+    congr 1
+    field_simp
+  have hterm : ∀ i ∈ range m, Real.exp (-(c * ((i : ℝ) + 1) / m)) = q ^ (i + 1) := by
+    intro i _
+    rw [hq, ← Real.exp_nat_mul]
+    congr 1
+    push_cast
+    field_simp
+  have h1q : 1 - q ≤ c / m := by
+    have := Real.add_one_le_exp (-(c / m))
+    rw [← hq] at this
+    linarith
+  have h1qpos : 0 < 1 - q := by linarith
+  have hgeom : ∑ i ∈ range m, q ^ (i + 1) = q * (1 - q ^ m) / (1 - q) := by
+    have hne : q ≠ 1 := ne_of_lt hq1
+    have : ∑ i ∈ range m, q ^ (i + 1) = q * ∑ i ∈ range m, q ^ i := by
+      rw [Finset.mul_sum]; exact Finset.sum_congr rfl fun i _ ↦ by ring
+    rw [this, geom_sum_eq hne]
+    field_simp
+    ring
+  have hnum : 0 ≤ q * (1 - q ^ m) := by
+    have : q ^ m ≤ 1 := pow_le_one₀ hq0.le hq1.le
+    nlinarith
+  calc (m : ℝ) / c * q * (1 - Real.exp (-c))
+      = q * (1 - q ^ m) / (c / m) := by rw [hqm]; field_simp
+    _ ≤ q * (1 - q ^ m) / (1 - q) := by gcongr
+    _ = ∑ i ∈ range m, q ^ (i + 1) := hgeom.symm
+    _ = ∑ i ∈ range m, Real.exp (-(c * ((i : ℝ) + 1) / m)) :=
+        (Finset.sum_congr rfl hterm).symm
+
+/-- Summability of the twisted von Mangoldt series on `re s = 1 + x`, `x > 0`. -/
+@[category API, AMS 11]
+theorem summable_vonMangoldt_rpow_cos {x : ℝ} (hx : 0 < x) (τ : ℝ) :
+    Summable (fun n : ℕ ↦ (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x)) *
+      Real.cos (τ * Real.log n)) := by
+  set F : ℕ → ℂ := fun n ↦ ((ArithmeticFunction.vonMangoldt n : ℝ) : ℂ) with hF
+  set s : ℂ := ((1 + x : ℝ) : ℂ) + (τ : ℂ) * I with hs
+  have hsgt : 1 < s.re := by
+    simp only [hs, Complex.add_re, Complex.ofReal_re, Complex.mul_re, Complex.I_re,
+      Complex.I_im, Complex.ofReal_im, mul_zero, zero_mul, sub_zero, add_zero]
+    linarith
+  have hterm : ∀ n : ℕ, (LSeries.term F s n).re
+      = ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) *
+        Real.cos (τ * Real.log n) := by
+    intro n
+    rcases eq_or_ne n 0 with rfl | hn
+    · simp [LSeries.term_zero]
+    · rw [LSeries.term_of_ne_zero hn]
+      have hrw : F n / (n : ℂ) ^ s = ((ArithmeticFunction.vonMangoldt n : ℝ) : ℂ) *
+          (n : ℂ) ^ (-(((1 + x : ℝ) : ℂ) + (τ : ℂ) * I)) := by
+        simp only [hF, hs, Complex.cpow_neg, div_eq_mul_inv]
+      rw [hrw, Complex.re_ofReal_mul, re_natCast_cpow_neg hn]
+      ring
+  have h1 : Summable (LSeries.term F s) := ArithmeticFunction.LSeriesSummable_vonMangoldt hsgt
+  simpa only [hterm] using (Complex.hasSum_re h1.hasSum).summable
+
+/-- Summability of the untwisted von Mangoldt series on `re s = 1 + x`, `x > 0`. -/
+@[category API, AMS 11]
+theorem summable_vonMangoldt_rpow {x : ℝ} (hx : 0 < x) :
+    Summable (fun n : ℕ ↦ (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + x))) := by
+  simpa using summable_vonMangoldt_rpow_cos hx 0
+
+/--
 **The Mertens-weighted deficit.**  For `t ≠ 0`,
 $$\sum_{p \le N} \frac{\log p}{p}\bigl(1 - \cos(t\log p)\bigr) \ge \frac{\log N}{4} - C_t.$$
 
