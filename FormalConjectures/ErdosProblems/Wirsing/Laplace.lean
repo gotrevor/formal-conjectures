@@ -953,6 +953,211 @@ theorem norm_G_integrand_left_le {G : ℂ → ℂ} {M R δ T : ℝ} (hR : 0 < R)
         refine mul_le_mul ?_ hk (norm_nonneg _) (mul_nonneg hM0 (Real.exp_pos _).le)
         exact mul_le_mul_of_nonneg_right hM (Real.exp_pos _).le
 
+/-! ### Newman's estimate on a rectangle -/
+
+/--
+**The Newman estimate.**  Let `G` be holomorphic on an open `U` containing the rectangle
+`Q = [-\delta, R] \times [-R, R]`, bounded there by `M`, and equal to the Laplace transform of
+`F` on `\mathrm{Re}\,z > 0`.  Then
+$$\Bigl\|G(0) - \int_0^T F\Bigr\|
+  \le \frac{2M\delta + 5C}{R} + RMe^{-\delta T}\Bigl(\frac1\delta + \frac2R\Bigr).$$
+
+The first term is uniform in `T` and small for large `R` once `\delta` is small; the second
+tends to `0` as `T \to \infty` for fixed `\delta` and `R`.  Taking `T \to \infty`, then
+`\delta \to 0`, then `R \to \infty` gives `Newman.tendsto_integral_of_analyticOn`.
+-/
+@[category API, AMS 30]
+theorem norm_sub_integral_le_rect {F : ℝ → ℝ} {C : ℝ} (hFb : ∀ t, |F t| ≤ C)
+    (hFi : MeasureTheory.LocallyIntegrable F) {G : ℂ → ℂ} {U : Set ℂ} (hU : IsOpen U)
+    (hGd : DifferentiableOn ℂ G U)
+    (hGeq : ∀ z : ℂ, 0 < z.re →
+      G z = ∫ t in Set.Ioi (0 : ℝ), (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+    {M R δ T : ℝ} (hR : 0 < R) (hδ : 0 < δ) (hδR : δ ≤ R) (hT : 0 ≤ T)
+    (hsub : rect (-δ) R (-R) R ⊆ U)
+    (hM : ∀ z ∈ rect (-δ) R (-R) R, ‖G z‖ ≤ M) :
+    ‖G 0 - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ)‖
+      ≤ (2 * M * δ + 5 * C) / R + R * M * Real.exp (-(δ * T)) * (1 / δ + 2 / R) := by
+  have hC0 : 0 ≤ C := le_trans (abs_nonneg _) (hFb 0)
+  have hR2 : (0 : ℝ) < R ^ 2 := by positivity
+  have hIa : [[(-δ : ℝ), R]] = Set.Icc (-δ) R := Set.uIcc_of_le (by linarith)
+  have hIc : [[(-R : ℝ), R]] = Set.Icc (-R) R := Set.uIcc_of_le (by linarith)
+  have hIb : [[(-R : ℝ), -δ]] = Set.Icc (-R) (-δ) := Set.uIcc_of_le (by linarith)
+  have h0rect : (0 : ℂ) ∈ rect (-δ) R (-R) R := by
+    refine mem_rect_iff.2 ⟨?_, ?_⟩
+    · rw [hIa]; simp only [Complex.zero_re]; exact ⟨by linarith, by linarith⟩
+    · rw [hIc]; simp only [Complex.zero_im]; exact ⟨by linarith, by linarith⟩
+  have hM0 : 0 ≤ M := le_trans (norm_nonneg _) (hM 0 h0rect)
+  set A : ℝ := M * Real.exp (-(δ * T)) * (1 / δ + 2 / R) with hA
+  have hA0 : 0 ≤ A := by
+    refine mul_nonneg (mul_nonneg hM0 (Real.exp_pos _).le) ?_
+    have : (0 : ℝ) < 1 / δ := by positivity
+    have : (0 : ℝ) < 2 / R := by positivity
+    positivity
+  -- the two integrands
+  set gp : ℂ → ℂ := fun z ↦
+    (∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ) * Complex.exp (-z * (t : ℂ)))
+      * Complex.exp (z * (T : ℂ)) * newmanKernel R z with hgp
+  set Gp : ℂ → ℂ := fun z ↦ G z * Complex.exp (z * (T : ℂ)) * newmanKernel R z with hGp
+  have hexpd : Differentiable ℂ fun z : ℂ ↦ Complex.exp (z * (T : ℂ)) := by fun_prop
+  -- the residue
+  have hres : rectInt (fun z ↦ newmanAux F G T z * newmanKernel R z) (-δ) R (-R) R
+      = 2 * Real.pi * Complex.I * newmanAux F G T 0 :=
+    rectInt_mul_kernel R hU hsub (differentiable_newmanAux hFb hFi hGd hT)
+      (by linarith) hR (by linarith) hR
+  -- the three pointwise edges
+  have hbot : ∀ x ∈ [[(-δ : ℝ), R]],
+      ‖newmanAux F G T ((x : ℂ) + ((-R : ℝ) : ℂ) * Complex.I)
+        * newmanKernel R ((x : ℂ) + ((-R : ℝ) : ℂ) * Complex.I)‖ ≤ 3 * (M * δ + C) / R ^ 2 := by
+    intro x hx
+    have hx' : x ∈ Set.Icc (-δ) R := hIa ▸ hx
+    refine norm_integrand_horiz_le hFb hFi hGeq hR hδ hδR hT ?_ ?_ ?_ ?_
+    · simp [abs_of_pos hR]
+    · simpa using hx'.1
+    · simpa using hx'.2
+    · exact hM _ (horiz_mem_rect hx Set.left_mem_uIcc)
+  have htop : ∀ x ∈ [[(-δ : ℝ), R]],
+      ‖newmanAux F G T ((x : ℂ) + ((R : ℝ) : ℂ) * Complex.I)
+        * newmanKernel R ((x : ℂ) + ((R : ℝ) : ℂ) * Complex.I)‖ ≤ 3 * (M * δ + C) / R ^ 2 := by
+    intro x hx
+    have hx' : x ∈ Set.Icc (-δ) R := hIa ▸ hx
+    refine norm_integrand_horiz_le hFb hFi hGeq hR hδ hδR hT ?_ ?_ ?_ ?_
+    · simp [abs_of_pos hR]
+    · simpa using hx'.1
+    · simpa using hx'.2
+    · exact hM _ (horiz_mem_rect hx Set.right_mem_uIcc)
+  have hrig : ∀ y ∈ [[(-R : ℝ), R]],
+      ‖newmanAux F G T (((R : ℝ) : ℂ) + (y : ℂ) * Complex.I)
+        * newmanKernel R (((R : ℝ) : ℂ) + (y : ℂ) * Complex.I)‖ ≤ 3 * C / R ^ 2 := by
+    intro y hy
+    have hy' : y ∈ Set.Icc (-R) R := hIc ▸ hy
+    refine norm_integrand_vert_right_le hFb hFi hGeq hR hT ?_ ?_
+    · simp
+    · simpa [abs_le] using hy'
+  -- the left edge
+  have hwne : ∀ y : ℝ, (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I) ≠ 0 := by
+    intro y h
+    have := congrArg Complex.re h
+    simp at this
+    linarith
+  have hwmem : ∀ y ∈ [[(-R : ℝ), R]],
+      (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I) ∈ rect (-δ) R (-R) R := by
+    intro y hy
+    exact vert_mem_rect Set.left_mem_uIcc hy
+  have hcontw : Continuous fun y : ℝ ↦ ((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I := by fun_prop
+  have hGpc : ContinuousOn Gp (U ∩ {z : ℂ | z ≠ 0}) := by
+    refine (((hGd.continuousOn).mono Set.inter_subset_left).mul ?_).mul
+      ((continuousOn_newmanKernel R).mono Set.inter_subset_right)
+    exact hexpd.continuous.continuousOn
+  have hgc : ContinuousOn gp {z : ℂ | z ≠ 0} := by
+    refine (((differentiable_truncLaplace hFb hFi hT).continuous.continuousOn).mul ?_).mul
+      (continuousOn_newmanKernel R)
+    exact hexpd.continuous.continuousOn
+  have hint1 : IntervalIntegrable (fun y : ℝ ↦ Gp (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I))
+      MeasureTheory.volume (-R) R :=
+    intervalIntegrable_comp hGpc hcontw.continuousOn
+      fun y hy ↦ ⟨hsub (hwmem y hy), hwne y⟩
+  have hint2 : IntervalIntegrable (fun y : ℝ ↦ gp (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I))
+      MeasureTheory.volume (-R) R :=
+    intervalIntegrable_comp hgc hcontw.continuousOn fun y _ ↦ hwne y
+  have hEq : (∫ y : ℝ in (-R : ℝ)..R, newmanAux F G T (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I)
+        * newmanKernel R (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I))
+      = (∫ y : ℝ in (-R : ℝ)..R, Gp (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I))
+        - ∫ y : ℝ in (-R : ℝ)..R, gp (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I) := by
+    rw [← intervalIntegral.integral_sub hint1 hint2]
+    refine intervalIntegral.integral_congr fun y _ ↦ ?_
+    rw [hGp, hgp, newmanAux]
+    ring
+  have hGpb : ‖∫ y : ℝ in (-R : ℝ)..R, Gp (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I)‖
+      ≤ A * |R - (-R)| := by
+    refine intervalIntegral.norm_integral_le_of_norm_le_const fun y hy ↦ ?_
+    have hy' : y ∈ Set.Icc (-R) R := hIc ▸ (Set.Ioc_subset_Icc_self hy)
+    exact norm_G_integrand_left_le hR hδ hδR (by simp) (by simpa [abs_le] using hy')
+      (hM _ (hwmem y (hIc ▸ hy')))
+  -- the deformation of the truncated transform off the left edge
+  have hsubrect : rect (-R) (-δ) (-R) R ⊆ {z : ℂ | z ≠ 0} := by
+    intro z hz
+    obtain ⟨hre, -⟩ := mem_rect_iff.1 hz
+    rw [hIb] at hre
+    intro h
+    rw [h] at hre
+    simp only [Complex.zero_re] at hre
+    exact absurd hre.2 (by linarith)
+  have hgd : DifferentiableOn ℂ gp {z : ℂ | z ≠ 0} :=
+    (((differentiable_truncLaplace hFb hFi hT).differentiableOn).mul
+      hexpd.differentiableOn).mul (differentiableOn_newmanKernel R)
+  have hzero : rectInt gp (-R) (-δ) (-R) R = 0 := rectInt_eq_zero (hgd.mono hsubrect)
+  have hhoriz_g : ∀ e : ℝ, |e| = R → ∀ x ∈ [[(-R : ℝ), -δ]],
+      ‖gp ((x : ℂ) + (e : ℂ) * Complex.I)‖ ≤ 3 * C / R ^ 2 := by
+    intro e he x hx
+    have hx' : x ∈ Set.Icc (-R) (-δ) := hIb ▸ hx
+    have hre : ((x : ℂ) + (e : ℂ) * Complex.I).re = x := by simp
+    have him : ((x : ℂ) + (e : ℂ) * Complex.I).im = e := by simp
+    refine norm_trunc_integrand_horiz_le hFb hR hT ?_ ?_ ?_
+    · rw [him]; exact he
+    · rw [hre, abs_le]
+      exact ⟨hx'.1, by linarith [hx'.2]⟩
+    · rw [hre]; linarith [hx'.2]
+  have hgpb : ‖∫ y : ℝ in (-R : ℝ)..R, gp (((-δ : ℝ) : ℂ) + (y : ℂ) * Complex.I)‖
+      ≤ (3 * C / R ^ 2 + 3 * C / R ^ 2) * |(-δ) - (-R)| + (3 * C / R ^ 2) * |R - (-R)| := by
+    refine norm_edge_le_of_rectInt_eq_zero hzero
+      (hhoriz_g (-R) (by rw [abs_neg]; exact abs_of_pos hR))
+      (hhoriz_g R (abs_of_pos hR)) ?_
+    intro y hy
+    have hy' : y ∈ Set.Icc (-R) R := hIc ▸ hy
+    exact norm_trunc_integrand_vert_le hFb hR hT (by simp) (by simpa [abs_le] using hy')
+  -- assemble
+  have hmain : ‖rectInt (fun z ↦ newmanAux F G T z * newmanKernel R z) (-δ) R (-R) R‖
+      ≤ (3 * (M * δ + C) / R ^ 2 + 3 * (M * δ + C) / R ^ 2) * |R - (-δ)|
+        + (3 * C / R ^ 2) * |R - (-R)|
+        + (A * |R - (-R)|
+          + ((3 * C / R ^ 2 + 3 * C / R ^ 2) * |(-δ) - (-R)|
+            + (3 * C / R ^ 2) * |R - (-R)|)) := by
+    refine norm_rectInt_le_of_left hbot htop hrig ?_
+    rw [hEq]
+    exact le_trans (norm_sub_le _ _) (add_le_add hGpb hgpb)
+  rw [hres, newmanAux_zero] at hmain
+  -- the norm of the residue
+  have hnormres : ‖(2 : ℂ) * (Real.pi : ℂ) * Complex.I
+      * (G 0 - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ))‖
+      = 2 * Real.pi * ‖G 0 - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ)‖ := by
+    rw [norm_mul, norm_mul, norm_mul, Complex.norm_I, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_pos Real.pi_pos]
+    norm_num
+  rw [hnormres] at hmain
+  -- simplify the absolute values
+  rw [abs_of_pos (by linarith : (0:ℝ) < R - (-δ)), abs_of_pos (by linarith : (0:ℝ) < R - (-R)),
+    abs_of_nonneg (by linarith : (0:ℝ) ≤ (-δ) - (-R))] at hmain
+  set X : ℝ := ‖G 0 - ∫ t in Set.Ioc (0 : ℝ) T, (F t : ℂ)‖ with hX
+  have hX0 : 0 ≤ X := norm_nonneg _
+  have hQ0 : 0 ≤ R * A := mul_nonneg hR.le hA0
+  have hpi : (6 : ℝ) ≤ 2 * Real.pi := by linarith [Real.pi_gt_three]
+  have hstep : 6 * X ≤ 2 * Real.pi * X := by
+    nlinarith [mul_nonneg (by linarith : (0 : ℝ) ≤ 2 * Real.pi - 6) hX0]
+  have hgoal : R * M * Real.exp (-(δ * T)) * (1 / δ + 2 / R) = R * A := by
+    rw [hA]; ring
+  have hrw : (3 * (M * δ + C) / R ^ 2 + 3 * (M * δ + C) / R ^ 2) * (R - (-δ))
+      + (3 * C / R ^ 2) * (R - (-R))
+      + (A * (R - (-R))
+        + ((3 * C / R ^ 2 + 3 * C / R ^ 2) * ((-δ) - (-R)) + (3 * C / R ^ 2) * (R - (-R))))
+      ≤ 6 * ((2 * M * δ + 5 * C) / R) + 2 * (R * A) := by
+    rw [← sub_nonneg]
+    have hRne : R ≠ 0 := ne_of_gt hR
+    have key : 6 * ((2 * M * δ + 5 * C) / R) + 2 * (R * A)
+        - ((3 * (M * δ + C) / R ^ 2 + 3 * (M * δ + C) / R ^ 2) * (R - (-δ))
+          + (3 * C / R ^ 2) * (R - (-R))
+          + (A * (R - (-R))
+            + ((3 * C / R ^ 2 + 3 * C / R ^ 2) * ((-δ) - (-R))
+              + (3 * C / R ^ 2) * (R - (-R)))))
+        = (6 * M * δ * (R - δ) + 6 * C * R) / R ^ 2 := by
+      field_simp
+      ring
+    rw [key]
+    refine div_nonneg (add_nonneg ?_ ?_) hR2.le
+    · exact mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) hM0) hδ.le) (sub_nonneg.mpr hδR)
+    · exact mul_nonneg (mul_nonneg (by norm_num) hC0) hR.le
+  rw [hgoal]
+  linarith [hmain, hstep, hrw]
+
 /--
 **Newman's analytic theorem.**  A bounded, locally integrable `F : [0,∞) → ℝ` whose Laplace
 transform continues analytically to the closed half plane has a convergent improper integral,

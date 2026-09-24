@@ -564,4 +564,105 @@ theorem norm_rectInt_le {f : ℂ → ℂ} {a b c d B₁ B₂ B₃ B₄ : ℝ}
   rw [rectInt]
   linarith
 
+/--
+A variant of `Newman.norm_rectInt_le` in which the left edge is bounded as a whole rather
+than pointwise.  This is the form Newman's argument needs: on the left edge the truncated
+transform has no pointwise bound and must first be deformed away.
+-/
+@[category API, AMS 30]
+theorem norm_rectInt_le_of_left {f : ℂ → ℂ} {a b c d B₁ B₂ B₃ E : ℝ}
+    (h₁ : ∀ x ∈ [[a, b]], ‖f ((x : ℂ) + c * Complex.I)‖ ≤ B₁)
+    (h₂ : ∀ x ∈ [[a, b]], ‖f ((x : ℂ) + d * Complex.I)‖ ≤ B₂)
+    (h₃ : ∀ y ∈ [[c, d]], ‖f ((b : ℂ) + y * Complex.I)‖ ≤ B₃)
+    (h₄ : ‖∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I)‖ ≤ E) :
+    ‖rectInt f a b c d‖ ≤ (B₁ + B₂) * |b - a| + B₃ * |d - c| + E := by
+  have hsub₁ : Set.uIoc a b ⊆ [[a, b]] := Set.Ioc_subset_Icc_self
+  have hsub₂ : Set.uIoc c d ⊆ [[c, d]] := Set.Ioc_subset_Icc_self
+  have e₁ : ‖∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I)‖ ≤ B₁ * |b - a| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun x hx ↦ h₁ x (hsub₁ hx)
+  have e₂ : ‖∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I)‖ ≤ B₂ * |b - a| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun x hx ↦ h₂ x (hsub₁ hx)
+  have e₃ : ‖∫ y : ℝ in c..d, f ((b : ℂ) + y * Complex.I)‖ ≤ B₃ * |d - c| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun y hy ↦ h₃ y (hsub₂ hy)
+  have hI : ∀ w : ℂ, ‖Complex.I * w‖ = ‖w‖ := by
+    intro w; rw [norm_mul, Complex.norm_I, one_mul]
+  have key : ∀ w x y z : ℂ, ‖w - x + y - z‖ ≤ ‖w‖ + ‖x‖ + ‖y‖ + ‖z‖ := by
+    intro w x y z
+    calc ‖w - x + y - z‖ ≤ ‖w - x + y‖ + ‖z‖ := norm_sub_le _ _
+      _ ≤ (‖w - x‖ + ‖y‖) + ‖z‖ := by gcongr; exact norm_add_le _ _
+      _ ≤ ((‖w‖ + ‖x‖) + ‖y‖) + ‖z‖ := by gcongr; exact norm_sub_le _ _
+      _ = ‖w‖ + ‖x‖ + ‖y‖ + ‖z‖ := by ring
+  have hmain := key (∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I))
+    (∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I))
+    (Complex.I * ∫ y : ℝ in c..d, f ((b : ℂ) + y * Complex.I))
+    (Complex.I * ∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I))
+  rw [hI, hI] at hmain
+  rw [rectInt]
+  linarith
+
+/--
+**Deformation.**  If the boundary integral over a rectangle vanishes then its right edge is
+bounded by the other three.  Newman uses this to move the truncated transform off the edge
+`\mathrm{Re}\,z = -\delta`, which passes close to the origin, onto the far edge
+`\mathrm{Re}\,z = -R`, where the kernel is small.
+-/
+@[category API, AMS 30]
+theorem norm_edge_le_of_rectInt_eq_zero {f : ℂ → ℂ} {a b c d B₁ B₂ B₄ : ℝ}
+    (hzero : rectInt f a b c d = 0)
+    (h₁ : ∀ x ∈ [[a, b]], ‖f ((x : ℂ) + c * Complex.I)‖ ≤ B₁)
+    (h₂ : ∀ x ∈ [[a, b]], ‖f ((x : ℂ) + d * Complex.I)‖ ≤ B₂)
+    (h₄ : ∀ y ∈ [[c, d]], ‖f ((a : ℂ) + y * Complex.I)‖ ≤ B₄) :
+    ‖∫ y : ℝ in c..d, f ((b : ℂ) + y * Complex.I)‖ ≤ (B₁ + B₂) * |b - a| + B₄ * |d - c| := by
+  have hsub₁ : Set.uIoc a b ⊆ [[a, b]] := Set.Ioc_subset_Icc_self
+  have hsub₂ : Set.uIoc c d ⊆ [[c, d]] := Set.Ioc_subset_Icc_self
+  have e₁ : ‖∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I)‖ ≤ B₁ * |b - a| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun x hx ↦ h₁ x (hsub₁ hx)
+  have e₂ : ‖∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I)‖ ≤ B₂ * |b - a| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun x hx ↦ h₂ x (hsub₁ hx)
+  have e₄ : ‖∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I)‖ ≤ B₄ * |d - c| :=
+    intervalIntegral.norm_integral_le_of_norm_le_const fun y hy ↦ h₄ y (hsub₂ hy)
+  have hI : ∀ w : ℂ, ‖Complex.I * w‖ = ‖w‖ := by
+    intro w; rw [norm_mul, Complex.norm_I, one_mul]
+  have hEq : Complex.I * ∫ y : ℝ in c..d, f ((b : ℂ) + y * Complex.I)
+      = -(∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I))
+        + (∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I))
+        + Complex.I * ∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I) := by
+    rw [rectInt] at hzero
+    linear_combination hzero
+  have hb : ‖Complex.I * ∫ y : ℝ in c..d, f ((b : ℂ) + y * Complex.I)‖
+      ≤ ‖∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I)‖
+        + ‖∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I)‖
+        + ‖Complex.I * ∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I)‖ := by
+    rw [hEq]
+    calc ‖-(∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I))
+            + (∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I))
+            + Complex.I * ∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I)‖
+        ≤ ‖-(∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I))
+            + (∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I))‖
+          + ‖Complex.I * ∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I)‖ := norm_add_le _ _
+      _ ≤ (‖∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I)‖
+            + ‖∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I)‖)
+          + ‖Complex.I * ∫ y : ℝ in c..d, f ((a : ℂ) + y * Complex.I)‖ := by
+          gcongr
+          simpa using norm_add_le (-(∫ x : ℝ in a..b, f ((x : ℂ) + c * Complex.I)))
+            (∫ x : ℝ in a..b, f ((x : ℂ) + d * Complex.I))
+  rw [hI, hI] at hb
+  linarith
+
+/-! ### Regularity of the kernel away from the origin -/
+
+@[category API, AMS 30]
+theorem differentiableOn_newmanKernel (R : ℝ) :
+    DifferentiableOn ℂ (newmanKernel R) {z : ℂ | z ≠ 0} := by
+  intro z hz
+  have hz0 : z ≠ 0 := hz
+  have h : DifferentiableAt ℂ (fun w : ℂ ↦ w⁻¹ + w / (R : ℂ) ^ 2) z :=
+    (differentiableAt_id.inv hz0).add (differentiableAt_id.div_const _)
+  exact h.differentiableWithinAt
+
+@[category API, AMS 30]
+theorem continuousOn_newmanKernel (R : ℝ) :
+    ContinuousOn (newmanKernel R) {z : ℂ | z ≠ 0} :=
+  (differentiableOn_newmanKernel R).continuousOn
+
 end Newman
