@@ -1,6 +1,18 @@
 # PENDING WORK — Erdős 239
 
-## LAP 6 (2026-09-24): the convergent case is CLOSED; the crux has a new route
+## LAP 6 (2026-09-24): convergent case CLOSED; crux reduced to one asymptotic
+
+**The crux is now a single named statement in `Main.lean`:**
+
+    Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero :
+      IsPMOneMultiplicative f → Tendsto (fun N ↦ mean f N - logMean f N / log N) atTop (𝓝 0)
+
+This is [Hi86]'s displayed asymptotic `∑_{n≤x} f(n) ~ (x/\log x)∑_{n≤x}f(n)/n` (the constant
+is `τ = 1`, as `f = 1` shows).  `hdiv` has been **factored out of it**: the divergence
+hypothesis is used only to produce `L(N) = o(\log N)`, and
+`tendsto_mean_atTop_zero_of_logMean` is now a two-line consequence.  Equivalently the crux
+says *the mean value equals its own logarithmic average asymptotically*, which is false for
+`f(n) = n^{iθ}` — so it is exactly the statement that has to consume real-valuedness.
 
 `Wirsing.exists_hasMeanValue_of_summable` is sorry-free (`#print axioms`: propext,
 Classical.choice, Quot.sound).  `Wirsing.summable_abs_wintnerCoeff_div` went through the

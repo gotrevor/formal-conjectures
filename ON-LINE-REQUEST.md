@@ -55,3 +55,26 @@ Sources already consulted (titles/links only, not the text):
 `terrytao.wordpress.com/2019/12/17/254a-notes-10-mean-values-of-nonpretentious-multiplicative-functions/`,
 `arxiv.org/pdf/1604.00295` (Granville–Harper–Soundararajan, *A Strengthening of Theorems of
 Halász and Wirsing*) — this last one is on arXiv and **fetchable by a host session**.
+
+## 2026-09-24 (lap 6) — the crux is now ONE asymptotic; two precise asks
+
+The repo's remaining `sorry` has been reduced to a single statement, with `hdiv` factored
+out of it entirely:
+
+    Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero :
+      f real, ±1, multiplicative  ⟹  mean f N - logMean f N / log N → 0,
+
+i.e. exactly [Hi86]'s `∑_{n≤x} f(n) ~ (x/log x) ∑_{n≤x} f(n)/n` with `τ = 1` (the case
+`f = 1` fixes the constant).  Everything else in both halves of Wirsing's theorem is proved.
+
+**Ask 1 (the important one).**  The proof of that asymptotic in [Hi86], or in any source.
+Where exactly does real-valuedness enter?  It must, since the statement is false for
+`f(n) = n^{iθ}`.
+
+**Ask 2.**  Is `∑_{p ≤ x} \log p / p = \log x - E + o(1)` (Mertens' first theorem *with the
+constant*, i.e. with `o(1)` rather than `O(1)` error) known to be equivalent to PNT, or is
+there an elementary proof?  This lap found that **every** attempt to localise the rigidity
+argument to a bounded multiplicative window reduces to exactly this estimate: the repo's
+Mertens bound has the absolute error `\log 4 + 8 ≈ 9.4`, so it says nothing about a window of
+ratio below `e^{19}`.  If the `o(1)` form is elementary, the crux route in `PENDING_WORK.md`
+closes; if it is PNT-equivalent, that route needs a different last step.
