@@ -476,6 +476,36 @@ theorem one_div_le_log_succ_sub_log {K : ℕ} (hK : 1 ≤ K) :
     ring
   linarith [he ▸ h]
 
+/-- `1 ≤ (K+1)(log(K+1) - log K)`, the discrete derivative bound in multiplied form. -/
+@[category API, AMS 11]
+theorem one_le_mul_log_succ_sub_log {K : ℕ} (hK : 1 ≤ K) :
+    1 ≤ ((K : ℝ) + 1) * (Real.log ((K : ℝ) + 1) - Real.log (K : ℝ)) := by
+  have h := one_div_le_log_succ_sub_log (K := K) hK
+  have hKR : (1 : ℝ) ≤ (K : ℝ) := by exact_mod_cast hK
+  have := mul_le_mul_of_nonneg_left h (show (0 : ℝ) ≤ (K : ℝ) + 1 by linarith)
+  rw [mul_one_div, div_self (by linarith : ((K : ℝ) + 1) ≠ 0)] at this
+  linarith
+
+/-- `1/((K+1)(log(K+1))²) ≤ 1/log K - 1/log(K+1)`: the telescoping estimate. -/
+@[category API, AMS 11]
+theorem one_div_mul_log_sq_le_sub {K : ℕ} (hK : 2 ≤ K) :
+    1 / (((K : ℝ) + 1) * Real.log ((K : ℝ) + 1) ^ 2)
+      ≤ 1 / Real.log (K : ℝ) - 1 / Real.log ((K : ℝ) + 1) := by
+  have hKR : (2 : ℝ) ≤ (K : ℝ) := by exact_mod_cast hK
+  have hv : 0 < Real.log (K : ℝ) := Real.log_pos (by linarith)
+  have hvu : Real.log (K : ℝ) ≤ Real.log ((K : ℝ) + 1) :=
+    Real.log_le_log (by linarith) (by linarith)
+  have hu : 1 ≤ Real.log ((K : ℝ) + 1) :=
+    le_trans one_le_log_three (Real.log_le_log (by norm_num) (by linarith))
+  have hnuv := one_le_mul_log_succ_sub_log (K := K) (by omega)
+  have hrw : 1 / Real.log (K : ℝ) - 1 / Real.log ((K : ℝ) + 1)
+      = (Real.log ((K : ℝ) + 1) - Real.log (K : ℝ))
+          / (Real.log (K : ℝ) * Real.log ((K : ℝ) + 1)) := by
+    field_simp
+  rw [hrw, div_le_div_iff₀ (by positivity) (by positivity)]
+  nlinarith [mul_le_mul_of_nonneg_right hnuv
+    (sq_nonneg (Real.log ((K : ℝ) + 1))), hv, hvu, hu]
+
 open scoped Classical in
 /-- One step of the telescoping of `Φ(N)/(\log N)^2`, at `N = K + 1 \ge 3`. -/
 @[category API, AMS 11]
@@ -491,11 +521,7 @@ theorem potential_step (hf : IsPMOneMultiplicative f) {K : ℕ} (hK : 2 ≤ K) :
     Real.log_le_log (by linarith) (by linarith)
   have hu : 1 ≤ Real.log ((K : ℝ) + 1) :=
     le_trans one_le_log_three (Real.log_le_log (by norm_num) (by linarith))
-  have hnuv : 1 ≤ ((K : ℝ) + 1) * (Real.log ((K : ℝ) + 1) - Real.log (K : ℝ)) := by
-    have h := one_div_le_log_succ_sub_log (K := K) (by omega)
-    have := mul_le_mul_of_nonneg_left h (show (0 : ℝ) ≤ (K : ℝ) + 1 by linarith)
-    rw [mul_one_div, div_self (by linarith : ((K : ℝ) + 1) ≠ 0)] at this
-    linarith
+  have hnuv := one_le_mul_log_succ_sub_log (K := K) (by omega)
   have hP₁ : potential f (K + 1)
       = potential f K + |logMean f (K + 1)| / ((K : ℝ) + 1) := potential_succ f K
   have hgu : |logMean f (K + 1)| ≤ 1 + Real.log ((K : ℝ) + 1) := by
@@ -538,26 +564,7 @@ theorem sum_one_div_mul_log_sq_le {M : ℕ} (hM : 2 ≤ M) :
   induction M, hM using Nat.le_induction with
   | base => norm_num
   | succ K hK ih =>
-    have hKR : (2 : ℝ) ≤ (K : ℝ) := by exact_mod_cast hK
-    have hv : 0 < Real.log (K : ℝ) := Real.log_pos (by linarith)
-    have hvu : Real.log (K : ℝ) ≤ Real.log ((K : ℝ) + 1) :=
-      Real.log_le_log (by linarith) (by linarith)
-    have hu : 1 ≤ Real.log ((K : ℝ) + 1) :=
-      le_trans one_le_log_three (Real.log_le_log (by norm_num) (by linarith))
-    have hnuv : 1 ≤ ((K : ℝ) + 1) * (Real.log ((K : ℝ) + 1) - Real.log (K : ℝ)) := by
-      have h := one_div_le_log_succ_sub_log (K := K) (by omega)
-      have := mul_le_mul_of_nonneg_left h (show (0 : ℝ) ≤ (K : ℝ) + 1 by linarith)
-      rw [mul_one_div, div_self (by linarith : ((K : ℝ) + 1) ≠ 0)] at this
-      linarith
-    have hkey : 1 / (((K : ℝ) + 1) * Real.log ((K : ℝ) + 1) ^ 2)
-        ≤ 1 / Real.log (K : ℝ) - 1 / Real.log ((K : ℝ) + 1) := by
-      have hrw : 1 / Real.log (K : ℝ) - 1 / Real.log ((K : ℝ) + 1)
-          = (Real.log ((K : ℝ) + 1) - Real.log (K : ℝ))
-              / (Real.log (K : ℝ) * Real.log ((K : ℝ) + 1)) := by
-        field_simp
-      rw [hrw, div_le_div_iff₀ (by positivity) (by positivity)]
-      nlinarith [mul_le_mul_of_nonneg_right hnuv
-        (sq_nonneg (Real.log ((K : ℝ) + 1))), hv, hvu, hu]
+    have hkey := one_div_mul_log_sq_le_sub hK
     rw [Finset.sum_Icc_succ_top (by omega : 3 ≤ K + 1)]
     push_cast
     linarith [ih, hkey]
@@ -613,5 +620,112 @@ theorem exists_sum_badWeight_le (hf : IsPMOneMultiplicative f) :
     have h6 : 0 ≤ 1 / Real.log M := by positivity
     rw [hB]
     linarith [h1, h2, h3, h4, h6]
+
+open scoped Classical in
+/--
+**The monotone envelope.**  `G(N) = Φ(N)/(\log N)^2 + 128/\log N + 4/N`.
+
+Adding the tails of the two error series to `Φ(N)/(\log N)^2` turns the telescoped step of
+`Wirsing.potential_step` into an honest monotonicity statement, which is what supplies both
+the bound on the deficit and the limit `ℓ = \inf G` without any convergence machinery.
+-/
+noncomputable def envelope (N : ℕ) : ℝ :=
+  potential f N / Real.log N ^ 2 + 128 * (1 / Real.log N) + 4 * (1 / (N : ℝ))
+
+@[category API, AMS 11]
+theorem envelope_nonneg {N : ℕ} (hN : 2 ≤ N) : 0 ≤ envelope f N := by
+  have hNR : (2 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+  have hlog : 0 < Real.log (N : ℝ) := Real.log_pos (by linarith)
+  have h1 : 0 ≤ potential f N / Real.log N ^ 2 :=
+    div_nonneg (potential_nonneg f N) (by positivity)
+  have h2 : 0 ≤ 128 * (1 / Real.log (N : ℝ)) := by positivity
+  have h3 : 0 ≤ 4 * (1 / (N : ℝ)) := by positivity
+  show 0 ≤ potential f N / Real.log N ^ 2 + 128 * (1 / Real.log N) + 4 * (1 / (N : ℝ))
+  linarith
+
+open scoped Classical in
+/-- The envelope decreases by at least twice the deficit at every step. -/
+@[category API, AMS 11]
+theorem envelope_step (hf : IsPMOneMultiplicative f) {K : ℕ} (hK : 2 ≤ K) :
+    envelope f (K + 1)
+        + 2 * (badWeight f (K + 1) / (((K : ℝ) + 1) * Real.log ((K : ℝ) + 1) ^ 3))
+      ≤ envelope f K := by
+  have hKR : (2 : ℝ) ≤ (K : ℝ) := by exact_mod_cast hK
+  have hstep := potential_step f hf hK
+  have hlog := one_div_mul_log_sq_le_sub hK
+  have hharm : 4 * (1 / ((K : ℝ) + 1) ^ 2)
+      ≤ 4 * (1 / (K : ℝ)) - 4 * (1 / ((K : ℝ) + 1)) := by
+    rw [show 4 * (1 / (K : ℝ)) - 4 * (1 / ((K : ℝ) + 1))
+        = 4 / (K : ℝ) - 4 / ((K : ℝ) + 1) from by ring,
+      div_sub_div _ _ (by linarith : (K : ℝ) ≠ 0) (by linarith : ((K : ℝ) + 1) ≠ 0),
+      show 4 * (1 / ((K : ℝ) + 1) ^ 2) = 4 / ((K : ℝ) + 1) ^ 2 from by ring,
+      div_le_div_iff₀ (by positivity) (by positivity)]
+    nlinarith [hKR]
+  show potential f (K + 1) / Real.log ↑(K + 1) ^ 2 + 128 * (1 / Real.log ↑(K + 1))
+      + 4 * (1 / ((K + 1 : ℕ) : ℝ))
+      + 2 * (badWeight f (K + 1) / (((K : ℝ) + 1) * Real.log ((K : ℝ) + 1) ^ 3))
+    ≤ potential f K / Real.log K ^ 2 + 128 * (1 / Real.log K) + 4 * (1 / (K : ℝ))
+  push_cast
+  linarith [hstep, hlog, hharm]
+
+open scoped Classical in
+/-- The envelope is nonincreasing, and the drop dominates twice the accumulated deficit. -/
+@[category API, AMS 11]
+theorem envelope_add_sum_le (hf : IsPMOneMultiplicative f) {a b : ℕ} (ha : 2 ≤ a) (hab : a ≤ b) :
+    envelope f b + 2 * ∑ N ∈ Icc (a + 1) b, badWeight f N / ((N : ℝ) * Real.log N ^ 3)
+      ≤ envelope f a := by
+  induction b, hab using Nat.le_induction with
+  | base => simp
+  | succ K hK ih =>
+    have hstep := envelope_step f hf (K := K) (by omega)
+    rw [Finset.sum_Icc_succ_top (by omega : a + 1 ≤ K + 1)]
+    push_cast
+    linarith [ih, hstep]
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem envelope_antitone (hf : IsPMOneMultiplicative f) {a b : ℕ} (ha : 2 ≤ a) (hab : a ≤ b) :
+    envelope f b ≤ envelope f a := by
+  have h := envelope_add_sum_le f hf ha hab
+  have hnn : 0 ≤ ∑ N ∈ Icc (a + 1) b, badWeight f N / ((N : ℝ) * Real.log N ^ 3) := by
+    refine Finset.sum_nonneg fun N hN ↦ ?_
+    have hN1 : a + 1 ≤ N := (mem_Icc.1 hN).1
+    have hNR : (0 : ℝ) < (N : ℝ) := by
+      have : 0 < N := by omega
+      exact_mod_cast this
+    have hlog : 0 ≤ Real.log (N : ℝ) := Real.log_natCast_nonneg N
+    have := badWeight_nonneg f N
+    positivity
+  linarith
+
+open scoped Classical in
+/-- The limit of the envelope, as the infimum of an antitone sequence bounded below by `0`. -/
+noncomputable def envelopeInf : ℝ := ⨅ n : ℕ, envelope f (n + 2)
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem bddBelow_envelope : BddBelow (Set.range fun n : ℕ ↦ envelope f (n + 2)) :=
+  ⟨0, by rintro x ⟨n, rfl⟩; exact envelope_nonneg f (by omega)⟩
+
+open scoped Classical in
+@[category API, AMS 11]
+theorem envelopeInf_nonneg : 0 ≤ envelopeInf f :=
+  le_ciInf fun n ↦ envelope_nonneg f (by omega)
+
+open scoped Classical in
+/-- The envelope never drops below its infimum. -/
+@[category API, AMS 11]
+theorem envelopeInf_le {N : ℕ} (hN : 2 ≤ N) :
+    envelopeInf f ≤ envelope f N := by
+  have := ciInf_le (bddBelow_envelope f) (N - 2)
+  rwa [show N - 2 + 2 = N by omega] at this
+
+open scoped Classical in
+/-- The infimum is approached: this is the only "limit" input the argument needs. -/
+@[category API, AMS 11]
+theorem exists_envelope_lt {η : ℝ} (hη : 0 < η) :
+    ∃ M₀ : ℕ, 2 ≤ M₀ ∧ envelope f M₀ < envelopeInf f + η := by
+  obtain ⟨n, hn⟩ := exists_lt_of_ciInf_lt (show envelopeInf f < envelopeInf f + η by linarith)
+  exact ⟨n + 2, by omega, hn⟩
 
 end Wirsing

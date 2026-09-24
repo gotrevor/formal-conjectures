@@ -24,8 +24,18 @@ It is now reduced to `Wirsing.exists_hasMeanValue` in
 `FormalConjectures/ErdosProblems/Wirsing/Decay.lean`:
 `abs_sum_primeWeight_comp_sub_sum_div_le` (B), `abs_logMean_mul_log_le_potential` (C),
 `potential_step_algebra` / `potential_step` / `potential_div_add_sum_le` /
-`exists_sum_badWeight_le` (D).  Remaining: **step E** (the window lower bound) and
-**step F** (the contradiction and the conclusion).
+`exists_sum_badWeight_le` (D), and the monotone envelope
+`envelope f N = Φ(N)/(log N)² + 128/log N + 4/N` with `envelope_step`,
+`envelope_add_sum_le`, `envelope_antitone`, `envelopeInf`, `envelopeInf_le`,
+`exists_envelope_lt`.  The envelope replaces "`Φ(N)/(log N)² converges`" by plain
+monotonicity, so the argument needs no limit machinery until the very last step.
+Remaining: **step E** (the window lower bound) and **step F** (the contradiction and
+the conclusion).
+
+*Lean gotcha (cost ~3 build cycles).*  `linarith` parses `a / b` with a **non-numeral** `b`
+as a single atom, so `128 / X` and `1 / X` are unrelated atoms and `128 / X ≤ …` cannot be
+derived from `1 / X ≤ …`.  Write `128 * (1 / X)` everywhere such a term has to be scaled.
+The same applies to `2 * D / X` versus `2 * (D / X)`.
 
 A complete elementary proof of the crux, checked end to end on paper.  Every input is already
 formalised in this repo.  It supersedes the `logProfile` multi-scale recursion.
