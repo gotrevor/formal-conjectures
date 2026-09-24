@@ -116,6 +116,55 @@ theorem exists_continuousOn_lSeries_vonMangoldt_sub :
     ring
 
 /--
+**The untwisted von Mangoldt sum is at most its polar main term.**  For `0 < x ≤ 1`,
+$$\sum_n \frac{\Lambda(n)}{n^{1+x}} \le \frac{1}{x} + C.$$
+
+The companion upper bound to `Wirsing.exists_tsum_vonMangoldt_twisted_ge`; it is what turns a
+Mertens lower bound for the head `n \le N` into an upper bound for the tail `n > N`.
+-/
+@[category API, AMS 11]
+theorem exists_tsum_vonMangoldt_le :
+    ∃ C : ℝ, ∀ x : ℝ, 0 < x → x ≤ 1 →
+      ∑' n : ℕ, ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) ≤ 1 / x + C := by
+  obtain ⟨G, hGc, hGeq⟩ := exists_continuousOn_lSeries_vonMangoldt_sub
+  have hc : IsCompact ((fun u : ℝ ↦ ((1 + u : ℝ) : ℂ)) '' Set.Icc 0 1) :=
+    isCompact_Icc.image (by fun_prop)
+  have hsub : (fun u : ℝ ↦ ((1 + u : ℝ) : ℂ)) '' Set.Icc 0 1 ⊆ {s : ℂ | 1 ≤ s.re} := by
+    rintro _ ⟨u, hu, rfl⟩
+    simp only [Set.mem_ofPred_eq, Complex.ofReal_re]
+    linarith [hu.1]
+  obtain ⟨M, hM⟩ := hc.exists_bound_of_continuousOn (hGc.mono hsub)
+  refine ⟨M, fun x hx hx1 ↦ ?_⟩
+  set F : ℕ → ℂ := fun n ↦ ((ArithmeticFunction.vonMangoldt n : ℝ) : ℂ) with hF
+  set s : ℂ := ((1 + x : ℝ) : ℂ) with hs
+  have hsgt : 1 < s.re := by simp only [hs, Complex.ofReal_re]; linarith
+  have hterm : ∀ n : ℕ, (LSeries.term F s n).re
+      = ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) := by
+    intro n
+    rcases eq_or_ne n 0 with rfl | hn
+    · simp [LSeries.term_zero]
+    · rw [LSeries.term_of_ne_zero hn]
+      have hrw : F n / (n : ℂ) ^ s = ((ArithmeticFunction.vonMangoldt n : ℝ) : ℂ) *
+          (n : ℂ) ^ (-(((1 + x : ℝ) : ℂ) + ((0 : ℝ) : ℂ) * I)) := by
+        simp only [hF, hs, Complex.ofReal_zero, zero_mul, add_zero, Complex.cpow_neg,
+          div_eq_mul_inv]
+      rw [hrw, Complex.re_ofReal_mul, re_natCast_cpow_neg hn]
+      simp
+  have h1 : Summable (LSeries.term F s) := ArithmeticFunction.LSeriesSummable_vonMangoldt hsgt
+  have hLre : (LSeries F s).re = ∑' n : ℕ,
+      ArithmeticFunction.vonMangoldt n * (n : ℝ) ^ (-(1 + x)) := by
+    simp only [LSeries, Complex.re_tsum h1, hterm]
+  rw [← hLre, hGeq _ hsgt, Complex.add_re]
+  have hpole : (1 / (s - 1)).re = 1 / x := by
+    have hs1 : s - 1 = ((x : ℝ) : ℂ) := by simp [hs]
+    rw [hs1]; simp
+  have hGb : (G s).re ≤ M := by
+    have h2 := Complex.abs_re_le_norm (G s)
+    have h3 : ‖G s‖ ≤ M := hM _ ⟨x, ⟨hx.le, hx1⟩, rfl⟩
+    linarith [le_abs_self (G s).re]
+  rw [hpole]; linarith
+
+/--
 **The twisted von Mangoldt sum on the `1`-line.**  For `t ≠ 0`,
 $$\sum_n \frac{\Lambda(n)}{n^{1+x}}\bigl(1 - \cos(t\log n)\bigr) \ge \frac{1}{x} - C_t
   \qquad (0 < x \le 1).$$
