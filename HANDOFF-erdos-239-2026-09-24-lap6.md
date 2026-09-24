@@ -39,17 +39,24 @@ term. With `ρ = √δ` this gives, for all but `O(√δ log N)` of the weight,
 obstruction `cos(θ log N)` (which is near-extremal only near its peaks); the second is a
 character equation for `f`, and is where `f(p) = ±1` — a sign, never a phase — enters.
 
-**Step 4 is also done** (`le_abs_logMean_of_sign_stable`, same file): if
+**Step 4** (`le_abs_logMean_of_sign_stable`, same file, also proved): if
 `s σ(⌊N/k⌋) ≥ A - ρ` for every `k` outside a set of harmonic weight `η`, then
-`|L(N)| ≥ (A - ρ)(log N - η) - η - 2`, which contradicts `L(N) = o(log N)` whenever
-`A > ρ`.  This fixes the exact shape steps 2-3 must deliver: a good set `G ⊆ Icc 1 N` of
-`1/k`-weight `harmonicSum N - o(log N)` on which `s σ(⌊N/k⌋)` has a positive lower bound.
+`|L(N)| ≥ (A - ρ)(log N - η) - η - 2`.  **But see the correction below: its hypothesis is not
+what rigidity delivers**, so it is kept as a lemma and is not on the current path.
 
-Steps 2-3 (few sign changes of `σ`; the correlation `C(v) ≈ f(p)` is an approximate `{±1}`
-character, hence `≡ 1`) are
-written out in `PENDING_WORK.md`, with the ordered next attack. The cheapest next piece is
-step 4, which is independent of 2-3 and pins down the exact shape they must deliver. The
-main technical risk is the weight transfer (`log p/p` to `1/k`) in step 3.
+**The corrected picture (late in the lap).**  Rigidity gives `σ(⌊N/p⌋) ≈ s A f(p)`, so the
+sign of `σ` along the quotients is `s f(p)` — a *character*, not a stable sign.  Substituting
+that into `∑_{k ≤ N} σ(⌊N/k⌋)/k = L(N) + O(1)` reproduces `sA·L(N) = o(log N)`: consistent, so
+relation (2) cannot be the source of the contradiction, and every transfer from the Mertens
+weight `log p/p` to the harmonic weight `1/k` was refuted (all three fail on the same `O(1)`
+Mertens error accumulated over `log N` scales; localising it is PNT-strength).
+
+The live endgame instead compares `σ` at two quotients directly, using the third lemma landed
+this lap, `abs_mean_sub_mean_le`: `|σ(N) - σ(M)| ≤ 2(N - M)/N`.  With
+`σ(⌊N/n⌋) ≈ sA f(n)` this forces `f(n) = f(n')` for good `n, n'` in any multiplicative window
+of ratio `1 + A/2` — and a `{±1}`-valued multiplicative function that is locally constant is
+eventually `1`, contradicting `hdiv`.  A cheap version of the finish uses only the ratios
+`k² : k(k+1) : (k+1)²`.  `PENDING_WORK.md` has the full argument and the ordered next attack.
 
 ## Build
 

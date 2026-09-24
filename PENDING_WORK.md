@@ -45,45 +45,79 @@ near its peaks — a set of log-density bounded away from `1` — so it is alrea
 second half of (R) is a character-like equation, and it is the place where `f` real-valued
 (`f(p) = ±1`, so `f(p)` can only be a *sign*, never a phase `p^{iθ}`) finally enters.
 
-### Steps 2-4 — the plan (on paper; next lap's work)
+### Step 2 — the rigid structure is a *character*, not a stable sign (corrected this lap)
 
-Let `s(M) = sign σ(M)` on the near-extremal set, `u = \log M`.
+Rigidity says `f(p)σ(⌊N/p⌋) ≈ sA`, so since `f(p)² = 1`,
 
-2. **Few sign changes.**  `σ` is log-Lipschitz (`|σ(N) - σ(M)| ≤ 2(N-M)/N`), so crossing from
-   `+(A-ρ)` to `-(A-ρ)` takes an interval of log-length `≳ A` on which `|σ| ≤ A/2`.  By (R)
-   that set has weight `O(\sqrt δ \log N)`, so `σ` has at most `O(\sqrt δ/A)\log N` sign
-   changes below `N`: `s` is *blocky*.
-3. **The correlation is a character.**  Most `M ≤ N` are themselves near-extremal by (R), so
-   (R) may be applied at each of them: `s(M) s(⌊M/p⌋) = f(p)` for most pairs.  Equivalently
-   `C(v) = ` (weighted average over `u` of) `s(u)s(u-v)` satisfies `C(\log p) ≈ f(p) ∈ {±1}`
-   for most `p`.  Blockiness from step 2 makes `C` Lipschitz with a small constant and
-   `C(0) = 1`, so `C ≈ 1` on a long initial range, and `C(v)C(v') = C(v - v')` on the rest:
-   a `{±1}`-valued approximate character of `(ℝ,+)`, hence `≡ 1`.
-4. **The contradiction** (**DONE**, `le_abs_logMean_of_sign_stable`).  `C ≡ 1` forces `s` essentially constant, so `|σ| ≈ A` with a fixed
-   sign on almost all of `[M₀, N]`, whence
-   `|∑_{k ≤ N} σ(⌊N/k⌋)/k| ≈ A \log N`.  But `abs_sum_mean_div_sub_logMean_le` (lap 5) makes
-   that quantity `L(N) + O(1) = o(\log N)` by the hypothesis `h`.  Contradiction, so `A = 0`.
+    σ(⌊N/p⌋) ≈ s A f(p),                                                        (C)
 
-Note this route consumes `h` (`L(N) = o(\log N)`) in step 4 and *does not need* `hdiv`, which
-is consistent: `hdiv` is already used to produce `h`.  An alternative step 4 uses `hdiv`
-instead — step 3 also forces `f(p) = 1` for every prime `p` whose log-position is inside the
-range where `C ≈ 1`, contradicting `∑_{f(p) = -1} 1/p = ∞` if that range can be pushed to all
-of `[0, \log N]`.  Prefer the `h` version: it needs no control of where the bad primes sit.
+and iterating rigidity at the (near-extremal) point `⌊N/p⌋` gives
+`σ(⌊N/(pq)⌋) ≈ s A f(p)f(q) = s A f(pq)`.  So the rigid picture is
+
+    σ(⌊N/n⌋) ≈ s A f(n)   for `n` in the multiplicative span of the good primes.
+
+**This corrects the first sketch of this lap.**  The sign of `σ(⌊N/p⌋)` is `s f(p)`, which
+is *not* stable, so `Wirsing.le_abs_logMean_of_sign_stable` — although correct, and kept — is
+**not** applicable with the good set that rigidity produces.  Worse, (C) is *consistent* with
+`∑_{k ≤ N} σ(⌊N/k⌋)/k = L(N) + O(1) = o(\log N)`: substituting (C) turns the left side into
+`sA·L(N)`, which is `o(\log N)` as well.  **The contradiction cannot come from relation (2).**
+
+### Step 3 — the contradiction: `σ` log-Lipschitz forces `f` locally constant
+
+This is the live plan, and it needs no localisation of Mertens (see the refutation below).
+
+`Wirsing.abs_mean_sub_mean_le` (**DONE** this lap): `|σ(N) - σ(M)| ≤ 2(N - M)/N` for
+`1 ≤ M ≤ N`.  Applying it to two good `n < n'` with `n'/n ≤ 1 + A/2` and using (C):
+
+    A|f(n) - f(n')| ≲ 2(1 - n/n') ≤ A,
+
+and `|f(n) - f(n')| ∈ \{0, 2\}`, so `f(n) = f(n')`:
+**`f` is constant on the good set inside every multiplicative window of ratio `1 + A/2`.**
+
+Finish (on paper): semiprimes `pq` are multiplicatively dense — unlike primes, they need no
+short-interval input — so every window contains many good `n`.  Constancy across all windows
+propagates `f(p)f(q) = f(p')f(q')` whenever `pq ≈ p'q'`, i.e. `f` is an approximate character
+of `(ℝ_{>0}, ×)` with values in `\{±1\}`, hence trivial: `f(p) = 1` for every large prime.
+Then `∑_{f(p) = -1} 1/p` is a finite sum, contradicting `hdiv`.  **So `A = 0`.**
+
+A cheap special case to formalise first, which already shows the mechanism: from
+`f(k²) = f(k(k+1)) = f((k+1)²)` for large `k` (ratios `1 + 1/k`) one gets `f(k²)` eventually
+constant, `= 1` by multiplicativity, hence `f(k+1) = f(k)` for large `k`, hence `f ≡ 1` on a
+tail, contradicting `hdiv`.
+
+### Refuted this lap: any transfer from the Mertens weight to the harmonic weight
+
+The good set of rigidity lives in the weight `\log p/p`; relation (2) lives in `1/k`.  Three
+transfers were checked and all fail *for the same reason*:
+
+* **pointwise / density.**  To spread near-extremality from `⌊N/p⌋` to a whole multiplicative
+  window one needs a prime in every window of ratio `1 + ε`.  Elementarily (Chebyshev) only
+  `ε ≈ 0.21` is available, and the log-Lipschitz wobble `2ε` then swamps `A`.
+* **weight counting.**  "A window of log-length `ε` carries prime weight `≈ ε`" is false for
+  the Mertens estimate in this repo: its error is the absolute constant `\log 4 + 8 ≈ 9.4`,
+  which swamps any `ε < 9.4`.  Localising it needs `∑_{p ≤ x}\log p/p = \log x - E + o(1)`,
+  which is PNT-strength.
+* **Fubini.**  `Wirsing.abs_sum_primeWeight_sub_harmonicSum_le` compares the two weights with
+  an error proportional to the total variation, i.e. `O(\log N)` for a log-Lipschitz `σ` —
+  as large as the conclusion.
+
+All three are the same obstruction: an `O(1)` Mertens error accumulated over `\log N` scales.
+`PrimeNumberTheoremAnd` is on disk under `.lake/packages/` but is **not** a dependency, and
+adding one to this repository is not acceptable upstream.  **Do not spend a lap on the
+transfer.**  Step 3 above avoids it entirely: it compares `σ` at two quotients directly.
 
 ### Next attack, in order
 
-1. Formalise step 2 (`few sign changes`) as a statement about the weight of
-   `{p : |σ(⌊N/p⌋)| < A/2}` versus the number of sign changes of `σ`.  The log-Lipschitz
-   bound `|σ(N) - σ(M)| ≤ 2(N - M)/N` needs to be proved first (it is not yet in the repo;
-   it follows from `|S(N) - S(M)| ≤ N - M` and `|σ| ≤ 1`).
-2. Step 4 is **done**: `Wirsing.le_abs_logMean_of_sign_stable` says that if
-   `s σ(⌊N/k⌋) ≥ A - ρ` for every `k` outside a set `Icc 1 N \ G` of harmonic weight `≤ η`,
-   then `|L(N)| ≥ (A - ρ)(\log N - η) - η - 2`.  So steps 2-3 must deliver exactly this: a
-   good set `G ⊆ Icc 1 N` of `1/k`-weight `harmonicSum N - o(\log N)` on which `s σ(⌊N/k⌋)`
-   is bounded below by a fixed positive constant.
-3. Step 3 is the hard one.  The transfer from the Mertens weight `\log p/p` (in which (R)
-   lives) to the `1/k` weight (in which step 4 lives) is the main technical risk; do **not**
-   attempt a pointwise transfer, which would need primes in short intervals.
+1. Formalise (C) and its one-step iteration: at a near-extremal `N`, for most primes `p` and
+   then most `q`, `σ(⌊N/(pq)⌋) ≈ sA f(p)f(q)`.  This is `sum_bad_weight_le` applied twice,
+   the second time at the point `⌊N/p⌋`; the only new ingredient is that a good `p` makes
+   `⌊N/p⌋` itself near-extremal, which is the first half of (R).
+2. Formalise the window step: good `n < n'` with `n' ≤ n(1 + A/2)` have `f(n) = f(n')`, from
+   `abs_mean_sub_mean_le` and (C).
+3. The semiprime density.  For `x` large and `ε > 0`, the semiprimes in `[z, z(1+ε)]` — take
+   `p` a prime in `[x, 2x]` by Bertrand and `q` a prime in `[z/(2x), z/x]`, then refine.  The
+   statement needed is only that *two* good semiprimes with different `f` lie in one window,
+   so the `k²` versus `k(k+1)` special case may be enough and is much cheaper.
 
 ---
 

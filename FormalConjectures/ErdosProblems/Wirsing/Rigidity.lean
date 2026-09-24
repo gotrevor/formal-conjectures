@@ -338,4 +338,61 @@ theorem le_abs_logMean_of_sign_stable (hf : IsPMOneMultiplicative f) {A ρ η s 
     linarith
   linarith
 
+/--
+**The mean is log-Lipschitz.**  For `1 ≤ M ≤ N`,
+$$|\sigma(N) - \sigma(M)| \le \frac{2(N - M)}{N}.$$
+
+In the variable `u = \log N` this makes `σ` Lipschitz with constant `2`, which is the
+regularity that turns the rigidity relation into a constraint on `f` itself: two quotients
+that are multiplicatively close carry almost the same value of `σ`.
+-/
+@[category API, AMS 11]
+theorem abs_mean_sub_mean_le (hf : IsPMOneMultiplicative f) {M N : ℕ} (hM : 1 ≤ M)
+    (hMN : M ≤ N) : |mean f N - mean f M| ≤ 2 * ((N : ℝ) - M) / N := by
+  have hM1 : (1 : ℝ) ≤ (M : ℝ) := by exact_mod_cast hM
+  have hMNR : (M : ℝ) ≤ (N : ℝ) := by exact_mod_cast hMN
+  have hN1 : (1 : ℝ) ≤ (N : ℝ) := le_trans hM1 hMNR
+  have hMpos : (0 : ℝ) < (M : ℝ) := by linarith
+  have hNpos : (0 : ℝ) < (N : ℝ) := by linarith
+  -- the increment of the partial sums
+  have hinc : |partialSum f N - partialSum f M| ≤ (N : ℝ) - M := by
+    have hsplit : partialSum f N - partialSum f M = ∑ n ∈ Ioc M N, f n := by
+      rw [partialSum, partialSum, (by rfl : Icc 1 N = Ioc 0 N), (by rfl : Icc 1 M = Ioc 0 M),
+        ← Finset.sum_Ioc_consecutive _ (Nat.zero_le M) hMN]
+      ring
+    rw [hsplit]
+    refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+    have hcard : ∑ n ∈ Ioc M N, |f n| = ((N - M : ℕ) : ℝ) := by
+      rw [Finset.sum_congr rfl fun n hn ↦ abs_eq_one_of_one_le f hf
+        (by have := (Finset.mem_Ioc.1 hn).1; omega)]
+      simp [Nat.card_Ioc]
+    rw [hcard]
+    have : ((N - M : ℕ) : ℝ) = (N : ℝ) - M := by
+      have : (M : ℝ) ≤ (N : ℝ) := hMNR
+      push_cast [Nat.cast_sub hMN]
+      ring
+    rw [this]
+  have hSM : |partialSum f M| ≤ (M : ℝ) := abs_partialSum_le f hf M
+  -- split the difference of the means
+  have hrw : mean f N - mean f M
+      = (partialSum f N - partialSum f M) / N - partialSum f M * (((N : ℝ) - M) / (N * M)) := by
+    rw [mean_eq_partialSum_div, mean_eq_partialSum_div]
+    field_simp
+    ring
+  rw [hrw]
+  have h1 : |(partialSum f N - partialSum f M) / N| ≤ ((N : ℝ) - M) / N := by
+    rw [abs_div, abs_of_pos hNpos]
+    exact div_le_div_of_nonneg_right hinc hNpos.le
+  have h2 : |partialSum f M * (((N : ℝ) - M) / (N * M))| ≤ ((N : ℝ) - M) / N := by
+    rw [abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ ((N : ℝ) - M) / (N * M))]
+    calc |partialSum f M| * (((N : ℝ) - M) / (N * M))
+        ≤ (M : ℝ) * (((N : ℝ) - M) / (N * M)) := by
+          refine mul_le_mul_of_nonneg_right hSM (by positivity)
+      _ = ((N : ℝ) - M) / N := by field_simp
+  have := abs_sub ((partialSum f N - partialSum f M) / N)
+    (partialSum f M * (((N : ℝ) - M) / (N * M)))
+  have hgoal : 2 * ((N : ℝ) - M) / N = ((N : ℝ) - M) / N + ((N : ℝ) - M) / N := by ring
+  rw [hgoal]
+  linarith
+
 end Wirsing
