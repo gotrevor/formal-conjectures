@@ -55,6 +55,36 @@ theorem sum_log_le {x : ℝ} (hx : 1 ≤ x) :
     · exact log_nonneg hx
     · exact Nat.floor_le (by linarith)
 
+/-- The sharp Stirling-type upper bound $\sum_{n \le x} \log n \le x\log x - x + \log x + 1$. -/
+theorem sum_log_le_sharp {x : ℝ} (hx : 1 ≤ x) :
+    ∑ n ∈ Ioc 0 ⌊x⌋₊, log n ≤ x * log x - x + log x + 1 := by
+  have hfloor : 1 ≤ ⌊x⌋₊ := Nat.le_floor (by simpa using hx)
+  have hfx : ((⌊x⌋₊ : ℕ) : ℝ) ≤ x := Nat.floor_le (by linarith)
+  have hf1 : (1 : ℝ) ≤ ((⌊x⌋₊ : ℕ) : ℝ) := by exact_mod_cast hfloor
+  have hsplit : ∑ n ∈ Ioc 0 ⌊x⌋₊, log n = (∑ n ∈ Ico 1 ⌊x⌋₊, log n) + log (⌊x⌋₊ : ℝ) := by
+    have hset : Ioc 0 ⌊x⌋₊ = insert ⌊x⌋₊ (Ico 1 ⌊x⌋₊) := by
+      ext n
+      simp only [mem_Ioc, mem_insert, mem_Ico]
+      omega
+    rw [hset, Finset.sum_insert (by simp)]
+    ring
+  have hint : ∑ n ∈ Ico 1 ⌊x⌋₊, log (n : ℝ)
+      ≤ ∫ t in (1 : ℝ)..((⌊x⌋₊ : ℕ) : ℝ), log t := by
+    convert MonotoneOn.sum_le_integral_Ico hfloor ?_
+    · norm_cast
+    · exact StrictMonoOn.monotoneOn (strictMonoOn_log.mono fun y hy ↦ by
+        simp only [Set.mem_Icc, Nat.cast_one] at hy; simp only [Set.mem_Ioi]; linarith [hy.1])
+  rw [integral_log] at hint
+  simp only [log_one, mul_zero] at hint
+  have hmono : ((⌊x⌋₊ : ℕ) : ℝ) * log (⌊x⌋₊ : ℝ) - ((⌊x⌋₊ : ℕ) : ℝ) ≤ x * log x - x := by
+    have hnn : 0 ≤ ∫ t in ((⌊x⌋₊ : ℕ) : ℝ)..x, log t :=
+      intervalIntegral.integral_nonneg hfx fun t ht ↦ log_nonneg (by linarith [ht.1])
+    rw [integral_log] at hnn
+    linarith
+  have hlogle : log (⌊x⌋₊ : ℝ) ≤ log x := log_le_log (by linarith) hfx
+  rw [hsplit]
+  linarith
+
 private lemma integral_log_le {a b : ℝ} (ha : 1 ≤ a) (hab : a ≤ b) :
     ∫ t in a..b, log t ≤ log b * (b - a) := by
   apply le_of_abs_le
@@ -76,6 +106,43 @@ theorem sum_log_ge {x : ℝ} (hx : 1 ≤ x) :
     rw [integral_log]
     simp only [log_one, mul_zero]
     linarith [log_le_self (by linarith : 0 ≤ x)]
+  _ ≤ (∫ t in (1 : ℝ)..x, log t) - ∫ t in ((⌊x⌋₊ : ℕ) : ℝ)..x, log t := by
+    gcongr
+    calc (∫ t in ((⌊x⌋₊ : ℕ) : ℝ)..x, log t)
+        ≤ log x * (x - (⌊x⌋₊ : ℝ)) :=
+          integral_log_le (by exact_mod_cast one_le_floor) (Nat.floor_le (by linarith))
+      _ ≤ log x * 1 := by
+          gcongr
+          · exact log_nonneg hx
+          · linarith [Nat.lt_floor_add_one x]
+      _ = log x := mul_one _
+  _ = ∫ t in (1 : ℝ)..((⌊x⌋₊ : ℕ) : ℝ), log t := by
+    nth_rw 2 [intervalIntegral.integral_symm]
+    rw [sub_neg_eq_add, intervalIntegral.integral_add_adjacent_intervals] <;>
+      exact intervalIntegral.intervalIntegrable_log'
+  _ ≤ ∑ n ∈ Ico 1 ⌊x⌋₊, log ((n + 1 : ℕ)) := by
+    convert MonotoneOn.integral_le_sum_Ico one_le_floor ?_
+    · norm_cast
+    · exact StrictMonoOn.monotoneOn (strictMonoOn_log.mono fun y hy ↦ by
+        simp only [Set.mem_Icc, Nat.cast_one] at hy; simp only [Set.mem_Ioi]; linarith [hy.1])
+  _ = ∑ n ∈ Ioc 0 ⌊x⌋₊, log n := by
+    rw [Finset.sum_Ico_add' (fun n : ℕ ↦ log n) 1 ⌊x⌋₊ 1]
+    have hset : Ioc 0 ⌊x⌋₊ = insert 1 (Ico (1 + 1) (⌊x⌋₊ + 1)) := by
+      ext n
+      simp only [mem_Ioc, mem_insert, mem_Ico]
+      omega
+    rw [hset, Finset.sum_insert (by simp)]
+    simp
+
+/-- The sharp Stirling-type lower bound $\sum_{n \le x} \log n \ge x\log x - x + 1 - \log x$. -/
+theorem sum_log_ge_sharp {x : ℝ} (hx : 1 ≤ x) :
+    x * log x - x + 1 - log x ≤ ∑ n ∈ Ioc 0 ⌊x⌋₊, log n := by
+  have one_le_floor : 1 ≤ ⌊x⌋₊ := Nat.le_floor (by simpa using hx)
+  calc
+  x * log x - x + 1 - log x = (∫ t in (1 : ℝ)..x, log t) - log x := by
+    rw [integral_log]
+    simp only [log_one, mul_zero]
+    ring
   _ ≤ (∫ t in (1 : ℝ)..x, log t) - ∫ t in ((⌊x⌋₊ : ℕ) : ℝ)..x, log t := by
     gcongr
     calc (∫ t in ((⌊x⌋₊ : ℕ) : ℝ)..x, log t)
