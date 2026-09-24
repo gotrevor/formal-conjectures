@@ -1112,4 +1112,74 @@ theorem potential_window_ge (hf : IsPMOneMultiplicative f) {p M₀ : ℕ} (hp : 
     linarith
   nlinarith [hlow', hup3, hthrmul]
 
+open scoped Classical in
+/--
+**The envelope limit vanishes.**  This is the crux of the whole route.  If `ℓ = ⨅ G` were
+positive, every bad prime `p` past a fixed threshold would contribute at least `ℓ/(128 p)` to
+the deficit sum `∑_N D(N)/(N(\log N)^3)`, which `Wirsing.exists_sum_badWeight_le` bounds by an
+absolute constant.  Since `∑_{f(p) = -1} 1/p = ∞`, that is impossible.
+-/
+@[category API, AMS 11]
+theorem envelopeInf_eq_zero (hf : IsPMOneMultiplicative f)
+    (hdiv : Tendsto (badPrimeSum f) atTop atTop) : envelopeInf f = 0 := by
+  classical
+  by_contra hne
+  have hl : 0 < envelopeInf f :=
+    lt_of_le_of_ne (envelopeInf_nonneg f) (Ne.symm hne)
+  set l : ℝ := envelopeInf f with hldef
+  obtain ⟨B, hB0, hBle⟩ := exists_sum_badWeight_le f hf
+  obtain ⟨M₀, hM₀2, hM₀⟩ := exists_envelope_lt f hl
+  obtain ⟨P, hP2, hPthr⟩ := exists_threshold (l := l) hl
+  set Q : ℕ := max M₀ P with hQ
+  have hkey : ∀ n : ℕ,
+      ∑ p ∈ (badPrimesLE f n).filter (fun p ↦ Q ≤ p), (1 : ℝ) / p ≤ 128 * B / l := by
+    intro n
+    set S : Finset ℕ := (badPrimesLE f n).filter (fun p ↦ Q ≤ p) with hS
+    have hSprop : ∀ p ∈ S, p.Prime ∧ f p = -1 ∧ 2 ≤ p ∧ p * p ^ 2 + p ≤ n * n ^ 2 + n := by
+      intro p hp
+      obtain ⟨hp1, hpQ⟩ := mem_filter.1 hp
+      obtain ⟨hr, hprime, hval⟩ := mem_filter.1 hp1
+      rw [Finset.mem_range] at hr
+      have hpn : p ≤ n := by omega
+      refine ⟨hprime, hval, hprime.two_le, ?_⟩
+      have : p * p ^ 2 ≤ n * n ^ 2 := Nat.mul_le_mul hpn (Nat.pow_le_pow_left hpn 2)
+      omega
+    have hterm : ∀ p ∈ S, l * (1 / (128 * (p : ℝ)))
+        ≤ Real.log p / p *
+            ((potential f (p ^ 2) - potential f p) / (128 * Real.log p ^ 3)) := by
+      intro p hp
+      obtain ⟨hprime, hval, hp2, _⟩ := hSprop p hp
+      obtain ⟨hp1, hpQ⟩ := mem_filter.1 hp
+      have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp2
+      have hL : 0 < Real.log (p : ℝ) := Real.log_pos (by linarith)
+      have hwin : l * Real.log (p : ℝ) ^ 2 ≤ potential f (p ^ 2) - potential f p :=
+        potential_window_ge f hf hp2 hM₀2 (le_trans (le_max_left M₀ P) hpQ) hM₀
+          (hPthr p (le_trans (le_max_right M₀ P) hpQ))
+      have hrw : Real.log (p : ℝ) / p *
+          ((potential f (p ^ 2) - potential f p) / (128 * Real.log (p : ℝ) ^ 3))
+          = (potential f (p ^ 2) - potential f p) / (128 * Real.log (p : ℝ) ^ 2 * (p : ℝ)) := by
+        field_simp
+      rw [hrw, le_div_iff₀ (by positivity)]
+      have hcalc : l * (1 / (128 * (p : ℝ))) * (128 * Real.log (p : ℝ) ^ 2 * (p : ℝ))
+          = l * Real.log (p : ℝ) ^ 2 := by
+        field_simp
+      rw [hcalc]
+      exact hwin
+    have hchain : l / 128 * ∑ p ∈ S, (1 : ℝ) / p ≤ B := by
+      have h1 : l / 128 * ∑ p ∈ S, (1 : ℝ) / p = ∑ p ∈ S, l * (1 / (128 * (p : ℝ))) := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl fun p hp ↦ ?_
+        have hp2 : 2 ≤ p := (hSprop p hp).2.2.1
+        have hpR : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp2
+        field_simp
+      rw [h1]
+      exact le_trans (Finset.sum_le_sum hterm)
+        (le_trans (sum_window_le_sum_badWeight f _ S hSprop) (hBle _))
+    rw [le_div_iff₀ hl]
+    linarith [hchain]
+  -- the bad-prime sum is then bounded, contradicting its divergence
+  obtain ⟨n, hn⟩ := (hdiv.eventually_gt_atTop (badPrimeSum f Q + 128 * B / l)).exists
+  have htail := sub_badPrimeSum_le_sum_tail f n Q
+  linarith [hkey n, htail, hn]
+
 end Wirsing
