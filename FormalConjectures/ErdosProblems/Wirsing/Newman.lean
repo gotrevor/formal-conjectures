@@ -240,6 +240,196 @@ theorem exists_analyticOnNhd_lSeries_vonMangoldt_sub :
     field_simp
     ring
 
+/-- `(0,\infty) \cap [a,\infty)` and `(a,\infty)` differ by at most two points. -/
+@[category API, AMS 28]
+theorem ioi_inter_ici_ae {a : ℝ} (ha : 0 ≤ a) :
+    ((Set.Ioi (0 : ℝ) ∩ Set.Ici a : Set ℝ)) =ᵐ[MeasureTheory.volume] Set.Ioi a := by
+  rcases eq_or_lt_of_le ha with rfl | h
+  · rw [show (Set.Ioi (0 : ℝ) ∩ Set.Ici (0 : ℝ) : Set ℝ) = Set.Ioi 0 from by
+      ext t; simp only [Set.mem_inter_iff, Set.mem_Ioi, Set.mem_Ici, and_iff_left_iff_imp]
+      exact le_of_lt]
+    exact Filter.EventuallyEq.rfl
+  · have hset : (Set.Ioi (0 : ℝ) ∩ Set.Ici a : Set ℝ) = Set.Ici a := by
+      refine Set.inter_eq_right.2 fun t ht ↦ ?_
+      exact lt_of_lt_of_le h ht
+    rw [hset]
+    exact MeasureTheory.Ioi_ae_eq_Ici.symm
+
+/-- The Laplace integral of one term of `ψ`: `\int_0^\infty 1_{[a,\infty)}e^{-wt}\,dt
+  = e^{-wa}/w`. -/
+@[category API, AMS 30]
+theorem integral_indicator_cexp {w : ℂ} (hw : 0 < w.re) {a : ℝ} (ha : 0 ≤ a) :
+    (∫ t in Set.Ioi (0 : ℝ),
+        Set.indicator (Set.Ici a) (fun t : ℝ ↦ Complex.exp (-w * (t : ℂ))) t)
+      = Complex.exp (-w * (a : ℂ)) / w := by
+  rw [MeasureTheory.setIntegral_indicator measurableSet_Ici,
+    MeasureTheory.setIntegral_congr_set (ioi_inter_ici_ae ha),
+    Newman.integral_cexp_neg_mul_Ioi hw]
+
+/-- The same with the integrand replaced by its norm. -/
+@[category API, AMS 30]
+theorem integral_indicator_norm_cexp {w : ℂ} (hw : 0 < w.re) {a : ℝ} (ha : 0 ≤ a) :
+    (∫ t in Set.Ioi (0 : ℝ),
+        ‖Set.indicator (Set.Ici a) (fun t : ℝ ↦ Complex.exp (-w * (t : ℂ))) t‖)
+      = Real.exp (-w.re * a) / w.re := by
+  have hnorm : ∀ t : ℝ,
+      ‖Set.indicator (Set.Ici a) (fun t : ℝ ↦ Complex.exp (-w * (t : ℂ))) t‖
+        = Set.indicator (Set.Ici a) (fun t : ℝ ↦ Real.exp (-w.re * t)) t := by
+    intro t
+    by_cases ht : t ∈ Set.Ici a
+    · rw [Set.indicator_of_mem ht, Set.indicator_of_mem ht, Complex.norm_exp]
+      congr 1
+      simp
+    · rw [Set.indicator_of_notMem ht, Set.indicator_of_notMem ht, norm_zero]
+  simp only [hnorm]
+  rw [MeasureTheory.setIntegral_indicator measurableSet_Ici,
+    MeasureTheory.setIntegral_congr_set (ioi_inter_ici_ae ha),
+    Newman.integral_exp_neg_mul_Ioi hw]
+
+/--
+**The Laplace transform of `ψ(e^t)`.**  For `\mathrm{Re}\,w > 1`,
+$$\int_0^\infty \psi(e^t)e^{-wt}\,dt = \frac1w\sum_n \frac{\Lambda(n)}{n^w} .$$
+
+Write `\psi(e^t) = \sum_n \Lambda(n)1_{\log n \le t}` and integrate term by term; the `n`-th
+term contributes `\Lambda(n)n^{-w}/w`.  The interchange is legitimate because
+`\sum_n \Lambda(n)n^{-\mathrm{Re}\,w} < \infty`.
+-/
+@[category API, AMS 11 30]
+theorem integral_psi_exp_eq {w : ℂ} (hw : 1 < w.re) :
+    (∫ t in Set.Ioi (0 : ℝ), (Chebyshev.psi (Real.exp t) : ℂ) * Complex.exp (-w * (t : ℂ)))
+      = LSeries (fun n ↦ (ArithmeticFunction.vonMangoldt n : ℂ)) w / w := by
+  have hw0 : 0 < w.re := by linarith
+  have hwne : w ≠ 0 := by
+    intro h; rw [h] at hw0; simp at hw0
+  set f : ℕ → ℝ → ℂ := fun n t ↦ (ArithmeticFunction.vonMangoldt n : ℂ) *
+    Set.indicator (Set.Ici (Real.log n)) (fun t : ℝ ↦ Complex.exp (-w * (t : ℂ))) t with hf
+  have hlog0 : ∀ n : ℕ, 0 ≤ Real.log n := by
+    intro n
+    rcases Nat.eq_zero_or_pos n with rfl | hn
+    · simp
+    · exact Real.log_nonneg (by exact_mod_cast hn)
+  have hE : MeasureTheory.IntegrableOn (fun t : ℝ ↦ Complex.exp (-w * (t : ℂ)))
+      (Set.Ioi (0 : ℝ)) := by
+    have := Newman.integrableOn_laplace (F := fun _ : ℝ ↦ (1 : ℝ)) (C := 1)
+      (fun t ↦ by norm_num) (MeasureTheory.locallyIntegrable_const 1) hw0 (a := (0 : ℝ))
+    simpa using this
+  have hfint : ∀ n : ℕ, MeasureTheory.IntegrableOn (f n) (Set.Ioi (0 : ℝ)) := by
+    intro n
+    exact ((hE.indicator measurableSet_Ici).const_mul _)
+  -- the value and the norm of each term
+  have hval : ∀ n : ℕ, 1 ≤ n →
+      (∫ t in Set.Ioi (0 : ℝ), f n t)
+        = (ArithmeticFunction.vonMangoldt n : ℂ) * ((n : ℂ) ^ (-w)) / w := by
+    intro n hn
+    rw [hf]
+    simp only
+    rw [MeasureTheory.integral_const_mul, integral_indicator_cexp hw0 (hlog0 n)]
+    have hcpow : ((n : ℂ)) ^ (-w) = Complex.exp (-w * ((Real.log n : ℝ) : ℂ)) := by
+      have hne : ((n : ℂ)) ≠ 0 := by
+        simp only [ne_eq, Nat.cast_eq_zero]
+        omega
+      rw [Complex.cpow_def_of_ne_zero hne]
+      congr 1
+      rw [show ((n : ℂ)) = ((n : ℝ) : ℂ) by push_cast; ring,
+        Complex.ofReal_log (by positivity)]
+      ring
+    rw [hcpow]
+    ring
+  have hnormval : ∀ n : ℕ,
+      (∫ t in Set.Ioi (0 : ℝ), ‖f n t‖)
+        = (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-w.re) / w.re := by
+    intro n
+    rcases Nat.eq_zero_or_pos n with rfl | hn
+    · simp [hf]
+    have hnorm : ∀ t : ℝ, ‖f n t‖ = (ArithmeticFunction.vonMangoldt n : ℝ) *
+        ‖Set.indicator (Set.Ici (Real.log n)) (fun t : ℝ ↦ Complex.exp (-w * (t : ℂ))) t‖ := by
+      intro t
+      rw [hf]
+      simp only [norm_mul, Complex.norm_real, Real.norm_eq_abs,
+        abs_of_nonneg ArithmeticFunction.vonMangoldt_nonneg]
+    simp only [hnorm]
+    rw [MeasureTheory.integral_const_mul, integral_indicator_norm_cexp hw0 (hlog0 n)]
+    have hrpow : (n : ℝ) ^ (-w.re) = Real.exp (-w.re * Real.log n) := by
+      rw [Real.rpow_def_of_pos (by positivity)]
+      ring_nf
+    rw [hrpow]
+    ring
+  -- summability of the norms
+  have hsum : Summable fun n : ℕ ↦ ∫ t in Set.Ioi (0 : ℝ), ‖f n t‖ := by
+    have hbase : Summable fun n : ℕ ↦ (ArithmeticFunction.vonMangoldt n : ℝ) *
+        (n : ℝ) ^ (-(1 + (w.re - 1))) := Wirsing.summable_vonMangoldt_rpow (by linarith)
+    have hbase' : Summable fun n : ℕ ↦ (ArithmeticFunction.vonMangoldt n : ℝ) *
+        (n : ℝ) ^ (-w.re) / w.re := by
+      have : ∀ n : ℕ, (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-(1 + (w.re - 1)))
+          = (ArithmeticFunction.vonMangoldt n : ℝ) * (n : ℝ) ^ (-w.re) := by
+        intro n; ring_nf
+      exact ((hbase.congr this).div_const w.re)
+    exact hbase'.congr fun n ↦ (hnormval n).symm
+  -- the pointwise sum
+  have hpoint : ∀ t ∈ Set.Ioi (0 : ℝ),
+      (∑' n : ℕ, f n t) = (Chebyshev.psi (Real.exp t) : ℂ) * Complex.exp (-w * (t : ℂ)) := by
+    intro t ht
+    have ht0 : (0 : ℝ) < t := ht
+    set N : ℕ := ⌊Real.exp t⌋₊ with hN
+    have hzero : ∀ n : ℕ, n ∉ Finset.range (N + 1) → f n t = 0 := by
+      intro n hn
+      simp only [Finset.mem_range, not_lt] at hn
+      have hn1 : 1 ≤ n := by
+        have : 1 ≤ N + 1 := by omega
+        omega
+      have hlt : Real.exp t < n := by
+        have : N + 1 ≤ n := hn
+        have hfl : Real.exp t < (N : ℝ) + 1 := Nat.lt_floor_add_one _
+        have : ((N : ℝ) + 1) ≤ (n : ℝ) := by exact_mod_cast this
+        linarith
+      have hnot : t ∉ Set.Ici (Real.log n) := by
+        simp only [Set.mem_Ici, not_le]
+        have hpos : (0 : ℝ) < n := by positivity
+        have := Real.log_lt_log (Real.exp_pos t) hlt
+        rwa [Real.log_exp] at this
+      rw [hf]
+      simp only
+      rw [Set.indicator_of_notMem hnot, mul_zero]
+    rw [tsum_eq_sum hzero]
+    have hterm : ∀ n ∈ Finset.range (N + 1),
+        f n t = (ArithmeticFunction.vonMangoldt n : ℂ) * Complex.exp (-w * (t : ℂ)) := by
+      intro n hn
+      simp only [Finset.mem_range] at hn
+      rcases Nat.eq_zero_or_pos n with rfl | hn1
+      · simp [hf]
+      · have hle : (n : ℝ) ≤ Real.exp t := by
+          have h1 : n ≤ N := by omega
+          have : (n : ℝ) ≤ (N : ℝ) := by exact_mod_cast h1
+          exact le_trans this (Nat.floor_le (Real.exp_pos t).le)
+        have hmem : t ∈ Set.Ici (Real.log n) := by
+          simp only [Set.mem_Ici]
+          have hpos : (0 : ℝ) < n := by exact_mod_cast hn1
+          have := Real.log_le_log hpos hle
+          rwa [Real.log_exp] at this
+        rw [hf]
+        simp only
+        rw [Set.indicator_of_mem hmem]
+    rw [Finset.sum_congr rfl hterm, ← Finset.sum_mul]
+    congr 1
+    rw [Chebyshev.psi_eq_sum_Icc, ← hN]
+    have hIcc : Finset.Icc 0 N = Finset.range (N + 1) := by
+      ext k; simp only [Finset.mem_Icc, Finset.mem_range, Nat.zero_le, true_and]; omega
+    rw [hIcc]
+    push_cast
+    ring
+  -- assemble
+  have hswap := MeasureTheory.integral_tsum_of_summable_integral_norm
+    (μ := MeasureTheory.volume.restrict (Set.Ioi (0 : ℝ))) hfint hsum
+  rw [MeasureTheory.setIntegral_congr_fun measurableSet_Ioi hpoint] at hswap
+  rw [← hswap]
+  rw [LSeries, ← tsum_div_const]
+  refine tsum_congr fun n ↦ ?_
+  rcases Nat.eq_zero_or_pos n with rfl | hn
+  · simp [hf, LSeries.term]
+  · rw [hval n hn, LSeries.term_of_ne_zero (by omega)]
+    rw [Complex.cpow_neg]
+    field_simp
+
 /--
 **Newman's convergent integral, in discrete form.**  The partial sums of the error series of
 Chebyshev's `ψ` against the main term converge:
