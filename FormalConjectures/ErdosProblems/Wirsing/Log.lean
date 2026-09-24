@@ -697,4 +697,44 @@ theorem sum_abs_logMean_div_sub_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
           Finset.sum_nonneg fun n _ ↦ by positivity
         linarith
 
+/--
+The hyperbola region `{(d, m) : d m ≤ N}` is symmetric, so the two iterated sums agree.
+-/
+@[category API, AMS 11]
+theorem sum_Icc_div_symm {M : Type*} [AddCommMonoid M] (G : ℕ → ℕ → M) (N : ℕ) :
+    ∑ d ∈ Icc 1 N, ∑ m ∈ Icc 1 (N / d), G d m
+      = ∑ d ∈ Icc 1 N, ∑ m ∈ Icc 1 (N / d), G m d := by
+  rw [← sum_Icc_divisorsAntidiagonal G N, ← sum_Icc_divisorsAntidiagonal (fun a b ↦ G b a) N]
+  refine Finset.sum_congr rfl fun n _ ↦ ?_
+  conv_rhs => rw [← Nat.map_swap_divisorsAntidiagonal]
+  rw [Finset.sum_map]
+  rfl
+
+/--
+The hyperbola identity for the logarithmic average:
+$$\sum_{k \le N} \frac{1}{k} L(\lfloor N/k \rfloor)
+  = \sum_{m \le N} \frac{f(m)}{m} H(\lfloor N/m \rfloor),$$
+where `H` is the harmonic partial sum.  Both sides count the pairs `(k, m)` with `km ≤ N`
+weighted by `f(m)/(km)`.
+-/
+@[category API, AMS 11]
+theorem sum_one_div_mul_logMean_eq (N : ℕ) :
+    ∑ k ∈ Icc 1 N, (1 : ℝ) / k * logMean f (N / k)
+      = ∑ m ∈ Icc 1 N, f m / m * harmonicSum (N / m) := by
+  have h := sum_Icc_div_symm (fun k m ↦ f m / (k * m : ℕ)) N
+  calc ∑ k ∈ Icc 1 N, (1 : ℝ) / k * logMean f (N / k)
+      = ∑ k ∈ Icc 1 N, ∑ m ∈ Icc 1 (N / k), f m / ((k : ℕ) * (m : ℕ) : ℕ) := by
+        refine Finset.sum_congr rfl fun k _ ↦ ?_
+        rw [logMean, Finset.mul_sum]
+        refine Finset.sum_congr rfl fun m _ ↦ ?_
+        push_cast
+        ring
+  _ = ∑ k ∈ Icc 1 N, ∑ m ∈ Icc 1 (N / k), f k / ((m : ℕ) * (k : ℕ) : ℕ) := h
+  _ = ∑ m ∈ Icc 1 N, f m / m * harmonicSum (N / m) := by
+        refine Finset.sum_congr rfl fun k _ ↦ ?_
+        rw [harmonicSum, Finset.mul_sum]
+        refine Finset.sum_congr rfl fun m _ ↦ ?_
+        push_cast
+        ring
+
 end Wirsing
