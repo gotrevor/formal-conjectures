@@ -20,6 +20,13 @@ It is now reduced to `Wirsing.exists_hasMeanValue` in
 
 ## THE POTENTIAL ROUTE (lap 4, 2026-09-24) — the live attack
 
+**Progress (lap 4).**  Steps A, B, C, D are **proved and sorry-free** in
+`FormalConjectures/ErdosProblems/Wirsing/Decay.lean`:
+`abs_sum_primeWeight_comp_sub_sum_div_le` (B), `abs_logMean_mul_log_le_potential` (C),
+`potential_step_algebra` / `potential_step` / `potential_div_add_sum_le` /
+`exists_sum_badWeight_le` (D).  Remaining: **step E** (the window lower bound) and
+**step F** (the contradiction and the conclusion).
+
 A complete elementary proof of the crux, checked end to end on paper.  Every input is already
 formalised in this repo.  It supersedes the `logProfile` multi-scale recursion.
 

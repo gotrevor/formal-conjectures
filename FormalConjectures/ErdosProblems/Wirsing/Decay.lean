@@ -401,4 +401,217 @@ theorem abs_logMean_mul_log_le_potential (hf : IsPMOneMultiplicative f) (N : ℕ
   have hlog4 : Real.log 4 ≤ 2 := log_four_le_two
   nlinarith [hengine, hle, hlog, hlog4]
 
+/--
+**The algebraic core of the telescoping.**  One step of `N ↦ Φ(N)/(\log N)^2`, with the
+deficit `D` retained and the two error terms already in summable form.
+
+Here `n = N`, `u = \log N`, `v = \log (N-1)`, `P₀ = Φ(N-1)`, `P₁ = Φ(N)`, `g = |L(N)|`.
+The hypothesis `1 ≤ n(u - v)` is `\log N - \log(N-1) \ge 1/N`.
+-/
+@[category API, AMS 11]
+theorem potential_step_algebra {n u v P₀ P₁ g D : ℝ}
+    (hn : (0 : ℝ) < n) (hv : 0 < v) (hvu : v ≤ u) (hu : 1 ≤ u)
+    (hnuv : 1 ≤ n * (u - v))
+    (hP₁ : P₁ = P₀ + g / n) (hP₀ : 0 ≤ P₀) (hgu : g ≤ 1 + u)
+    (hmain : g * u ≤ 2 * P₁ - 2 * D + 64 * (1 + u)) :
+    P₁ / u ^ 2 + 2 * (D / (n * u ^ 3))
+      ≤ P₀ / v ^ 2 + 128 * (1 / (n * u ^ 2)) + 4 * (1 / n ^ 2) := by
+  rw [show 2 * (D / (n * u ^ 3)) = 2 * D / (n * u ^ 3) from by ring,
+    show 128 * (1 / (n * u ^ 2)) = 128 / (n * u ^ 2) from by ring,
+    show 4 * (1 / n ^ 2) = 4 / n ^ 2 from by ring]
+  have hu0 : (0 : ℝ) < u := by linarith
+  -- `Φ(N-1)` loses more from the denominator than the increment gains
+  have hpoly : n * u * v ^ 2 + 2 * v ^ 2 ≤ n * u ^ 3 := by
+    nlinarith [mul_le_mul_of_nonneg_right hnuv (show (0 : ℝ) ≤ u * (u + v) by positivity),
+      mul_nonneg (sub_nonneg.2 hvu) (show (0 : ℝ) ≤ u + 2 * v by linarith)]
+  have hcmp : P₀ / u ^ 2 + 2 * P₀ / (n * u ^ 3) ≤ P₀ / v ^ 2 := by
+    rw [div_add_div _ _ (by positivity) (by positivity),
+      div_le_div_iff₀ (by positivity) (by positivity)]
+    nlinarith [mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hpoly hP₀)
+      (sq_nonneg u), hP₀, hu0, hv, hn]
+  have hid : P₁ / u ^ 2 = P₀ / u ^ 2 + g / (n * u ^ 2) := by
+    rw [hP₁]; field_simp; try ring
+  -- the engine bound, divided through by `n u³`
+  have hrw : g / (n * u ^ 2) = g * u / (n * u ^ 3) := by
+    field_simp; try ring
+  have hkey2 : g / (n * u ^ 2) ≤ (2 * P₁ - 2 * D + 64 * (1 + u)) / (n * u ^ 3) := by
+    rw [hrw]
+    gcongr
+  have hexp : (2 * P₁ - 2 * D + 64 * (1 + u)) / (n * u ^ 3)
+      = 2 * P₀ / (n * u ^ 3) + 2 * g / (n ^ 2 * u ^ 3) - 2 * D / (n * u ^ 3)
+        + 64 * (1 + u) / (n * u ^ 3) := by
+    rw [hP₁]; field_simp; try ring
+  -- the two error terms
+  have herr1 : 2 * g / (n ^ 2 * u ^ 3) ≤ 4 / n ^ 2 := by
+    have hcube : u ≤ u ^ 3 := by
+      nlinarith [mul_nonneg (mul_nonneg hu0.le (sub_nonneg.2 hu))
+        (show (0 : ℝ) ≤ u + 1 by linarith)]
+    have h1 : 2 * g ≤ 4 * u ^ 3 := by nlinarith [hgu, hu, hcube]
+    rw [div_le_div_iff₀ (by positivity) (by positivity)]
+    nlinarith [mul_le_mul_of_nonneg_right h1 (sq_nonneg n)]
+  have herr2 : 64 * (1 + u) / (n * u ^ 3) ≤ 128 / (n * u ^ 2) := by
+    rw [div_le_div_iff₀ (by positivity) (by positivity)]
+    nlinarith [mul_le_mul_of_nonneg_left (show 1 + u ≤ 2 * u by linarith)
+      (show (0 : ℝ) ≤ 64 * (n * u ^ 2) by positivity)]
+  rw [hexp] at hkey2
+  linarith [hid, hcmp, hkey2, herr1, herr2]
+
+/-- `1 ≤ log 3`, so `log N ≥ 1` for `N ≥ 3`. -/
+@[category API, AMS 11]
+theorem one_le_log_three : (1 : ℝ) ≤ Real.log 3 := by
+  have h : Real.exp 1 ≤ 3 := by linarith [Real.exp_one_lt_d9]
+  calc (1 : ℝ) = Real.log (Real.exp 1) := (Real.log_exp 1).symm
+  _ ≤ Real.log 3 := Real.log_le_log (Real.exp_pos 1) h
+
+/-- `log(K+1) - log K ≥ 1/(K+1)`. -/
+@[category API, AMS 11]
+theorem one_div_le_log_succ_sub_log {K : ℕ} (hK : 1 ≤ K) :
+    1 / ((K : ℝ) + 1) ≤ Real.log ((K : ℝ) + 1) - Real.log K := by
+  have hKR : (1 : ℝ) ≤ (K : ℝ) := by exact_mod_cast hK
+  have h := Real.log_le_sub_one_of_pos
+    (show (0 : ℝ) < (K : ℝ) / ((K : ℝ) + 1) by positivity)
+  rw [Real.log_div (by linarith) (by linarith)] at h
+  have he : (K : ℝ) / ((K : ℝ) + 1) - 1 = -(1 / ((K : ℝ) + 1)) := by
+    field_simp
+    ring
+  linarith [he ▸ h]
+
+open scoped Classical in
+/-- One step of the telescoping of `Φ(N)/(\log N)^2`, at `N = K + 1 \ge 3`. -/
+@[category API, AMS 11]
+theorem potential_step (hf : IsPMOneMultiplicative f) {K : ℕ} (hK : 2 ≤ K) :
+    potential f (K + 1) / Real.log ((K : ℝ) + 1) ^ 2
+        + 2 * (badWeight f (K + 1) / (((K : ℝ) + 1) * Real.log ((K : ℝ) + 1) ^ 3))
+      ≤ potential f K / Real.log (K : ℝ) ^ 2
+        + 128 * (1 / (((K : ℝ) + 1) * Real.log ((K : ℝ) + 1) ^ 2))
+        + 4 * (1 / ((K : ℝ) + 1) ^ 2) := by
+  have hKR : (2 : ℝ) ≤ (K : ℝ) := by exact_mod_cast hK
+  have hv : 0 < Real.log (K : ℝ) := Real.log_pos (by linarith)
+  have hvu : Real.log (K : ℝ) ≤ Real.log ((K : ℝ) + 1) :=
+    Real.log_le_log (by linarith) (by linarith)
+  have hu : 1 ≤ Real.log ((K : ℝ) + 1) :=
+    le_trans one_le_log_three (Real.log_le_log (by norm_num) (by linarith))
+  have hnuv : 1 ≤ ((K : ℝ) + 1) * (Real.log ((K : ℝ) + 1) - Real.log (K : ℝ)) := by
+    have h := one_div_le_log_succ_sub_log (K := K) (by omega)
+    have := mul_le_mul_of_nonneg_left h (show (0 : ℝ) ≤ (K : ℝ) + 1 by linarith)
+    rw [mul_one_div, div_self (by linarith : ((K : ℝ) + 1) ≠ 0)] at this
+    linarith
+  have hP₁ : potential f (K + 1)
+      = potential f K + |logMean f (K + 1)| / ((K : ℝ) + 1) := potential_succ f K
+  have hgu : |logMean f (K + 1)| ≤ 1 + Real.log ((K : ℝ) + 1) := by
+    have := abs_logMean_le f hf (K + 1)
+    push_cast at this
+    exact this
+  have hmain : |logMean f (K + 1)| * Real.log ((K : ℝ) + 1)
+      ≤ 2 * potential f (K + 1) - 2 * badWeight f (K + 1)
+        + 64 * (1 + Real.log ((K : ℝ) + 1)) := by
+    have := abs_logMean_mul_log_le_potential f hf (K + 1)
+    push_cast at this
+    exact this
+  exact potential_step_algebra (by linarith) hv hvu hu hnuv hP₁ (potential_nonneg f K)
+    hgu hmain
+
+open scoped Classical in
+/-- The telescoped bound, accumulated from `N = 3` to `N = M`. -/
+@[category API, AMS 11]
+theorem potential_div_add_sum_le (hf : IsPMOneMultiplicative f) {M : ℕ} (hM : 2 ≤ M) :
+    potential f M / Real.log M ^ 2
+        + 2 * ∑ N ∈ Icc 3 M, badWeight f N / ((N : ℝ) * Real.log N ^ 3)
+      ≤ potential f 2 / Real.log 2 ^ 2
+        + 128 * ∑ N ∈ Icc 3 M, 1 / ((N : ℝ) * Real.log N ^ 2)
+        + 4 * ∑ N ∈ Icc 3 M, 1 / (N : ℝ) ^ 2 := by
+  induction M, hM using Nat.le_induction with
+  | base => norm_num
+  | succ K hK ih =>
+    have hstep := potential_step f hf hK
+    rw [Finset.sum_Icc_succ_top (by omega : 3 ≤ K + 1),
+      Finset.sum_Icc_succ_top (by omega : 3 ≤ K + 1),
+      Finset.sum_Icc_succ_top (by omega : 3 ≤ K + 1)]
+    push_cast
+    linarith [hstep, ih]
+
+/-- `∑_{3 ≤ N ≤ M} 1/(N (log N)²) ≤ 1/log 2 - 1/log M`, by telescoping. -/
+@[category API, AMS 11]
+theorem sum_one_div_mul_log_sq_le {M : ℕ} (hM : 2 ≤ M) :
+    ∑ N ∈ Icc 3 M, 1 / ((N : ℝ) * Real.log N ^ 2)
+      ≤ 1 / Real.log 2 - 1 / Real.log M := by
+  induction M, hM using Nat.le_induction with
+  | base => norm_num
+  | succ K hK ih =>
+    have hKR : (2 : ℝ) ≤ (K : ℝ) := by exact_mod_cast hK
+    have hv : 0 < Real.log (K : ℝ) := Real.log_pos (by linarith)
+    have hvu : Real.log (K : ℝ) ≤ Real.log ((K : ℝ) + 1) :=
+      Real.log_le_log (by linarith) (by linarith)
+    have hu : 1 ≤ Real.log ((K : ℝ) + 1) :=
+      le_trans one_le_log_three (Real.log_le_log (by norm_num) (by linarith))
+    have hnuv : 1 ≤ ((K : ℝ) + 1) * (Real.log ((K : ℝ) + 1) - Real.log (K : ℝ)) := by
+      have h := one_div_le_log_succ_sub_log (K := K) (by omega)
+      have := mul_le_mul_of_nonneg_left h (show (0 : ℝ) ≤ (K : ℝ) + 1 by linarith)
+      rw [mul_one_div, div_self (by linarith : ((K : ℝ) + 1) ≠ 0)] at this
+      linarith
+    have hkey : 1 / (((K : ℝ) + 1) * Real.log ((K : ℝ) + 1) ^ 2)
+        ≤ 1 / Real.log (K : ℝ) - 1 / Real.log ((K : ℝ) + 1) := by
+      have hrw : 1 / Real.log (K : ℝ) - 1 / Real.log ((K : ℝ) + 1)
+          = (Real.log ((K : ℝ) + 1) - Real.log (K : ℝ))
+              / (Real.log (K : ℝ) * Real.log ((K : ℝ) + 1)) := by
+        field_simp
+      rw [hrw, div_le_div_iff₀ (by positivity) (by positivity)]
+      nlinarith [mul_le_mul_of_nonneg_right hnuv
+        (sq_nonneg (Real.log ((K : ℝ) + 1))), hv, hvu, hu]
+    rw [Finset.sum_Icc_succ_top (by omega : 3 ≤ K + 1)]
+    push_cast
+    linarith [ih, hkey]
+
+/-- `∑_{3 ≤ N ≤ M} 1/N² ≤ 2`. -/
+@[category API, AMS 11]
+theorem sum_Icc_three_one_div_sq_le (M : ℕ) : ∑ N ∈ Icc 3 M, 1 / (N : ℝ) ^ 2 ≤ 2 := by
+  have hsub : Icc 3 M ⊆ Icc 1 M := by
+    intro n hn
+    simp only [mem_Icc] at hn ⊢
+    omega
+  calc ∑ N ∈ Icc 3 M, 1 / (N : ℝ) ^ 2 ≤ ∑ N ∈ Icc 1 M, 1 / (N : ℝ) ^ 2 :=
+        Finset.sum_le_sum_of_subset_of_nonneg hsub fun j _ _ ↦ by positivity
+  _ ≤ 2 := sum_one_div_sq_le M
+
+open scoped Classical in
+/--
+**Step D.**  The bad-prime deficit is summable against `1/(N(\log N)^3)`.
+
+This is where the marginality of the single-scale Gronwall induction is bypassed: the
+deficit is not converted into an improved constant at any one scale, it is accumulated
+across all scales with the weight produced by differentiating `Φ(N)/(\log N)^2`.
+-/
+@[category API, AMS 11]
+theorem exists_sum_badWeight_le (hf : IsPMOneMultiplicative f) :
+    ∃ B : ℝ, 0 ≤ B ∧ ∀ M : ℕ,
+      ∑ N ∈ Icc 3 M, badWeight f N / ((N : ℝ) * Real.log N ^ 3) ≤ B := by
+  set B : ℝ := (potential f 2 / Real.log 2 ^ 2 + 128 * (1 / Real.log 2) + 8) / 2 with hB
+  have hlog2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
+  have hBnn : 0 ≤ B := by
+    have := potential_nonneg f 2
+    rw [hB]
+    positivity
+  refine ⟨B, hBnn, fun M ↦ ?_⟩
+  rcases Nat.lt_or_ge M 3 with hM | hM
+  · have hempty : Icc 3 M = (∅ : Finset ℕ) := by
+      apply Finset.eq_empty_of_forall_notMem
+      intro n hn
+      simp only [mem_Icc] at hn
+      omega
+    rw [hempty, Finset.sum_empty]
+    exact hBnn
+  · have hM2 : 2 ≤ M := by omega
+    have h1 := potential_div_add_sum_le f hf hM2
+    have h2 := sum_one_div_mul_log_sq_le hM2
+    have h3 := sum_Icc_three_one_div_sq_le M
+    have h4 : 0 ≤ potential f M / Real.log M ^ 2 := by
+      have := potential_nonneg f M
+      positivity
+    have h5 : 0 < Real.log M := by
+      have : (2 : ℝ) ≤ (M : ℝ) := by exact_mod_cast hM2
+      exact Real.log_pos (by linarith)
+    have h6 : 0 ≤ 1 / Real.log M := by positivity
+    rw [hB]
+    linarith [h1, h2, h3, h4, h6]
+
 end Wirsing
