@@ -108,13 +108,19 @@ transfer.**  Step 3 above avoids it entirely: it compares `σ` at two quotients 
 
 ### Next attack, in order
 
-1. Formalise (C) and its one-step iteration: at a near-extremal `N`, for most primes `p` and
+1. **DONE** — `mean_quotient_near_extremal` and `sum_bad_weight_le_step`: (C) and its
+   one-step iteration: at a near-extremal `N`, for most primes `p` and
    then most `q`, `σ(⌊N/(pq)⌋) ≈ sA f(p)f(q)`.  This is `sum_bad_weight_le` applied twice,
    the second time at the point `⌊N/p⌋`; the only new ingredient is that a good `p` makes
    `⌊N/p⌋` itself near-extremal, which is the first half of (R).
-2. Formalise the window step: good `n < n'` with `n' ≤ n(1 + A/2)` have `f(n) = f(n')`, from
-   `abs_mean_sub_mean_le` and (C).
-3. The semiprime density.  For `x` large and `ε > 0`, the semiprimes in `[z, z(1+ε)]` — take
+2. **DONE** — `eq_of_mean_quotient_close`: if `x, y ∈ {±1}` with `s x σ(M') ≥ A - ρ`,
+   `s y σ(M) ≥ A - ρ` and `(M' - M)/M' < A - ρ`, then `x = y`.  With `x = f(p)`, `y = f(p')`
+   this is "f is constant on the good primes of a multiplicative window".
+3. **The remaining gap.**  Chaining the window step across all scales needs *some* good
+   element in every window, and the good set is only known by weight — so this is again a
+   localisation, and the refutation above applies to a naive chaining.  What is needed is a
+   pair of good elements in **one** window with different `f`-values, which is a far weaker
+   demand.  The semiprime density.  For `x` large and `ε > 0`, the semiprimes in `[z, z(1+ε)]` — take
    `p` a prime in `[x, 2x]` by Bertrand and `q` a prime in `[z/(2x), z/x]`, then refine.  The
    statement needed is only that *two* good semiprimes with different `f` lie in one window,
    so the `k²` versus `k(k+1)` special case may be enough and is much cheaper.

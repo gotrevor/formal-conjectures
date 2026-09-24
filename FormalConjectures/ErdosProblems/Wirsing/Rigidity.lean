@@ -395,4 +395,95 @@ theorem abs_mean_sub_mean_le (hf : IsPMOneMultiplicative f) {M N : ℕ} (hM : 1 
   rw [hgoal]
   linarith
 
+/--
+**A good prime's quotient is itself near-extremal**, with sign `s f(p)`.
+
+This is what licenses iterating `Wirsing.sum_bad_weight_le` at the point `⌊N/p⌋`, and it is
+the relation `σ(⌊N/p⌋) \approx s A f(p)` in its usable one-sided form: the rigid structure
+along the quotients is a *character*, not a fixed sign.
+-/
+@[category API, AMS 11]
+theorem mean_quotient_near_extremal (hf : IsPMOneMultiplicative f) {A ρ s : ℝ} {N p : ℕ}
+    (hp : p.Prime) (hs : |s| = 1) (hgood : A - ρ ≤ s * (f p * mean f (N / p))) :
+    |s * f p| = 1 ∧ A - ρ ≤ (s * f p) * mean f (N / p) := by
+  refine ⟨?_, by rw [mul_assoc]; exact hgood⟩
+  rw [abs_mul, hs, one_mul, abs_eq_one_of_one_le f hf hp.pos]
+
+/--
+**Rigidity, iterated once.**  At a near-extremal `N`, a good prime `p` produces a
+near-extremal point `⌊N/p⌋` with sign `s f(p)`, so all but `O((\rho\log N + 1)/\rho')` of the
+Mertens weight of primes `q` satisfies
+`s f(p) f(q) σ(⌊N/(pq)⌋) \ge A - \rho'` — that is, `σ(⌊N/n⌋) \approx s A f(n)` for
+`n = pq`, by multiplicativity of `f`.
+-/
+@[category API, AMS 11]
+theorem sum_bad_weight_le_step (hf : IsPMOneMultiplicative f) {A ρ ρ' s : ℝ} {M₀ N p : ℕ}
+    (hA0 : 0 ≤ A) (hA1 : A ≤ 1) (hρ0 : 0 ≤ ρ) (hρ1 : ρ ≤ 1) (hρ' : 0 < ρ')
+    (hM₀ : 1 ≤ M₀) (hs : |s| = 1)
+    (hub : ∀ M, M₀ ≤ M → |mean f M| ≤ A + ρ)
+    (hp : p ∈ rigidityPrimes M₀ N)
+    (hgood : A - ρ ≤ s * (f p * mean f (N / p))) :
+    ∑ q ∈ (rigidityPrimes M₀ (N / p)).filter
+        (fun q ↦ s * (f p * (f q * mean f (N / (p * q)))) < A - ρ'), Real.log q / q
+      ≤ (2 * ρ * Real.log (N / p : ℕ) + rigidityConst M₀) / (ρ' + ρ) := by
+  classical
+  obtain ⟨hpp, hq⟩ := (mem_rigidityPrimes hM₀).1 hp
+  obtain ⟨hs', hext⟩ := mean_quotient_near_extremal f hf hpp hs hgood
+  have hmain := sum_bad_weight_le (A := A) (δ := ρ) (s := s * f p) (ρ := ρ') (M₀ := M₀)
+    (N := N / p) f hf hA0 hA1 hρ0 hρ1 hρ' hM₀ hq hs' hub hext
+  refine le_trans (le_of_eq (Finset.sum_congr ?_ fun q _ ↦ rfl)) hmain
+  refine Finset.filter_congr fun q _ ↦ ?_
+  rw [Nat.div_div_eq_div_mul, mul_assoc]
+
+/--
+**The window step.**  Two quotients that are multiplicatively close cannot carry opposite
+signs of a near-extremal `σ`.
+
+Concretely: if `x, y ∈ \{\pm1\}` and both `s x σ(M') \ge A - \rho` and `s y σ(M) \ge A - \rho`
+with `M \le M'`, then `x = y` as soon as `(M' - M)/M' < A - \rho`.
+
+With `x = f(p)`, `y = f(p')` and `M' = \lfloor N/p\rfloor`, `M = \lfloor N/p'\rfloor` this says
+that `f` is constant on the good primes of any multiplicative window of ratio
+`1/(1 - (A - \rho))`.  It is the mechanism that converts the character structure
+`σ(\lfloor N/n\rfloor) \approx sAf(n)` into rigidity of `f` itself, and it uses no property of
+the primes, hence no localised form of Mertens' theorem.
+-/
+@[category API, AMS 11]
+theorem eq_of_mean_quotient_close (hf : IsPMOneMultiplicative f) {A ρ s x y : ℝ} {M M' : ℕ}
+    (hM : 1 ≤ M) (hMM' : M ≤ M') (hs : |s| = 1) (hx : |x| = 1) (hy : |y| = 1)
+    (h1 : A - ρ ≤ s * (x * mean f M')) (h2 : A - ρ ≤ s * (y * mean f M))
+    (hclose : ((M' : ℝ) - M) / M' < A - ρ) : x = y := by
+  by_contra hne
+  have hMR : (1 : ℝ) ≤ (M : ℝ) := by exact_mod_cast hM
+  have hMM'R : (M : ℝ) ≤ (M' : ℝ) := by exact_mod_cast hMM'
+  have hM'pos : (0 : ℝ) < (M' : ℝ) := by linarith
+  -- `y = -x`, since both are signs
+  have hyx : y = -x := by
+    rcases abs_eq (by norm_num : (0:ℝ) ≤ 1) |>.1 hx with rfl | rfl <;>
+      rcases abs_eq (by norm_num : (0:ℝ) ≤ 1) |>.1 hy with rfl | rfl <;>
+      first
+        | exact absurd rfl hne
+        | norm_num
+  rw [hyx] at h2
+  -- the two bounds add up to a jump of `2(A - ρ)` between `σ(M)` and `σ(M')`
+  have hsx : |s * x| = 1 := by rw [abs_mul, hs, hx, one_mul]
+  have hjump : 2 * (A - ρ) ≤ (s * x) * (mean f M' - mean f M) := by
+    have e1 : s * (x * mean f M') = (s * x) * mean f M' := by ring
+    have e2 : s * (-x * mean f M) = -((s * x) * mean f M) := by ring
+    rw [e1] at h1
+    rw [e2] at h2
+    have : (s * x) * (mean f M' - mean f M) = (s * x) * mean f M' - (s * x) * mean f M := by
+      ring
+    rw [this]
+    linarith
+  have hle : (s * x) * (mean f M' - mean f M) ≤ |mean f M' - mean f M| := by
+    rcases abs_eq (by norm_num : (0:ℝ) ≤ 1) |>.1 hsx with h | h
+    · rw [h, one_mul]; exact le_abs_self _
+    · rw [h, neg_one_mul]; exact neg_le_abs _
+  have hlip := abs_mean_sub_mean_le f hf hM hMM'
+  have hdiv : 2 * ((M' : ℝ) - M) / M' = 2 * (((M' : ℝ) - M) / M') := by ring
+  rw [hdiv] at hlip
+  have : ((M' : ℝ) - M) / M' < A - ρ := hclose
+  linarith
+
 end Wirsing
