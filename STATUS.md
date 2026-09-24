@@ -1,7 +1,7 @@
 # STATUS — fc-erdos-239 📊
 
 **Erdős 239 (Wirsing's mean value theorem for `±1`-valued multiplicative functions), formalised
-in Lean 4 / Mathlib.** · **Build**: 🟢 green · **Updated**: lap 4 · 2026-09-24 · `139faeae`
+in Lean 4 / Mathlib.** · **Build**: 🟢 green · **Updated**: lap 4 · 2026-09-24 · `da8f27fb`
 
 ## Where it stands
 
@@ -15,6 +15,11 @@ refuted two single-scale iteration schemes; lap 4 replaced the whole iteration s
 
 ## What's happened (newest first)
 
+* **2026-09-24 (lap 4, proof)** — steps A–D of the potential route proved and sorry-free in the
+  new `Wirsing/Decay.lean`: the Fubini weight comparison, the closed inequality
+  `|L(N)|log N ≤ 2Φ(N) − 2D(N) + O(log N)`, the telescoping of `Φ/(log N)²` giving
+  `∑ D(N)/(N(log N)³) < ∞`, the monotone envelope and its infimum `ℓ`, and the block bound.
+  Only the window bound, the Fubini swap over bad primes and the contradiction remain.
 * **2026-09-24 (lap 4, review)** — found a complete elementary proof of the crux: telescope
   `Φ(N)/(log N)²` for `Φ(N) = ∑_{n≤N}|L(n)|/n`, which makes the bad-prime deficit summable
   against `1/(N (log N)³)`; a Fubini swap turns that into `∑_{f(p)=-1} 1/p < ∞`.  Direction
@@ -59,4 +64,4 @@ debt is the three disclosed `sorry`s, which is why `sorryAx` is the single 🔴 
 ## Pointers
 
 `DIRECTION.md` (binding directive) · `PENDING_WORK.md` (attack path) ·
-`HANDOFF-erdos-239-2026-09-24-lap3.md` (newest baton) · `KICKOFF-2026-09-24-erdos-239.md`
+`HANDOFF-erdos-239-2026-09-24-lap4.md` (newest baton) · `KICKOFF-2026-09-24-erdos-239.md`
