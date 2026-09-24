@@ -430,6 +430,59 @@ theorem integral_psi_exp_eq {w : ℂ} (hw : 1 < w.re) :
     rw [Complex.cpow_neg]
     field_simp
 
+/-! ### The integral of `F` as a partial sum -/
+
+/--
+`ψ` is constant on `[m, m+1)`, so the Laplace integrand integrates to
+`\psi(m)/(m(m+1))` over `[\log m, \log(m+1)]`.
+-/
+@[category API, AMS 11]
+theorem integral_psi_step {m : ℕ} (hm : 1 ≤ m) :
+    (∫ t in Real.log m..Real.log ((m : ℝ) + 1),
+        Chebyshev.psi (Real.exp t) * Real.exp (-t))
+      = Chebyshev.psi m / ((m : ℝ) * ((m : ℝ) + 1)) := by
+  have hm0 : (0 : ℝ) < m := by exact_mod_cast hm
+  have hm1 : (0 : ℝ) < (m : ℝ) + 1 := by linarith
+  have hlog : Real.log m ≤ Real.log ((m : ℝ) + 1) :=
+    Real.log_le_log hm0 (by linarith)
+  -- on the open interval the integrand is `ψ(m)e^{-t}`
+  have hcongr : ∫ t in Real.log m..Real.log ((m : ℝ) + 1),
+      Chebyshev.psi (Real.exp t) * Real.exp (-t)
+      = ∫ t in Real.log m..Real.log ((m : ℝ) + 1), Chebyshev.psi m * Real.exp (-t) := by
+    refine intervalIntegral.integral_congr_ae ?_
+    filter_upwards [MeasureTheory.compl_mem_ae_iff.2
+      (MeasureTheory.measure_singleton (Real.log ((m : ℝ) + 1)))] with t ht hmem
+    have htne : t ≠ Real.log ((m : ℝ) + 1) := ht
+    rw [Set.uIoc_of_le hlog] at hmem
+    have ht1 : Real.log m < t := hmem.1
+    have ht2 : t < Real.log ((m : ℝ) + 1) := lt_of_le_of_ne hmem.2 htne
+    have he1 : (m : ℝ) < Real.exp t := by
+      have := Real.exp_lt_exp.2 ht1
+      rwa [Real.exp_log hm0] at this
+    have he2 : Real.exp t < (m : ℝ) + 1 := by
+      have := Real.exp_lt_exp.2 ht2
+      rwa [Real.exp_log hm1] at this
+    have hfloor : ⌊Real.exp t⌋₊ = m := by
+      rw [Nat.floor_eq_iff (by positivity)]
+      exact ⟨le_of_lt he1, he2⟩
+    rw [Chebyshev.psi_eq_psi_coe_floor (Real.exp t), hfloor]
+  rw [hcongr, intervalIntegral.integral_const_mul]
+  have hexp : ∫ t in Real.log m..Real.log ((m : ℝ) + 1), Real.exp (-t)
+      = Real.exp (-Real.log m) - Real.exp (-Real.log ((m : ℝ) + 1)) := by
+    have hderiv : ∀ t ∈ Set.uIcc (Real.log m) (Real.log ((m : ℝ) + 1)),
+        HasDerivAt (fun u : ℝ ↦ -Real.exp (-u)) (Real.exp (-t)) t := by
+      intro t _
+      have h1 : HasDerivAt (fun u : ℝ ↦ Real.exp (-u)) (-Real.exp (-t)) t := by
+        simpa using ((hasDerivAt_id t).neg).exp
+      have h2 := h1.neg
+      rwa [neg_neg] at h2
+    rw [intervalIntegral.integral_eq_sub_of_hasDerivAt hderiv
+      (by apply Continuous.intervalIntegrable; fun_prop)]
+    ring
+  rw [hexp, Real.exp_neg, Real.exp_neg, Real.exp_log hm0, Real.exp_log hm1]
+  field_simp
+  ring
+
 /--
 **Newman's convergent integral, in discrete form.**  The partial sums of the error series of
 Chebyshev's `ψ` against the main term converge:
