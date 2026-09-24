@@ -20,6 +20,7 @@ public import Mathlib.Analysis.SpecialFunctions.Integrals.Basic
 public import Mathlib.Analysis.SpecialFunctions.Integrability.Basic
 public import Mathlib.NumberTheory.Chebyshev
 public import Mathlib.NumberTheory.ArithmeticFunction.Misc
+public import Mathlib.Analysis.Complex.ExponentialBounds
 
 @[expose] public section
 
@@ -412,6 +413,67 @@ theorem sum_vonMangoldt_div_nonprime_le (N : ℕ) :
           exact ⟨hp.2.two_le, by omega⟩
         · exact mul_nonneg (by norm_num) (div_nonneg (log_natCast_nonneg _) (by positivity))
   _ ≤ 4 := by linarith [sum_log_div_sq_le N]
+
+/-- The proper prime powers up to `x ≥ 64` carry mass at least `1/2`:
+$\sum_{p^k \le x,\ k \ge 2} \log p / p^k \ge 1/2$.
+
+Only `4, 8, 9, 16, 25, 27, 32, 64` are used.  The true value of the full sum is `≈ 0.755`. -/
+theorem sum_vonMangoldt_div_nonprime_ge {x : ℝ} (hx : 64 ≤ x) :
+    (1 : ℝ) / 2 ≤ ∑ d ∈ (Ioc 0 ⌊x⌋₊).filter (fun d ↦ ¬ d.Prime), Λ d / d := by
+  classical
+  have hfloor : 64 ≤ ⌊x⌋₊ := Nat.le_floor (by exact_mod_cast hx)
+  set S : Finset ℕ := {4, 8, 9, 16, 25, 27, 32, 64} with hS
+  have hsub : S ⊆ (Ioc 0 ⌊x⌋₊).filter (fun d ↦ ¬ d.Prime) := by
+    intro d hd
+    fin_cases hd <;>
+      · rw [Finset.mem_filter, mem_Ioc]
+        refine ⟨⟨by norm_num, by omega⟩, by decide⟩
+  have hnn : ∀ d ∈ (Ioc 0 ⌊x⌋₊).filter (fun d ↦ ¬ d.Prime), d ∉ S → 0 ≤ Λ d / d := by
+    intro d _ _
+    exact div_nonneg vonMangoldt_nonneg (by positivity)
+  refine le_trans ?_ (Finset.sum_le_sum_of_subset_of_nonneg hsub hnn)
+  -- the von Mangoldt values
+  have h2 : ∀ k : ℕ, k ≠ 0 → Λ (2 ^ k) = log 2 := fun k hk ↦ by
+    rw [vonMangoldt_apply_pow hk, vonMangoldt_apply_prime Nat.prime_two]
+    norm_num
+  have h3 : ∀ k : ℕ, k ≠ 0 → Λ (3 ^ k) = log 3 := fun k hk ↦ by
+    rw [vonMangoldt_apply_pow hk, vonMangoldt_apply_prime Nat.prime_three]
+    norm_num
+  have h5 : Λ 25 = log 5 := by
+    rw [show (25 : ℕ) = 5 ^ 2 by norm_num, vonMangoldt_apply_pow two_ne_zero,
+      vonMangoldt_apply_prime (by decide : Nat.Prime 5)]
+    norm_num
+  have e4 : Λ 4 = log 2 := by rw [show (4 : ℕ) = 2 ^ 2 by norm_num]; exact h2 2 two_ne_zero
+  have e8 : Λ 8 = log 2 := by rw [show (8 : ℕ) = 2 ^ 3 by norm_num]; exact h2 3 (by norm_num)
+  have e16 : Λ 16 = log 2 := by rw [show (16 : ℕ) = 2 ^ 4 by norm_num]; exact h2 4 (by norm_num)
+  have e32 : Λ 32 = log 2 := by rw [show (32 : ℕ) = 2 ^ 5 by norm_num]; exact h2 5 (by norm_num)
+  have e64 : Λ 64 = log 2 := by rw [show (64 : ℕ) = 2 ^ 6 by norm_num]; exact h2 6 (by norm_num)
+  have e9 : Λ 9 = log 3 := by rw [show (9 : ℕ) = 3 ^ 2 by norm_num]; exact h3 2 two_ne_zero
+  have e27 : Λ 27 = log 3 := by rw [show (27 : ℕ) = 3 ^ 3 by norm_num]; exact h3 3 (by norm_num)
+  have hsum : ∑ d ∈ S, Λ d / (d : ℝ)
+      = Λ 4 / 4 + Λ 8 / 8 + Λ 9 / 9 + Λ 16 / 16 + Λ 25 / 25 + Λ 27 / 27
+        + Λ 32 / 32 + Λ 64 / 64 := by
+    rw [hS]
+    norm_num [Finset.sum_insert, Finset.mem_insert, Finset.mem_singleton]
+    ring
+  rw [hsum, e4, e8, e9, e16, h5, e27, e32, e64]
+  -- numeric bounds: log 2 > 0.693, log 3 > 1.5 log 2, log 5 > 2 log 2
+  have hl2 : (0.693 : ℝ) < log 2 := by
+    have := Real.log_two_gt_d9
+    linarith
+  have hl3 : 1.5 * log 2 < log 3 := by
+    have h : log 8 < log 9 := Real.log_lt_log (by norm_num) (by norm_num)
+    rw [show (8 : ℝ) = 2 ^ 3 by norm_num, show (9 : ℝ) = 3 ^ 2 by norm_num,
+      Real.log_pow, Real.log_pow] at h
+    push_cast at h
+    linarith
+  have hl5 : 2 * log 2 < log 5 := by
+    have h : log 64 < log 125 := Real.log_lt_log (by norm_num) (by norm_num)
+    rw [show (64 : ℝ) = 2 ^ 6 by norm_num, show (125 : ℝ) = 5 ^ 3 by norm_num,
+      Real.log_pow, Real.log_pow] at h
+    push_cast at h
+    linarith
+  nlinarith [hl2, hl3, hl5]
 
 /-- **Mertens' first theorem**, prime form:
 $\sum_{p \le N} \log p / p = \log N + O(1)$, with an explicit constant. -/
