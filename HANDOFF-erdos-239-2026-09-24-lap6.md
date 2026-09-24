@@ -39,8 +39,14 @@ term. With `ρ = √δ` this gives, for all but `O(√δ log N)` of the weight,
 obstruction `cos(θ log N)` (which is near-extremal only near its peaks); the second is a
 character equation for `f`, and is where `f(p) = ±1` — a sign, never a phase — enters.
 
-Steps 2-4 (few sign changes of `σ`; the correlation `C(v) ≈ f(p)` is an approximate `{±1}`
-character, hence `≡ 1`; and the contradiction with `abs_sum_mean_div_sub_logMean_le`) are
+**Step 4 is also done** (`le_abs_logMean_of_sign_stable`, same file): if
+`s σ(⌊N/k⌋) ≥ A - ρ` for every `k` outside a set of harmonic weight `η`, then
+`|L(N)| ≥ (A - ρ)(log N - η) - η - 2`, which contradicts `L(N) = o(log N)` whenever
+`A > ρ`.  This fixes the exact shape steps 2-3 must deliver: a good set `G ⊆ Icc 1 N` of
+`1/k`-weight `harmonicSum N - o(log N)` on which `s σ(⌊N/k⌋)` has a positive lower bound.
+
+Steps 2-3 (few sign changes of `σ`; the correlation `C(v) ≈ f(p)` is an approximate `{±1}`
+character, hence `≡ 1`) are
 written out in `PENDING_WORK.md`, with the ordered next attack. The cheapest next piece is
 step 4, which is independent of 2-3 and pins down the exact shape they must deliver. The
 main technical risk is the weight transfer (`log p/p` to `1/k`) in step 3.

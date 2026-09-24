@@ -264,4 +264,78 @@ theorem sum_bad_weight_le (hf : IsPMOneMultiplicative f) {A δ s ρ : ℝ} {M₀
   rw [le_div_iff₀ (by linarith), mul_comm]
   linarith
 
+/--
+**Step 4 of the Tauberian route: sign stability contradicts `L(N) = o(\log N)`.**
+
+If `s σ(⌊N/k⌋) ≥ A - ρ` for every `k` outside a set of harmonic weight `η`, then the
+logarithmic average is large:
+$$|L(N)| \ge (A - \rho)(\log N - \eta) - \eta - 2.$$
+
+Together with `L(N) = o(\log N)` this forces `A = \rho`, which is the contradiction that
+closes `Wirsing.tendsto_mean_atTop_zero_of_logMean` once steps 2 and 3 produce the good set.
+The only inputs are `Wirsing.abs_sum_mean_div_sub_logMean_le` (an `O(1)` identity) and
+`Wirsing.log_le_harmonicSum`.
+-/
+@[category API, AMS 11]
+theorem le_abs_logMean_of_sign_stable (hf : IsPMOneMultiplicative f) {A ρ η s : ℝ} {N : ℕ}
+    (hN : 1 ≤ N) (hs : |s| = 1) (hAρ : 0 ≤ A - ρ) {G : Finset ℕ} (hG : G ⊆ Icc 1 N)
+    (hgood : ∀ k ∈ G, A - ρ ≤ s * mean f (N / k))
+    (hbad : ∑ k ∈ Icc 1 N \ G, (1 : ℝ) / k ≤ η) :
+    (A - ρ) * (Real.log N - η) - η - 2 ≤ |logMean f N| := by
+  classical
+  set T : ℝ := ∑ k ∈ Icc 1 N, mean f (N / k) / k with hT
+  have hknn : ∀ k ∈ Icc 1 N, (0 : ℝ) ≤ 1 / k := fun k _ ↦ by positivity
+  have hsplit : ∑ k ∈ Icc 1 N \ G, (1 : ℝ) / k + ∑ k ∈ G, (1 : ℝ) / k = harmonicSum N :=
+    Finset.sum_sdiff hG
+  have hsplitT : ∑ k ∈ Icc 1 N \ G, s * (mean f (N / k) / k)
+      + ∑ k ∈ G, s * (mean f (N / k) / k) = s * T := by
+    rw [hT, Finset.mul_sum]
+    exact Finset.sum_sdiff hG
+  -- the good part
+  have hgoodsum : (A - ρ) * ∑ k ∈ G, (1 : ℝ) / k
+      ≤ ∑ k ∈ G, s * (mean f (N / k) / k) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun k hk ↦ ?_
+    have hk1 : 1 ≤ k := (mem_Icc.1 (hG hk)).1
+    have hkR : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk1
+    have hknn' : (0 : ℝ) ≤ 1 / k := by positivity
+    have hrw : s * (mean f (N / k) / k) = (s * mean f (N / k)) * (1 / k) := by ring
+    rw [hrw, mul_comm (A - ρ), mul_comm (s * mean f (N / k))]
+    exact mul_le_mul_of_nonneg_left (hgood k hk) hknn'
+  -- the bad part
+  have hbadsum : -∑ k ∈ Icc 1 N \ G, (1 : ℝ) / k
+      ≤ ∑ k ∈ Icc 1 N \ G, s * (mean f (N / k) / k) := by
+    rw [← Finset.sum_neg_distrib]
+    refine Finset.sum_le_sum fun k hk ↦ ?_
+    have hk1 : 1 ≤ k := (mem_Icc.1 (Finset.mem_sdiff.1 hk).1).1
+    have hkR : (1 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk1
+    have hknn' : (0 : ℝ) ≤ 1 / k := by positivity
+    have habs : |s * (mean f (N / k) / k)| ≤ 1 / k := by
+      rw [abs_mul, hs, one_mul, abs_div, Nat.abs_cast]
+      have := abs_mean_le_one f hf (N / k)
+      rw [div_le_div_iff_of_pos_right (by linarith)]
+      exact this
+    linarith [(abs_le.1 habs).1]
+  have hbadnn : (0 : ℝ) ≤ ∑ k ∈ Icc 1 N \ G, (1 : ℝ) / k :=
+    Finset.sum_nonneg fun k hk ↦ hknn k (Finset.mem_sdiff.1 hk).1
+  have hlogN : Real.log N ≤ harmonicSum N := log_le_harmonicSum N
+  have hlower : (A - ρ) * (Real.log N - η) - η ≤ s * T := by
+    have h1 : (A - ρ) * (Real.log N - η) ≤ (A - ρ) * ∑ k ∈ G, (1 : ℝ) / k := by
+      refine mul_le_mul_of_nonneg_left ?_ hAρ
+      linarith
+    linarith [hsplitT, hgoodsum, hbadsum]
+  have hTabs : s * T ≤ |T| := by
+    rcases abs_eq (by norm_num : (0:ℝ) ≤ 1) |>.1 hs with rfl | rfl
+    · rw [one_mul]; exact le_abs_self T
+    · rw [neg_one_mul]; exact neg_le_abs T
+  have hclose := abs_sum_mean_div_sub_logMean_le f hf hN
+  rw [← hT] at hclose
+  have := abs_sub_abs_le_abs_sub T (logMean f N)
+  rw [abs_sub_comm] at hclose
+  have h2 : |T| - |logMean f N| ≤ 2 := by
+    have := abs_sub_abs_le_abs_sub T (logMean f N)
+    rw [abs_sub_comm T (logMean f N)] at this
+    linarith
+  linarith
+
 end Wirsing

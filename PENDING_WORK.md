@@ -59,7 +59,7 @@ Let `s(M) = sign σ(M)` on the near-extremal set, `u = \log M`.
    for most `p`.  Blockiness from step 2 makes `C` Lipschitz with a small constant and
    `C(0) = 1`, so `C ≈ 1` on a long initial range, and `C(v)C(v') = C(v - v')` on the rest:
    a `{±1}`-valued approximate character of `(ℝ,+)`, hence `≡ 1`.
-4. **The contradiction.**  `C ≡ 1` forces `s` essentially constant, so `|σ| ≈ A` with a fixed
+4. **The contradiction** (**DONE**, `le_abs_logMean_of_sign_stable`).  `C ≡ 1` forces `s` essentially constant, so `|σ| ≈ A` with a fixed
    sign on almost all of `[M₀, N]`, whence
    `|∑_{k ≤ N} σ(⌊N/k⌋)/k| ≈ A \log N`.  But `abs_sum_mean_div_sub_logMean_le` (lap 5) makes
    that quantity `L(N) + O(1) = o(\log N)` by the hypothesis `h`.  Contradiction, so `A = 0`.
@@ -76,10 +76,11 @@ of `[0, \log N]`.  Prefer the `h` version: it needs no control of where the bad 
    `{p : |σ(⌊N/p⌋)| < A/2}` versus the number of sign changes of `σ`.  The log-Lipschitz
    bound `|σ(N) - σ(M)| ≤ 2(N - M)/N` needs to be proved first (it is not yet in the repo;
    it follows from `|S(N) - S(M)| ≤ N - M` and `|σ| ≤ 1`).
-2. Step 4 is independent of steps 2-3 and is the cheapest to formalise: *given* that
-   `s σ(M) ≥ A - ρ` for all `M ∈ [M₀, N]` outside a set of `1/k`-weight `≤ η log N`, derive
-   the contradiction with `abs_sum_mean_div_sub_logMean_le`.  Do it early, as it fixes the
-   exact shape step 3 has to deliver.
+2. Step 4 is **done**: `Wirsing.le_abs_logMean_of_sign_stable` says that if
+   `s σ(⌊N/k⌋) ≥ A - ρ` for every `k` outside a set `Icc 1 N \ G` of harmonic weight `≤ η`,
+   then `|L(N)| ≥ (A - ρ)(\log N - η) - η - 2`.  So steps 2-3 must deliver exactly this: a
+   good set `G ⊆ Icc 1 N` of `1/k`-weight `harmonicSum N - o(\log N)` on which `s σ(⌊N/k⌋)`
+   is bounded below by a fixed positive constant.
 3. Step 3 is the hard one.  The transfer from the Mertens weight `\log p/p` (in which (R)
    lives) to the `1/k` weight (in which step 4 lives) is the main technical risk; do **not**
    attempt a pointwise transfer, which would need primes in short intervals.
