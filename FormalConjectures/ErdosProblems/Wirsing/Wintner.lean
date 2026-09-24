@@ -479,4 +479,106 @@ theorem tsum_abs_wintnerCoeff_prime_pow_div_le (hf : IsPMOneMultiplicative f) {p
   rw [hpeel, ha0, ha1]
   linarith
 
+/-- Each term of `Wirsing.pretentiousSeries` is nonnegative for a `±1`-valued `f`. -/
+@[category API, AMS 11]
+theorem pretentiousSeries_nonneg (hf : IsPMOneMultiplicative f) (p : Nat.Primes) :
+    0 ≤ pretentiousSeries f p := by
+  rw [pretentiousSeries]
+  have hppos : (0 : ℝ) < ((p : ℕ) : ℝ) := by
+    have := p.2.pos
+    exact_mod_cast this
+  refine div_nonneg ?_ hppos.le
+  rcases hf.pmOne (p : ℕ) p.2.pos with h | h <;> rw [h] <;> norm_num
+
+open scoped Classical in
+/--
+**The Euler product is bounded.**  The finite products of the local factors
+`1 + (1 - f(p))/p + 4/p²` are bounded by a constant independent of the range.
+
+This is where `∑_p (1 - f(p))/p < ∞` enters: `1 + x ≤ e^x`, so the product is at most
+`\exp(∑_p (1 - f(p))/p + 8)`.
+-/
+@[category API, AMS 11]
+theorem exists_bound_euler_product (hf : IsPMOneMultiplicative f)
+    (h : Summable (pretentiousSeries f)) :
+    ∃ C : ℝ, 0 < C ∧ ∀ M : ℕ,
+      ∏ p ∈ (range M).filter Nat.Prime, (1 + (1 - f p) / p + 4 / (p : ℝ) ^ 2) ≤ C := by
+  classical
+  -- transfer the hypothesis to the `ℕ`-indexed extension
+  have hinj : Function.Injective (fun p : Nat.Primes ↦ (p : ℕ)) := Subtype.coe_injective
+  have hzero : ∀ x ∉ Set.range (fun p : Nat.Primes ↦ (p : ℕ)), pretentiousTerm f x = 0 := by
+    intro x hx
+    rw [pretentiousTerm, if_neg]
+    exact fun hp ↦ hx ⟨⟨x, hp⟩, rfl⟩
+  have hcomp : pretentiousTerm f ∘ (fun p : Nat.Primes ↦ (p : ℕ)) = pretentiousSeries f := by
+    funext p
+    simp [pretentiousTerm, pretentiousSeries, p.2]
+  have hterm : Summable (pretentiousTerm f) := by
+    rw [← Function.Injective.summable_iff hinj hzero, hcomp]
+    exact h
+  set S : ℝ := ∑' n : ℕ, pretentiousTerm f n with hS
+  refine ⟨Real.exp (S + 8), Real.exp_pos _, fun M ↦ ?_⟩
+  -- each factor is `≤ exp` of its exponent
+  have hfac : ∀ p ∈ (range M).filter Nat.Prime,
+      1 + (1 - f p) / p + 4 / (p : ℝ) ^ 2
+        ≤ Real.exp ((1 - f p) / p + 4 / (p : ℝ) ^ 2) := by
+    intro p _
+    have := Real.add_one_le_exp ((1 - f (p : ℕ)) / p + 4 / (p : ℝ) ^ 2)
+    linarith
+  have hnn : ∀ p ∈ (range M).filter Nat.Prime,
+      0 ≤ 1 + (1 - f p) / p + 4 / (p : ℝ) ^ 2 := by
+    intro p hp
+    have hpp : p.Prime := (mem_filter.1 hp).2
+    have hppos : (0 : ℝ) < (p : ℝ) := by exact_mod_cast hpp.pos
+    have h1 : 0 ≤ (1 - f (p : ℕ)) / p := by
+      refine div_nonneg ?_ hppos.le
+      rcases hf.pmOne p hpp.pos with hv | hv <;> rw [hv] <;> norm_num
+    have h2 : (0 : ℝ) ≤ 4 / (p : ℝ) ^ 2 := by positivity
+    linarith
+  have hprod : ∏ p ∈ (range M).filter Nat.Prime, (1 + (1 - f p) / p + 4 / (p : ℝ) ^ 2)
+      ≤ ∏ p ∈ (range M).filter Nat.Prime,
+          Real.exp ((1 - f p) / p + 4 / (p : ℝ) ^ 2) :=
+    Finset.prod_le_prod hnn hfac
+  rw [← Real.exp_sum] at hprod
+  refine le_trans hprod (Real.exp_le_exp.2 ?_)
+  -- bound the exponent
+  rw [Finset.sum_add_distrib]
+  have hbad : ∑ p ∈ (range M).filter Nat.Prime, (1 - f p) / p ≤ S := by
+    have hsub : ∑ p ∈ (range M).filter Nat.Prime, (1 - f p) / p
+        = ∑ n ∈ range M, pretentiousTerm f n := by
+      rw [Finset.sum_filter]
+      refine Finset.sum_congr rfl fun n _ ↦ ?_
+      rw [pretentiousTerm]
+    rw [hsub, hS]
+    exact sum_le_hasSum _ (fun n _ ↦ pretentiousTerm_nonneg f hf n) hterm.hasSum
+  have hsq : ∑ p ∈ (range M).filter Nat.Prime, 4 / (p : ℝ) ^ 2 ≤ 8 := by
+    have hsub : (range M).filter Nat.Prime ⊆ Icc 2 M := by
+      intro p hp
+      obtain ⟨hpr, hpp⟩ := mem_filter.1 hp
+      rw [Finset.mem_range] at hpr
+      exact mem_Icc.2 ⟨hpp.two_le, by omega⟩
+    have hstep : ∑ p ∈ (range M).filter Nat.Prime, 4 / (p : ℝ) ^ 2
+        ≤ ∑ n ∈ Icc 2 M, 4 / (n : ℝ) ^ 2 :=
+      Finset.sum_le_sum_of_subset_of_nonneg hsub fun n _ _ ↦ by positivity
+    have hbase : ∑ n ∈ Icc 2 M, (1 : ℝ) / (n : ℝ) ^ 2 ≤ 1 := by
+      rcases Nat.lt_or_ge M 1 with hM | hM
+      · have : Icc 2 M = (∅ : Finset ℕ) := by
+          apply Finset.eq_empty_of_forall_notMem
+          intro n hn
+          rw [mem_Icc] at hn
+          omega
+        rw [this, Finset.sum_empty]
+        norm_num
+      · have hM' : (1 : ℝ) ≤ (M : ℝ) := by exact_mod_cast hM
+        have := sum_Icc_one_div_sq_le M hM
+        have hpos : (0 : ℝ) < 1 / (M : ℝ) := by positivity
+        linarith
+    have hrw : ∑ n ∈ Icc 2 M, 4 / (n : ℝ) ^ 2
+        = 4 * ∑ n ∈ Icc 2 M, (1 : ℝ) / (n : ℝ) ^ 2 := by
+      rw [Finset.mul_sum]
+      exact Finset.sum_congr rfl fun n _ ↦ by ring
+    rw [hrw] at hstep
+    linarith
+  linarith
+
 end Wirsing
