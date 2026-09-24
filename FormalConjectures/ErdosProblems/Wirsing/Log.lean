@@ -125,4 +125,85 @@ theorem abs_sum_shift_prime_sub_le (hf : IsPMOneMultiplicative f) {p M : ℕ} (h
       rw [Finset.sum_const, card_filter_dvd_Icc, nsmul_eq_mul]
       ring
 
+/-- The shifted partial sums are bounded by the length of the range. -/
+@[category API, AMS 11]
+theorem abs_sum_shift_le (hf : IsPMOneMultiplicative f) {d : ℕ} (hd : 1 ≤ d) (M : ℕ) :
+    |∑ m ∈ Icc 1 M, f (d * m)| ≤ M := by
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  have : ∀ m ∈ Icc 1 M, |f (d * m)| = 1 := fun m hm ↦
+    abs_eq_one_of_one_le f hf (Nat.mul_pos hd (mem_Icc.1 hm).1)
+  rw [Finset.sum_congr rfl this, Finset.sum_const, Nat.card_Icc, nsmul_eq_mul]
+  simp
+
+/-- The proper prime powers contribute `O(N)` to the von Mangoldt identity. -/
+@[category API, AMS 11]
+theorem abs_sum_vonMangoldt_nonprime_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+        ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m)| ≤ 4 * N := by
+  classical
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  calc ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+        |ArithmeticFunction.vonMangoldt d * ∑ m ∈ Icc 1 (N / d), f (d * m)|
+      ≤ ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+          (N : ℝ) * (ArithmeticFunction.vonMangoldt d / d) := by
+        refine Finset.sum_le_sum fun d hd ↦ ?_
+        have hd1 : 1 ≤ d := (mem_Icc.1 (mem_filter.1 hd).1).1
+        have hdR : (0 : ℝ) < d := by exact_mod_cast hd1
+        rw [abs_mul, abs_of_nonneg ArithmeticFunction.vonMangoldt_nonneg]
+        calc ArithmeticFunction.vonMangoldt d * |∑ m ∈ Icc 1 (N / d), f (d * m)|
+            ≤ ArithmeticFunction.vonMangoldt d * ((N / d : ℕ) : ℝ) :=
+              mul_le_mul_of_nonneg_left (abs_sum_shift_le f hf hd1 _)
+                ArithmeticFunction.vonMangoldt_nonneg
+        _ ≤ ArithmeticFunction.vonMangoldt d * ((N : ℝ) / d) :=
+              mul_le_mul_of_nonneg_left (Nat.cast_div_le) ArithmeticFunction.vonMangoldt_nonneg
+        _ = (N : ℝ) * (ArithmeticFunction.vonMangoldt d / d) := by ring
+  _ = (N : ℝ) * ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+        ArithmeticFunction.vonMangoldt d / d := (Finset.mul_sum _ _ _).symm
+  _ ≤ (N : ℝ) * 4 := by
+        exact mul_le_mul_of_nonneg_left (Mertens.sum_vonMangoldt_div_nonprime_le N)
+          (Nat.cast_nonneg _)
+  _ = 4 * N := by ring
+
+/-- Replacing `f(pm)` by `f(p) f(m)` in the prime terms costs `O(N)`. -/
+@[category API, AMS 11]
+theorem abs_sum_vonMangoldt_prime_sub_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |(∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * ∑ m ∈ Icc 1 (N / p), f (p * m))
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p * (f p * partialSum f (N / p))|
+      ≤ 4 * N := by
+  classical
+  rw [← Finset.sum_sub_distrib]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  calc ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        |Real.log p * (∑ m ∈ Icc 1 (N / p), f (p * m)) - Real.log p * (f p * partialSum f (N / p))|
+      ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime, 2 * (N : ℝ) * (Real.log p / (p : ℝ) ^ 2) := by
+        refine Finset.sum_le_sum fun p hp ↦ ?_
+        have hpp : p.Prime := (mem_filter.1 hp).2
+        have hp2 : (2 : ℝ) ≤ p := by exact_mod_cast hpp.two_le
+        have hlog : 0 ≤ Real.log p := Real.log_natCast_nonneg _
+        rw [← mul_sub, abs_mul, abs_of_nonneg hlog]
+        have hshift := abs_sum_shift_prime_sub_le f hf (p := p) (M := N / p) hpp
+        have hcast : ((N / p / p : ℕ) : ℝ) ≤ (N : ℝ) / (p : ℝ) ^ 2 := by
+          rw [Nat.div_div_eq_div_mul]
+          calc ((N / (p * p) : ℕ) : ℝ) ≤ (N : ℝ) / ((p * p : ℕ) : ℝ) := Nat.cast_div_le
+          _ = (N : ℝ) / (p : ℝ) ^ 2 := by push_cast; ring_nf
+        calc Real.log p * |(∑ m ∈ Icc 1 (N / p), f (p * m)) - f p * partialSum f (N / p)|
+            ≤ Real.log p * (2 * ((N / p / p : ℕ) : ℝ)) :=
+              mul_le_mul_of_nonneg_left hshift hlog
+        _ ≤ Real.log p * (2 * ((N : ℝ) / (p : ℝ) ^ 2)) := by
+              refine mul_le_mul_of_nonneg_left ?_ hlog
+              linarith
+        _ = 2 * (N : ℝ) * (Real.log p / (p : ℝ) ^ 2) := by ring
+  _ = 2 * (N : ℝ) * ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / (p : ℝ) ^ 2 :=
+        (Finset.mul_sum _ _ _).symm
+  _ ≤ 2 * (N : ℝ) * ∑ n ∈ Icc 2 N, Real.log n / (n : ℝ) ^ 2 := by
+        refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+        refine Finset.sum_le_sum_of_subset_of_nonneg ?_ fun n _ _ ↦
+          div_nonneg (Real.log_natCast_nonneg _) (by positivity)
+        intro q hq
+        simp only [mem_filter, mem_Icc] at hq
+        exact mem_Icc.2 ⟨hq.2.two_le, hq.1.2⟩
+  _ ≤ 4 * N := by
+        have h := Mertens.sum_log_div_sq_le N
+        nlinarith [Nat.cast_nonneg (α := ℝ) N]
+
 end Wirsing
