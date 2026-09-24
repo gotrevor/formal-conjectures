@@ -84,6 +84,20 @@ before trusting it.  Nothing else is in flight.
    exactly this: the repo's Mertens error is the absolute constant `log 4 + 8 ≈ 9.4`, so it
    says nothing about windows of ratio below `e^{19}`.
 
+## ROUTE-DECISIVE: Erdős 239 implies PNT
+
+`λ` (Liouville) is an instance of the problem, its mean value must be `0`, and
+`∑_{n≤x}λ(n) = o(x)` is equivalent to the Prime Number Theorem.  So the headline theorem is
+PNT-strength and **no PNT-free route exists**.  That is one explanation for all three
+obstructions recorded this lap (the weight transfers, the window chaining, and the `2/π`
+resonance computation): each reduced to a PNT-equivalent estimate.
+
+Consequently `Wirsing/Rigidity.lean` is the Erdős half of the elementary Erdős–Selberg proof
+of PNT, and it stalls because it is fed only the *first-order* relation.  The missing input
+is the second-order one, the **Selberg symmetry formula** (not in mathlib).  See
+`PENDING_WORK.md` for the decision an altitude lap must take: formalise Selberg here, or add
+`PrimeNumberTheoremAnd` (on disk, not a dependency) and import PNT.
+
 ## Build
 
     lake --wfail build 'FormalConjectures.ErdosProblems.Wirsing.Wintner'

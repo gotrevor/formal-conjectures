@@ -1,5 +1,49 @@
 # PENDING WORK — Erdős 239
 
+## ROUTE-DECISIVE FINDING (lap 6): Erdős 239 implies the Prime Number Theorem
+
+The Liouville function `λ` is multiplicative and `±1`-valued, so it is an instance of the
+problem.  The statement gives `λ` a mean value `c`; `c = 0` follows (the Dirichlet series
+`∑λ(n)n^{-s} = ζ(2s)/ζ(s)` tends to `0` as `s → 1⁺`, so no nonzero mean is possible); and
+`∑_{n ≤ x}λ(n) = o(x)` **is equivalent to PNT**.
+
+So `Erdos239.erdos_239` is a PNT-strength theorem, and **no route can avoid a PNT-strength
+ingredient**.  This retroactively explains every obstruction recorded below, all of which
+reduced to the same thing:
+
+* the three refuted weight transfers, which needed `∑_{p≤x}\log p/p = \log x - E + o(1)`;
+* the refuted chaining of the window step, which needed a prime in a bounded window;
+* the `2/π` resonance-defect computation, which needs `∑_p p^{iθ}\log p/p = o(\log x)`,
+  i.e. `ζ(1 + iθ) ≠ 0`.
+
+These are not three difficulties but one, and it is not removable.
+
+### What this means for the route
+
+The rigidity machinery of `Wirsing/Rigidity.lean` is **the Erdős half of the elementary
+(Erdős–Selberg) proof of PNT**: "take a near-extremal point, and force the averaging relation
+to be an equality term by term".  In that proof it is contractive only because it is fed the
+**Selberg symmetry formula**
+
+    ∑_{n ≤ x} Λ(n)\log n + ∑_{mn ≤ x} Λ(m)Λ(n) = 2x\log x + O(x),
+
+a *second-order*, log-weighted relation.  This development so far has only the first-order
+relation `σ(N)\log N = ∑_p (\log p/p)f(p)σ(⌊N/p⌋) + O(1)`, which is *neutral* (`A ≤ A`) — and
+that is exactly why every push stalled at consistency rather than contradiction.
+
+**So the next structural step is the `f`-twisted Selberg symmetry formula.**  Mathlib has no
+Selberg formula (checked lap 6); `PrimeNumberTheoremAnd` has PNT and is on disk under
+`.lake/packages/`, but is not a dependency of this project.
+
+**Decision for an altitude lap** (do not take it inside a working lap): either
+(a) formalise the Selberg symmetry formula and the Erdős–Selberg argument in
+`FormalConjecturesForMathlib/` — large but elementary, self-contained, and reusable; or
+(b) add `PrimeNumberTheoremAnd` as a dependency and import PNT.  (a) is the honest choice for
+this repository; (b) is much cheaper and should be weighed explicitly rather than assumed
+unacceptable.
+
+---
+
 ## LAP 6 (2026-09-24): convergent case CLOSED; crux reduced to one asymptotic
 
 **The crux is now a single named statement in `Main.lean`:**
