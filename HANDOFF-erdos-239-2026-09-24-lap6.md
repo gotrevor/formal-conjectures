@@ -98,6 +98,26 @@ is the second-order one, the **Selberg symmetry formula** (not in mathlib).  See
 `PENDING_WORK.md` for the decision an altitude lap must take: formalise Selberg here, or add
 `PrimeNumberTheoremAnd` (on disk, not a dependency) and import PNT.
 
+## Selberg's symmetry formula, started (new, sorry-free)
+
+`FormalConjecturesForMathlib/NumberTheory/Selberg.lean`, imported from
+`FormalConjecturesForMathlib.lean`:
+
+* `pmul_log_mul` — pointwise `·log` is a derivation for Dirichlet convolution;
+* `log_pmul_log` — `log² = ζ * (Λ*Λ + Λ·log)`;
+* `vonMangoldt_pmul_log_add_mul` — **`Λ·log + Λ*Λ = μ * log²`**;
+* `sum_Icc_mul_apply` — the one-sided hyperbola identity
+  `∑_{n≤N}(f*g)(n) = ∑_{d≤N} f(d) ∑_{m≤N/d} g(m)` (general, reusable);
+* `sum_vonMangoldt_pmul_log_add_sum_mul` — `∑_{n≤N}Λ(n)log n + ∑_{mn≤N}Λ(m)Λ(n)
+  = ∑_{d≤N}μ(d)∑_{m≤N/d}log² m`;
+* `sum_moebius_mul_div` — `∑_{d≤N}μ(d)⌊N/d⌋ = 1`;
+* `abs_sum_moebius_div_le` — `|∑_{d≤N}μ(d)/d| ≤ 1`.
+
+**Next step, concretely:** `∑_{m≤y} log² m = y log²y - 2y log y + 2y + O(log² y)` by
+Euler–Maclaurin against `∫ log²` (`Mertens.sum_log_le`/`sum_log_ge` in this repo are the
+model to copy); then assemble `2N log N + O(N)` using the two Möbius sums above; then the
+`f`-twisted version, which is what the crux consumes.
+
 ## Build
 
     lake --wfail build 'FormalConjectures.ErdosProblems.Wirsing.Wintner'
