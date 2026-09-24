@@ -483,6 +483,81 @@ theorem integral_psi_step {m : ℕ} (hm : 1 ≤ m) :
   field_simp
   ring
 
+/-- `\sum_{k < N} 1/(k+2) = H_{N+1} - 1`. -/
+@[category API, AMS 11]
+theorem sum_one_div_add_two (N : ℕ) :
+    ∑ k ∈ Finset.range N, (1 : ℝ) / ((k : ℝ) + 2) = (harmonic (N + 1) : ℝ) - 1 := by
+  induction N with
+  | zero => simp
+  | succ n ih =>
+    have h := harmonic_succ (n + 1)
+    rw [Finset.sum_range_succ, ih, h]
+    push_cast
+    ring
+
+/--
+**The Newman integral is the Newman partial sum.**  For every `N`,
+$$\int_0^{\log(N+1)}\bigl(\psi(e^t)e^{-t} - 1\bigr)\,dt
+  = \sum_{m \le N}\frac{\psi(m)-m}{m(m+1)} + H_{N+1} - 1 - \log(N+1).$$
+
+Summing `Newman.integral_psi_step` over the blocks `[\log m, \log(m+1)]`.  The harmonic
+correction is the difference between the arithmetic weight `1/(m+1)` of the main term `m` and
+the analytic weight `\log(m+1) - \log m`.
+-/
+@[category API, AMS 11]
+theorem integral_newman_eq (N : ℕ) :
+    (∫ t in (0 : ℝ)..Real.log ((N : ℝ) + 1),
+        (Chebyshev.psi (Real.exp t) * Real.exp (-t) - 1))
+      = (∑ m ∈ Finset.range (N + 1), (Chebyshev.psi m - m) / ((m : ℝ) * ((m : ℝ) + 1)))
+        + ((harmonic (N + 1) : ℝ) - 1 - Real.log ((N : ℝ) + 1)) := by
+  have hmono : Monotone (fun t : ℝ ↦ Chebyshev.psi (Real.exp t)) := fun a b hab ↦
+    Chebyshev.psi_mono (Real.exp_le_exp.2 hab)
+  have hint : ∀ a b : ℝ, IntervalIntegrable
+      (fun t : ℝ ↦ Chebyshev.psi (Real.exp t) * Real.exp (-t)) MeasureTheory.volume a b :=
+    fun a b ↦ (hmono.intervalIntegrable).mul_continuousOn (by fun_prop)
+  -- the blocks
+  set a : ℕ → ℝ := fun k ↦ Real.log ((k : ℝ) + 1) with ha
+  have ha0 : a 0 = 0 := by simp [ha]
+  have haN : a N = Real.log ((N : ℝ) + 1) := rfl
+  have hblocks := intervalIntegral.sum_integral_adjacent_intervals
+    (f := fun t : ℝ ↦ Chebyshev.psi (Real.exp t) * Real.exp (-t))
+    (μ := MeasureTheory.volume) (a := a) (n := N) (fun k _ ↦ hint _ _)
+  rw [ha0, haN] at hblocks
+  have hterm : ∀ k ∈ Finset.range N,
+      (∫ t in a k..a (k + 1), Chebyshev.psi (Real.exp t) * Real.exp (-t))
+        = Chebyshev.psi (k + 1) / (((k : ℝ) + 1) * ((k : ℝ) + 2)) := by
+    intro k _
+    have h := integral_psi_step (m := k + 1) (by omega)
+    rw [show ((k + 1 : ℕ) : ℝ) = (k : ℝ) + 1 by push_cast; ring] at h
+    simp only [ha]
+    rw [show ((k + 1 : ℕ) : ℝ) + 1 = (k : ℝ) + 1 + 1 by push_cast; ring, h]
+    ring_nf
+  rw [Finset.sum_congr rfl hterm] at hblocks
+  -- split off the constant
+  rw [intervalIntegral.integral_sub (hint _ _)
+    (intervalIntegrable_const), intervalIntegral.integral_const, ← hblocks]
+  -- the discrete side
+  have hsum : (∑ m ∈ Finset.range (N + 1), (Chebyshev.psi m - m) / ((m : ℝ) * ((m : ℝ) + 1)))
+      = (∑ k ∈ Finset.range N, Chebyshev.psi (k + 1) / (((k : ℝ) + 1) * ((k : ℝ) + 2)))
+        - ((harmonic (N + 1) : ℝ) - 1) := by
+    rw [Finset.sum_range_succ']
+    simp only [Nat.cast_zero, Chebyshev.psi_zero]
+    rw [← sum_one_div_add_two N, ← Finset.sum_sub_distrib]
+    have : ∀ k ∈ Finset.range N,
+        (Chebyshev.psi (k + 1) - ((k : ℝ) + 1)) / (((k : ℝ) + 1) * (((k : ℝ) + 1) + 1))
+          = Chebyshev.psi (k + 1) / (((k : ℝ) + 1) * ((k : ℝ) + 2)) - 1 / ((k : ℝ) + 2) := by
+      intro k _
+      have h1 : (0 : ℝ) < (k : ℝ) + 1 := by positivity
+      have h2 : (0 : ℝ) < (k : ℝ) + 2 := by positivity
+      field_simp
+      ring
+    rw [show ((0 : ℝ) - 0) / (0 * (0 + 1)) = 0 by norm_num, add_zero]
+    push_cast
+    exact Finset.sum_congr rfl this
+  rw [hsum]
+  simp only [smul_eq_mul, mul_one, sub_zero]
+  ring
+
 /--
 **Newman's convergent integral, in discrete form.**  The partial sums of the error series of
 Chebyshev's `ψ` against the main term converge:
