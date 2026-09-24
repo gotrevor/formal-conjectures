@@ -184,4 +184,72 @@ theorem sum_good_primeWeight_ge (hf : IsPMOneMultiplicative f) {A δ s ρ : ℝ}
   rw [hcongr] at hsplit
   linarith
 
+/-! ### The collapse over integers -/
+
+/-- A window of ratio `c` has relative gap at most `1 - 1/c`. -/
+@[category API, AMS 11]
+theorem gap_lt_of_le_mul {A ρ c : ℝ} {M M' : ℕ} (hM : 0 < (M : ℝ)) (hc1 : 1 < c)
+    (hMM' : (M : ℝ) ≤ (M' : ℝ)) (hcle : (M' : ℝ) ≤ c * M) (h : 1 - 1 / c < A - ρ) :
+    (((M' : ℝ)) - (M : ℝ)) / (M' : ℝ) < A - ρ := by
+  have hM' : 0 < (M' : ℝ) := lt_of_lt_of_le hM hMM'
+  have hc0 : (0 : ℝ) < c := by linarith
+  have hkey : ((M' : ℝ) - M) / M' = 1 - (M : ℝ) / M' := by field_simp
+  have hge : 1 / c ≤ (M : ℝ) / (M' : ℝ) := by
+    rw [div_le_div_iff₀ hc0 hM']
+    linarith
+  rw [hkey]
+  linarith
+
+/--
+**The window step for integers.**  Two good integers whose quotients are multiplicatively
+close carry the same value of `f`.
+
+This is `Wirsing.eq_of_mean_quotient_close` with `x = f(m)`, `y = f(n)`; nothing about primes
+is used there, which is exactly why the argument transfers to integers.
+-/
+@[category API, AMS 11]
+theorem eq_of_window (hf : IsPMOneMultiplicative f) {A ρ s : ℝ} {N n m : ℕ}
+    (hn : 1 ≤ n) (hm : 1 ≤ m) (hM : 1 ≤ N / n) (hMM' : N / n ≤ N / m) (hs : |s| = 1)
+    (hgn : A - ρ ≤ s * (f n * mean f (N / n)))
+    (hgm : A - ρ ≤ s * (f m * mean f (N / m)))
+    (hclose : (((N / m : ℕ) : ℝ) - ((N / n : ℕ) : ℝ)) / ((N / m : ℕ) : ℝ) < A - ρ) :
+    f m = f n :=
+  eq_of_mean_quotient_close f hf hM hMM' hs (abs_eq_one_of_one_le f hf hm)
+    (abs_eq_one_of_one_le f hf hn) hgm hgn hclose
+
+/--
+**The collapse over integers.**  Two *coprime* good integers in one multiplicative window
+force `f(nm) = 1`.
+
+The window step makes `f(m) = f(n)`, and multiplicativity on coprime arguments then gives
+`f(nm) = f(n)f(m) = f(n)^2 = 1`.
+
+The coprimality is essential and is where this differs from the prime version: `f` is
+multiplicative only on coprime arguments, so `f(n^2)` is *not* `f(n)^2` and is in fact
+completely unconstrained.  The squaring happens in the character, never in `f` itself.  A
+window of ratio `c` around `M` contains the coprime pair `M+1, M+2` as soon as
+`M(c-1) \ge 2`, so the pair always exists once `M` is large — and, unlike for primes, counting
+integers in a short multiplicative window is elementary
+(`Wirsing.abs_harmonicSum_sub_sub_log_le`).
+-/
+@[category API, AMS 11]
+theorem eq_one_of_coprime_window (hf : IsPMOneMultiplicative f) {A ρ s : ℝ} {N n m : ℕ}
+    (hn : 1 ≤ n) (hm : 1 ≤ m) (hcop : Nat.Coprime n m)
+    (hM : 1 ≤ N / n) (hMM' : N / n ≤ N / m) (hs : |s| = 1)
+    (hgn : A - ρ ≤ s * (f n * mean f (N / n)))
+    (hgm : A - ρ ≤ s * (f m * mean f (N / m)))
+    (hclose : (((N / m : ℕ) : ℝ) - ((N / n : ℕ) : ℝ)) / ((N / m : ℕ) : ℝ) < A - ρ) :
+    f (n * m) = 1 := by
+  have heq := eq_of_window f hf hn hm hM hMM' hs hgn hgm hclose
+  rw [hf.map_mul_of_coprime n m hcop, heq]
+  rcases hf.pmOne n hn with hv | hv <;> rw [hv] <;> norm_num
+
+/-- A multiplicative window of ratio `c` around `M` contains the coprime pair `M+1, M+2`. -/
+@[category API, AMS 11]
+theorem coprime_succ_succ (M : ℕ) : Nat.Coprime (M + 1) (M + 2) := by
+  unfold Nat.Coprime
+  rw [show M + 2 = (M + 1) + 1 by ring, Nat.gcd_comm, Nat.gcd_rec]
+  simp
+
 end Wirsing
+
