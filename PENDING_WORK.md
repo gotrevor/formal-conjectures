@@ -18,7 +18,45 @@ It is now reduced to `Wirsing.exists_hasMeanValue` in
    Elementary for `±1`-valued `f`: `g = f * μ` has `∑_n |g n|/n < ∞`, so Wintner's mean
    value theorem applies. Not the crux, but a genuine multi-week chunk.
 
-## Attack on the crux
+## Attack on the crux — route C (log-weighted), current
+
+Routes A and B are recorded below for the record; **route C is the live attack**.
+
+### Proved, sorry-free (2026-09-24, lap 3): the engine identity
+
+`Wirsing.abs_logMean_mul_log_sub_defect_le` in `Wirsing/Log.lean`, for every `±1`-valued
+multiplicative `f` and every `N`:
+
+    |L(N)·log N - ∑_{p ≤ N} (log p / p)·(1 + f p)·L(⌊N/p⌋)| ≤ (27 + 2 log 4)(1 + log N)
+
+where `L(N) = ∑_{n ≤ N} f(n)/n`.  It composes the three proved relations
+
+* `Ψ  = ∑_p (log p/p) f(p) L(⌊N/p⌋) + O(log N)`   (`abs_sum_div_mul_log_sub_sum_prime_le`)
+* `P  = B + O(log N)`                              (`abs_sum_prime_sub_sum_one_div_logMean_le`)
+* `B  = L(N) log N - Ψ + O(log N)`                 (`abs_sum_one_div_mul_logMean_sub_le`)
+
+with `f(p) = -1 + (1 + f(p))`; `Ψ` and `B` both cancel.  The model case `f(p) = -1` for all
+`p` (`abs_logMean_mul_log_le`, defect weight identically zero) is now a one-line corollary.
+
+The defect weight `1 + f(p)` vanishes exactly on the primes counted by the divergent series
+of the hypothesis, so this identity is the exact place where the hypothesis enters.
+
+### Next, in order
+
+1. **Halász in logarithmic form**: `L(N) = o(log N)` when `∑_{p} (1 - f p)/p = ∞`.
+   Feed the engine identity into a Gronwall/limsup induction on `A = limsup |L(N)|/log N`.
+   The crude step (`|L(⌊N/p⌋)| ≤ 1 + log(N/p)`, Mertens partial summation) only reproves
+   `|L(N)| ≤ log N`: a genuine iteration is required, exploiting that `u ↦ L(e^u)` is
+   1-Lipschitz (`abs_logMean_sub_le`).
+2. **Tauberian step `L ⇒ σ`**: from `L(N) = o(log N)` and
+   `abs_mean_mul_log_sub_sum_prime_le` (`σ(N)log N = ∑_p (log p/p) f(p) σ(⌊N/p⌋) + O(1)`),
+   deduce `mean f N → 0`.  Note `L(N) - σ(N) = ∑_{n<N} σ(n)/(n+1)`, so step 1 says the
+   log-average of `σ` vanishes; `σ` is Lipschitz in `log N`, but that alone is not enough
+   (cancellation, not absolute smallness), so this step needs the `σ` relation as well.
+3. **Wintner half** (`exists_hasMeanValue_of_summable`) — independent, elementary, untouched.
+
+## Earlier routes (for the record)
+
 
 Two routes were weighed on 2026-09-24.  **Route B is the chosen one.**
 

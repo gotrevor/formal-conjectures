@@ -957,48 +957,71 @@ theorem abs_sum_prime_sub_sum_one_div_logMean_le (hf : IsPMOneMultiplicative f) 
   _ = 2 * c * (1 + Real.log N) := by ring
 
 /--
-**The model case of route C.**  If `f(p) = -1` for every prime `p`, then
-$L(N)\log N = O(\log N)$, so the logarithmic average $L(N) = \sum_{n \le N} f(n)/n$ stays
-bounded.
+**The engine identity of route C.**  For every `±1`-valued multiplicative `f`,
+$$L(N)\log N = \sum_{p \le N} \frac{\log p}{p}\,(1 + f(p))\,L(\lfloor N/p\rfloor) + O(\log N).$$
 
-This is the first genuine gain of the log-weighted route: the naive `limsup` argument
-applied to `mean f` only ever gives `A ≤ A`, whereas here the two sides of the identity
-cancel exactly and leave a factor `log N` of room.
+The defect weight `1 + f(p)` vanishes exactly on the primes with `f(p) = -1`, which are the
+primes counted by the divergent series of Wirsing's hypothesis.  All three inputs
+(`abs_sum_div_mul_log_sub_sum_prime_le`, `abs_sum_prime_sub_sum_one_div_logMean_le`,
+`abs_sum_one_div_mul_logMean_sub_le`) compose so that the log-weighted sum
+`∑_{n ≤ N} f(n)\log n / n` and the harmonic sum `∑_{k ≤ N} L(⌊N/k⌋)/k` both cancel.
 -/
 @[category API, AMS 11]
-theorem abs_logMean_mul_log_le (hf : IsPMOneMultiplicative f)
-    (hneg : ∀ p : ℕ, p.Prime → f p = -1) (N : ℕ) :
-    |logMean f N * Real.log N| ≤ (27 + 2 * Real.log 4) * (1 + Real.log N) := by
+theorem abs_logMean_mul_log_sub_defect_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |logMean f N * Real.log N
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / p * ((1 + f p) * logMean f (N / p))|
+      ≤ (27 + 2 * Real.log 4) * (1 + Real.log N) := by
   classical
   set P := ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * logMean f (N / p) with hP
   set B := ∑ k ∈ Icc 1 N, (1 : ℝ) / k * logMean f (N / k) with hB
   set S := ∑ n ∈ Icc 1 N, (f n / n) * Real.log n with hS
   set T := logMean f N * Real.log N with hT
+  set D := ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+    Real.log p / p * ((1 + f p) * logMean f (N / p)) with hD
   have hsign : (∑ p ∈ (Icc 1 N).filter Nat.Prime,
-      Real.log p / p * (f p * logMean f (N / p))) = -P := by
-    rw [hP, ← Finset.sum_neg_distrib]
-    refine Finset.sum_congr rfl fun p hp ↦ ?_
-    rw [hneg p (mem_filter.1 hp).2]
-    ring
+      Real.log p / p * (f p * logMean f (N / p))) = D - P := by
+    rw [hD, hP, ← Finset.sum_sub_distrib]
+    exact Finset.sum_congr rfl fun p _ ↦ by ring
   have e1 := abs_sum_div_mul_log_sub_sum_prime_le f hf N
   rw [hsign, ← hS] at e1
   have e2 := abs_sum_prime_sub_sum_one_div_logMean_le f hf N
   rw [← hP, ← hB] at e2
   have e3 := abs_sum_one_div_mul_logMean_sub_le f hf N
   rw [← hB, ← hS, ← hT] at e3
-  have t1 := abs_sub ((S - -P) - (P - B)) (B - (T - S))
-  have t2 := abs_sub (S - -P) (P - B)
-  have hid : T = (S - -P) - (P - B) - (B - (T - S)) := by ring
-  have habs : |T| ≤ |S - -P| + |P - B| + |B - (T - S)| := by
-    have heq : |T| = |(S - -P) - (P - B) - (B - (T - S))| := by rw [← hid]
-    rw [heq]
-    linarith [t1, t2]
+  have t1 := abs_sub ((S - (D - P)) - (P - B)) (B - (T - S))
+  have t2 := abs_sub (S - (D - P)) (P - B)
+  have hid : T - D = (S - (D - P)) - (P - B) - (B - (T - S)) := by ring
+  have habs : |T - D| ≤ |S - (D - P)| + |P - B| + |B - (T - S)| := by
+    rw [hid]; linarith [t1, t2]
   have hlogN : 0 ≤ 1 + Real.log N := by
     have := Real.log_natCast_nonneg N
     linarith
-  calc |T| ≤ |S - -P| + |P - B| + |B - (T - S)| := habs
+  calc |T - D| ≤ |S - (D - P)| + |P - B| + |B - (T - S)| := habs
   _ ≤ 8 * (1 + Real.log N) + 2 * (Real.log 4 + 9) * (1 + Real.log N) + (1 + Real.log N) := by
         linarith [e1, e2, e3]
   _ = (27 + 2 * Real.log 4) * (1 + Real.log N) := by ring
+
+/--
+**The model case of route C.**  If `f(p) = -1` for every prime `p`, then
+$L(N)\log N = O(\log N)$, so the logarithmic average $L(N) = \sum_{n \le N} f(n)/n$ stays
+bounded.
+
+This is the first genuine gain of the log-weighted route: the naive `limsup` argument
+applied to `mean f` only ever gives `A ≤ A`, whereas here the defect weight `1 + f(p)` of
+`abs_logMean_mul_log_sub_defect_le` vanishes identically and leaves a factor `log N` of room.
+-/
+@[category API, AMS 11]
+theorem abs_logMean_mul_log_le (hf : IsPMOneMultiplicative f)
+    (hneg : ∀ p : ℕ, p.Prime → f p = -1) (N : ℕ) :
+    |logMean f N * Real.log N| ≤ (27 + 2 * Real.log 4) * (1 + Real.log N) := by
+  classical
+  have h := abs_logMean_mul_log_sub_defect_le f hf N
+  have hzero : (∑ p ∈ (Icc 1 N).filter Nat.Prime,
+      Real.log p / p * ((1 + f p) * logMean f (N / p))) = 0 := by
+    refine Finset.sum_eq_zero fun p hp ↦ ?_
+    rw [hneg p (mem_filter.1 hp).2]
+    ring
+  rwa [hzero, sub_zero] at h
 
 end Wirsing
