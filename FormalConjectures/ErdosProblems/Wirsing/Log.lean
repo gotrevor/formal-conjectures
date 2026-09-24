@@ -1065,6 +1065,110 @@ theorem sum_one_div_mul_profile_le (N : ℕ) :
   rw [hsplit]
   nlinarith [h1, h2, h3]
 
+/-- `log` is monotone along `ℕ` casts, including at `0`. -/
+@[category API, AMS 11]
+theorem log_natCast_mono {a b : ℕ} (h : a ≤ b) : Real.log a ≤ Real.log b := by
+  rcases Nat.eq_zero_or_pos a with rfl | ha
+  · simpa using Real.log_natCast_nonneg b
+  · have haR : (0 : ℝ) < a := by exact_mod_cast ha
+    exact Real.log_le_log haR (by exact_mod_cast h)
+
+/-- The total variation of `k ↦ 1 + log ⌊N/k⌋` on `[1, N]` is at most `log N`. -/
+@[category API, AMS 11]
+theorem sum_abs_log_div_sub_le (N : ℕ) :
+    ∑ k ∈ Ico 1 N, |(1 + Real.log ((N / (k + 1) : ℕ) : ℝ)) - (1 + Real.log ((N / k : ℕ) : ℝ))|
+      ≤ Real.log N := by
+  have hterm : ∀ k ∈ Ico 1 N,
+      |(1 + Real.log ((N / (k + 1) : ℕ) : ℝ)) - (1 + Real.log ((N / k : ℕ) : ℝ))|
+        = Real.log ((N / k : ℕ) : ℝ) - Real.log ((N / (k + 1) : ℕ) : ℝ) := by
+    intro k hk
+    have hk1 : 1 ≤ k := (Finset.mem_Ico.1 hk).1
+    have hmono : Real.log ((N / (k + 1) : ℕ) : ℝ) ≤ Real.log ((N / k : ℕ) : ℝ) :=
+      log_natCast_mono (Nat.div_le_div_left (Nat.le_succ k) (by omega))
+    rw [abs_of_nonpos (by linarith)]
+    ring
+  calc ∑ k ∈ Ico 1 N,
+        |(1 + Real.log ((N / (k + 1) : ℕ) : ℝ)) - (1 + Real.log ((N / k : ℕ) : ℝ))|
+      = ∑ k ∈ Ico 1 N, (Real.log ((N / k : ℕ) : ℝ) - Real.log ((N / (k + 1) : ℕ) : ℝ)) :=
+        Finset.sum_congr rfl hterm
+  _ = Real.log ((N / 1 : ℕ) : ℝ) - Real.log ((N / (1 + (N - 1)) : ℕ) : ℝ) := by
+        rw [Finset.sum_Ico_eq_sum_range]
+        have : ∀ i ∈ range (N - 1),
+            Real.log ((N / (1 + i) : ℕ) : ℝ) - Real.log ((N / (1 + i + 1) : ℕ) : ℝ)
+              = (fun j ↦ Real.log ((N / (1 + j) : ℕ) : ℝ)) i
+                - (fun j ↦ Real.log ((N / (1 + j) : ℕ) : ℝ)) (i + 1) := by
+          intro i _
+          simp only
+          congr 2
+        rw [Finset.sum_congr rfl this,
+          Finset.sum_range_sub' (fun j ↦ Real.log ((N / (1 + j) : ℕ) : ℝ))]
+  _ ≤ Real.log N := by
+        have h2 : 0 ≤ Real.log ((N / (1 + (N - 1)) : ℕ) : ℝ) := Real.log_natCast_nonneg _
+        rw [Nat.div_one]
+        linarith
+
+/--
+The prime-weighted profile sum: replacing the harmonic weights by the prime weights
+`log p / p` in `Wirsing.sum_one_div_mul_profile_le` costs `O(log N)`.
+$$\sum_{p \le N} \frac{\log p}{p}\bigl(1 + \log\lfloor N/p\rfloor\bigr)
+  \le \tfrac12 (\log N)^2 + O(\log N).$$
+-/
+@[category API, AMS 11]
+theorem sum_primeWeight_mul_profile_le (N : ℕ) :
+    (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ)))
+      ≤ Real.log N ^ 2 / 2 + (11 + Real.log 4) * (1 + Real.log N) := by
+  classical
+  set c := Real.log 4 + 9 with hc
+  set g : ℕ → ℝ := fun k ↦ 1 + Real.log ((N / k : ℕ) : ℝ) with hg
+  have hcnn : 0 ≤ c := by
+    have : (0 : ℝ) ≤ Real.log 4 := Real.log_nonneg (by norm_num)
+    simp only [hc]; linarith
+  have hlogN : 0 ≤ Real.log (N : ℝ) := Real.log_natCast_nonneg N
+  have hkey := abs_sum_weight_sub_le primeWeight g (fun k ↦ (1 : ℝ) / k) N c
+    (fun n _ ↦ abs_sum_primeWeight_sub_harmonicSum_le n)
+  rw [sum_primeWeight_mul] at hkey
+  have hgN : |g N| ≤ 1 := by
+    rcases Nat.eq_zero_or_pos N with rfl | hN
+    · simp [hg]
+    · rw [hg]
+      simp only [Nat.div_self hN, Nat.cast_one, Real.log_one, add_zero, abs_one]
+      exact le_rfl
+  have hvar : ∑ k ∈ Ico 1 N, |g (k + 1) - g k| ≤ Real.log N := sum_abs_log_div_sub_le N
+  -- the harmonic side
+  have hharm : (∑ k ∈ Icc 1 N, (1 : ℝ) / k * g k)
+      ≤ Real.log N ^ 2 / 2 + 2 * Real.log N + 2 := by
+    refine le_trans (Finset.sum_le_sum fun k hk ↦ ?_) (sum_one_div_mul_profile_le N)
+    have hk1 : 1 ≤ k := (mem_Icc.1 hk).1
+    have hkN : k ≤ N := (mem_Icc.1 hk).2
+    have hkR : (0 : ℝ) < k := by exact_mod_cast hk1
+    refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+    have hle : Real.log ((N / k : ℕ) : ℝ) ≤ Real.log N - Real.log k := by
+      have hdiv : ((N / k : ℕ) : ℝ) ≤ (N : ℝ) / k := Nat.cast_div_le
+      have hNpos : (0 : ℝ) < (N : ℝ) := by exact_mod_cast lt_of_lt_of_le hk1 hkN
+      have hNk : (0 : ℝ) < (N : ℝ) / k := by positivity
+      have hdpos : 1 ≤ N / k := Nat.one_le_div_iff (by omega) |>.2 hkN
+      have hdposR : (0 : ℝ) < ((N / k : ℕ) : ℝ) := by
+        have : (1 : ℝ) ≤ ((N / k : ℕ) : ℝ) := by exact_mod_cast hdpos
+        linarith
+      have := Real.log_le_log hdposR hdiv
+      rwa [Real.log_div (ne_of_gt hNpos) (ne_of_gt hkR)] at this
+    rw [hg]
+    linarith
+  have hsum := abs_le.1 hkey
+  have : (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * g p)
+      ≤ (∑ k ∈ Icc 1 N, (1 : ℝ) / k * g k) + (c * |g N| + c * ∑ k ∈ Ico 1 N, |g (k + 1) - g k|) := by
+    linarith [hsum.2]
+  have hcbd : c * |g N| + c * ∑ k ∈ Ico 1 N, |g (k + 1) - g k| ≤ c * (1 + Real.log N) := by
+    have h1 : c * |g N| ≤ c * 1 := mul_le_mul_of_nonneg_left hgN hcnn
+    have h2 : c * ∑ k ∈ Ico 1 N, |g (k + 1) - g k| ≤ c * Real.log N :=
+      mul_le_mul_of_nonneg_left hvar hcnn
+    linarith
+  have hfinal : (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * g p)
+      ≤ Real.log N ^ 2 / 2 + 2 * Real.log N + 2 + c * (1 + Real.log N) := by linarith
+  simp only [hg] at hfinal ⊢
+  rw [hc] at hfinal
+  linarith
+
 /--
 **The engine identity of route C.**  For every `±1`-valued multiplicative `f`,
 $$L(N)\log N = \sum_{p \le N} \frac{\log p}{p}\,(1 + f(p))\,L(\lfloor N/p\rfloor) + O(\log N).$$
