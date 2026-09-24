@@ -491,4 +491,148 @@ theorem abs_sum_div_shift_prime_sub_le (hf : IsPMOneMultiplicative f) {p M : ℕ
           · exact Real.log_le_log (by exact_mod_cast h) this
         linarith
 
+/-- `log ⌊N/d⌋ ≤ log N`. -/
+@[category API, AMS 11]
+theorem log_natCast_div_le (N d : ℕ) : Real.log ((N / d : ℕ) : ℝ) ≤ Real.log N := by
+  rcases Nat.eq_zero_or_pos (N / d) with h | h
+  · rw [h]
+    simpa using Real.log_natCast_nonneg N
+  · exact Real.log_le_log (by exact_mod_cast h) (by exact_mod_cast Nat.div_le_self N d)
+
+/-- The shifted logarithmic averages are bounded by `1 + log M`. -/
+@[category API, AMS 11]
+theorem abs_sum_div_shift_le (hf : IsPMOneMultiplicative f) {d : ℕ} (hd : 1 ≤ d) (M : ℕ) :
+    |∑ m ∈ Icc 1 M, f (d * m) / m| ≤ 1 + Real.log M := by
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  have hterm : ∀ m ∈ Icc 1 M, |f (d * m) / m| = 1 / m := by
+    intro m hm
+    have hm1 : 1 ≤ m := (mem_Icc.1 hm).1
+    have hmR : (0 : ℝ) < m := by exact_mod_cast hm1
+    rw [abs_div, abs_eq_one_of_one_le f hf (Nat.mul_pos hd hm1), abs_of_nonneg hmR.le]
+  rw [Finset.sum_congr rfl hterm]
+  exact sum_one_div_le M
+
+/--
+The log-weighted relation for the logarithmic average:
+$$\sum_{n \le N} \frac{f(n)}{n}\log n
+  = \sum_{p \le N} \frac{\log p}{p} f(p)\, L(\lfloor N/p \rfloor) + O(\log N).$$
+-/
+@[category API, AMS 11]
+theorem abs_sum_div_mul_log_sub_sum_prime_le (hf : IsPMOneMultiplicative f) (N : ℕ) :
+    |(∑ n ∈ Icc 1 N, (f n / n) * Real.log n)
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / p * (f p * logMean f (N / p))| ≤ 8 * (1 + Real.log N) := by
+  classical
+  have hlogN : 0 ≤ 1 + Real.log N := by
+    have := Real.log_natCast_nonneg N
+    linarith
+  have hsplit : ∑ d ∈ Icc 1 N,
+        (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m
+      = (∑ d ∈ (Icc 1 N).filter Nat.Prime,
+          (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m)
+        + ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+          (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m :=
+    (Finset.sum_filter_add_sum_filter_not _ _ _).symm
+  -- the proper prime powers
+  have h1 : |∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+      (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m|
+      ≤ 4 * (1 + Real.log N) := by
+    refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+    calc ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+          |(ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m|
+        ≤ ∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+            (ArithmeticFunction.vonMangoldt d / d) * (1 + Real.log N) := by
+          refine Finset.sum_le_sum fun d hd ↦ ?_
+          have hd1 : 1 ≤ d := (mem_Icc.1 (mem_filter.1 hd).1).1
+          have hdR : (0 : ℝ) < d := by exact_mod_cast hd1
+          have hnn : 0 ≤ ArithmeticFunction.vonMangoldt d / d :=
+            div_nonneg ArithmeticFunction.vonMangoldt_nonneg hdR.le
+          rw [abs_mul, abs_of_nonneg hnn]
+          refine mul_le_mul_of_nonneg_left ?_ hnn
+          exact (abs_sum_div_shift_le f hf hd1 _).trans (by linarith [log_natCast_div_le N d])
+    _ = (∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+          ArithmeticFunction.vonMangoldt d / d) * (1 + Real.log N) := (Finset.sum_mul _ _ _).symm
+    _ ≤ 4 * (1 + Real.log N) :=
+          mul_le_mul_of_nonneg_right (Mertens.sum_vonMangoldt_div_nonprime_le N) hlogN
+  -- the prime terms
+  have hprime : (∑ d ∈ (Icc 1 N).filter Nat.Prime,
+        (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m)
+      = ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / p * ∑ m ∈ Icc 1 (N / p), f (p * m) / m :=
+    Finset.sum_congr rfl fun d hd ↦ by
+      rw [ArithmeticFunction.vonMangoldt_apply_prime (mem_filter.1 hd).2]
+  have h2 : |(∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * ∑ m ∈ Icc 1 (N / p), f (p * m) / m)
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / p * (f p * logMean f (N / p))| ≤ 4 * (1 + Real.log N) := by
+    rw [← Finset.sum_sub_distrib]
+    refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+    calc ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          |Real.log p / p * (∑ m ∈ Icc 1 (N / p), f (p * m) / m)
+            - Real.log p / p * (f p * logMean f (N / p))|
+        ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+            2 * (1 + Real.log N) * (Real.log p / (p : ℝ) ^ 2) := by
+          refine Finset.sum_le_sum fun p hp ↦ ?_
+          have hpp : p.Prime := (mem_filter.1 hp).2
+          have hpR : (0 : ℝ) < p := by exact_mod_cast hpp.pos
+          have hlog : 0 ≤ Real.log p := Real.log_natCast_nonneg _
+          have hnn : 0 ≤ Real.log p / p := div_nonneg hlog hpR.le
+          rw [← mul_sub, abs_mul, abs_of_nonneg hnn]
+          have hshift := abs_sum_div_shift_prime_sub_le f hf (p := p) (M := N / p) hpp
+          have hmono : 2 / (p : ℝ) * (1 + Real.log ((N / p : ℕ) : ℝ))
+              ≤ 2 / (p : ℝ) * (1 + Real.log N) := by
+            refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+            linarith [log_natCast_div_le N p]
+          calc Real.log p / p * |(∑ m ∈ Icc 1 (N / p), f (p * m) / m)
+                - f p * logMean f (N / p)|
+              ≤ Real.log p / p * (2 / (p : ℝ) * (1 + Real.log N)) :=
+                mul_le_mul_of_nonneg_left (hshift.trans hmono) hnn
+          _ = 2 * (1 + Real.log N) * (Real.log p / (p : ℝ) ^ 2) := by
+                field_simp
+    _ = 2 * (1 + Real.log N) * ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / (p : ℝ) ^ 2 := (Finset.mul_sum _ _ _).symm
+    _ ≤ 2 * (1 + Real.log N) * 2 := by
+          refine mul_le_mul_of_nonneg_left ?_ (by linarith)
+          refine (Finset.sum_le_sum_of_subset_of_nonneg ?_ fun n _ _ ↦
+            div_nonneg (Real.log_natCast_nonneg _) (by positivity)).trans
+            (Mertens.sum_log_div_sq_le N)
+          intro q hq
+          simp only [mem_filter, mem_Icc] at hq
+          exact mem_Icc.2 ⟨hq.2.two_le, hq.1.2⟩
+    _ = 4 * (1 + Real.log N) := by ring
+  have hid := sum_Icc_div_mul_log f N
+  rw [hsplit, hprime] at hid
+  rw [hid]
+  calc |(∑ p ∈ (Icc 1 N).filter Nat.Prime,
+        Real.log p / p * ∑ m ∈ Icc 1 (N / p), f (p * m) / m)
+      + (∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+        (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m)
+      - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (f p * logMean f (N / p))|
+      ≤ |(∑ p ∈ (Icc 1 N).filter Nat.Prime,
+            Real.log p / p * ∑ m ∈ Icc 1 (N / p), f (p * m) / m)
+          - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (f p * logMean f (N / p))|
+        + |∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+            (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m| := by
+        have := abs_add_le
+          ((∑ p ∈ (Icc 1 N).filter Nat.Prime,
+              Real.log p / p * ∑ m ∈ Icc 1 (N / p), f (p * m) / m)
+            - ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (f p * logMean f (N / p)))
+          (∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+            (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m)
+        calc |(∑ p ∈ (Icc 1 N).filter Nat.Prime,
+              Real.log p / p * ∑ m ∈ Icc 1 (N / p), f (p * m) / m)
+            + (∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+              (ArithmeticFunction.vonMangoldt d / d) * ∑ m ∈ Icc 1 (N / d), f (d * m) / m)
+            - ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+                Real.log p / p * (f p * logMean f (N / p))|
+            = |((∑ p ∈ (Icc 1 N).filter Nat.Prime,
+                  Real.log p / p * ∑ m ∈ Icc 1 (N / p), f (p * m) / m)
+                - ∑ p ∈ (Icc 1 N).filter Nat.Prime,
+                    Real.log p / p * (f p * logMean f (N / p)))
+              + (∑ d ∈ (Icc 1 N).filter (fun d ↦ ¬ d.Prime),
+                  (ArithmeticFunction.vonMangoldt d / d)
+                    * ∑ m ∈ Icc 1 (N / d), f (d * m) / m)| := by ring_nf
+        _ ≤ _ := this
+  _ ≤ 8 * (1 + Real.log N) := by linarith [h1, h2]
+
 end Wirsing
