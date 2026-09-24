@@ -280,4 +280,65 @@ theorem exists_hasMeanValue_of_summable' (hf : IsPMOneMultiplicative f)
     (h : Summable (pretentiousSeries f)) : ∃ L, HasMeanValue f L :=
   ⟨_, hasMeanValue_of_summable_wintnerCoeff f (summable_abs_wintnerCoeff_div f hf h)⟩
 
+/-- `g(d) = ∑_{e ∣ d} μ(e) f(d/e)`. -/
+@[category API, AMS 11]
+theorem wintnerCoeff_eq_sum_divisors (n : ℕ) :
+    wintnerCoeff f n = ∑ d ∈ n.divisors, (ArithmeticFunction.moebius d : ℝ) * f (n / d) := by
+  rw [wintnerCoeff, Nat.sum_divisorsAntidiagonal
+    (f := fun a b ↦ (ArithmeticFunction.moebius a : ℝ) * f b)]
+
+/-- **The Möbius transform on prime powers:** `g(p^k) = f(p^k) - f(p^{k-1})`. -/
+@[category API, AMS 11]
+theorem wintnerCoeff_prime_pow {p k : ℕ} (hp : p.Prime) (hk : 1 ≤ k) :
+    wintnerCoeff f (p ^ k) = f (p ^ k) - f (p ^ (k - 1)) := by
+  rw [wintnerCoeff_eq_sum_divisors, Nat.sum_divisors_prime_pow hp]
+  have hkey : ∀ x ∈ range (k + 1),
+      (ArithmeticFunction.moebius (p ^ x) : ℝ) * f (p ^ k / p ^ x)
+        = if x = 0 then f (p ^ k) else if x = 1 then -f (p ^ (k - 1)) else 0 := by
+    intro x hx
+    rw [Finset.mem_range] at hx
+    have hxk : x ≤ k := by omega
+    rw [Nat.pow_div hxk hp.pos]
+    rcases Nat.eq_zero_or_pos x with rfl | hx0
+    · simp
+    · rcases eq_or_ne x 1 with rfl | hx1
+      · simp [ArithmeticFunction.moebius_apply_prime hp]
+      · rw [ArithmeticFunction.moebius_apply_prime_pow hp (by omega), if_neg hx1,
+          if_neg (by omega : ¬ x = 0), if_neg hx1]
+        simp
+  rw [Finset.sum_congr rfl hkey,
+    show range (k + 1) = insert 0 (insert 1 (Finset.Icc 2 k)) from by
+      ext x
+      simp only [Finset.mem_range, Finset.mem_insert, Finset.mem_Icc]
+      omega,
+    Finset.sum_insert (by simp), Finset.sum_insert (by simp)]
+  rw [Finset.sum_eq_zero (fun x hx ↦ by
+    have hx2 : 2 ≤ x := (Finset.mem_Icc.1 hx).1
+    rw [if_neg (by omega : ¬ x = 0), if_neg (by omega : ¬ x = 1)])]
+  norm_num [sub_eq_add_neg]
+
+/-- `|g(p)| = 1 - f(p)`, the term of `Wirsing.pretentiousSeries` at `p`. -/
+@[category API, AMS 11]
+theorem abs_wintnerCoeff_prime (hf : IsPMOneMultiplicative f) {p : ℕ} (hp : p.Prime) :
+    |wintnerCoeff f p| = 1 - f p := by
+  have h : wintnerCoeff f (p ^ 1) = f (p ^ 1) - f (p ^ 0) :=
+    wintnerCoeff_prime_pow f hp le_rfl
+  rw [pow_one, pow_zero, hf.map_one] at h
+  rw [h]
+  rcases hf.pmOne p hp.pos with hval | hval
+  · rw [hval]; norm_num
+  · rw [hval]; norm_num
+
+/-- `|g(p^k)| ≤ 2` for every `k ≥ 1`. -/
+@[category API, AMS 11]
+theorem abs_wintnerCoeff_prime_pow_le (hf : IsPMOneMultiplicative f) {p k : ℕ} (hp : p.Prime)
+    (hk : 1 ≤ k) : |wintnerCoeff f (p ^ k)| ≤ 2 := by
+  rw [wintnerCoeff_prime_pow f hp hk]
+  have h1 : |f (p ^ k)| = 1 :=
+    abs_eq_one_of_one_le f hf (Nat.one_le_pow _ _ hp.pos)
+  have h2 : |f (p ^ (k - 1))| = 1 :=
+    abs_eq_one_of_one_le f hf (Nat.one_le_pow _ _ hp.pos)
+  calc |f (p ^ k) - f (p ^ (k - 1))| ≤ |f (p ^ k)| + |f (p ^ (k - 1))| := abs_sub _ _
+    _ = 2 := by rw [h1, h2]; norm_num
+
 end Wirsing
