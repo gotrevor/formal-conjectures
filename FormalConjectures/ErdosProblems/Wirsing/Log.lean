@@ -1342,4 +1342,96 @@ theorem abs_logMean_mul_log_le_of_profile (hf : IsPMOneMultiplicative f) {N : �
     linarith
   nlinarith [hmain, hprof, hα, hlogN]
 
+/-- `log(N/p) ≤ 1 + log ⌊N/p⌋`: the floor costs at most `log 2 ≤ 1`. -/
+@[category API, AMS 11]
+theorem sub_log_le_one_add_log_div {N p : ℕ} (hp : 1 ≤ p) (hpN : p ≤ N) :
+    Real.log N - Real.log p ≤ 1 + Real.log ((N / p : ℕ) : ℝ) := by
+  have hq1 : 1 ≤ N / p := (Nat.one_le_div_iff (by omega)).2 hpN
+  have hpR : (0 : ℝ) < p := by exact_mod_cast hp
+  have hNpos : (0 : ℝ) < N := by
+    have : 1 ≤ N := le_trans hp hpN
+    exact_mod_cast this
+  have hqR : (1 : ℝ) ≤ ((N / p : ℕ) : ℝ) := by exact_mod_cast hq1
+  have hlt : N < p * (2 * (N / p)) := by
+    have h : N < (N / p + 1) * p :=
+      (Nat.div_lt_iff_lt_mul (show 0 < p by omega)).1 (Nat.lt_succ_self _)
+    calc N < (N / p + 1) * p := h
+    _ ≤ (2 * (N / p)) * p := by
+          have : N / p + 1 ≤ 2 * (N / p) := by omega
+          exact Nat.mul_le_mul_right p this
+    _ = p * (2 * (N / p)) := by ring
+  have hltR : (N : ℝ) < (p : ℝ) * (2 * ((N / p : ℕ) : ℝ)) := by
+    have : ((N : ℕ) : ℝ) < ((p * (2 * (N / p)) : ℕ) : ℝ) := by exact_mod_cast hlt
+    push_cast at this
+    linarith
+  have hlog := Real.log_lt_log hNpos hltR
+  rw [Real.log_mul (ne_of_gt hpR) (by positivity), Real.log_mul (by norm_num) (by linarith)] at hlog
+  have hlog2 : Real.log 2 ≤ 1 := by
+    have := Real.log_le_sub_one_of_pos (show (0:ℝ) < 2 by norm_num)
+    linarith
+  linarith
+
+open scoped Classical in
+/-- `r(K) = ∑_{p ≤ K, f p = -1} log p / p`, the log-weighted bad prime sum. -/
+noncomputable def badLogSum (f : ℕ → ℝ) (K : ℕ) : ℝ :=
+  ∑ p ∈ badPrimesLE f K, Real.log p / p
+
+open scoped Classical in
+/-- `r(K) ≥ log 2 · E(K)`, so the log-weighted bad prime sum also diverges. -/
+@[category API, AMS 11]
+theorem log_two_mul_badPrimeSum_le_badLogSum (K : ℕ) :
+    Real.log 2 * badPrimeSum f K ≤ badLogSum f K := by
+  rw [badLogSum, badPrimeSum, Finset.mul_sum]
+  refine Finset.sum_le_sum fun p hp ↦ ?_
+  have hpp : p.Prime := by
+    rw [badPrimesLE, Finset.mem_filter] at hp
+    exact hp.2.1
+  have hp2 : (2 : ℝ) ≤ p := by exact_mod_cast hpp.two_le
+  have hpR : (0 : ℝ) < p := by linarith
+  rw [mul_one_div, div_le_div_iff₀ hpR hpR]
+  exact mul_le_mul_of_nonneg_right (Real.log_le_log (by norm_num) hp2) hpR.le
+
+open scoped Classical in
+/--
+The lower bound for the bad-prime profile: only the bad primes `p ≤ K` are kept, and each
+contributes at least `log N - log K`.
+-/
+@[category API, AMS 11]
+theorem mul_badLogSum_le_badProfile {K N : ℕ} (hKN : K ≤ N) : (Real.log N - Real.log K) * badLogSum f K ≤ badProfile f N := by
+  have hsub : badPrimesLE f K ⊆ (Icc 1 N).filter (fun p ↦ p.Prime ∧ f p = -1) := by
+    intro p hp
+    rw [badPrimesLE, Finset.mem_filter, Finset.mem_range] at hp
+    rw [Finset.mem_filter, mem_Icc]
+    exact ⟨⟨hp.2.1.one_lt.le.trans' (by norm_num), by omega⟩, hp.2⟩
+  have hnn : ∀ p ∈ (Icc 1 N).filter (fun p ↦ p.Prime ∧ f p = -1),
+      p ∉ badPrimesLE f K → 0 ≤ Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ)) := by
+    intro p hp _
+    have hpp : p.Prime := (Finset.mem_filter.1 hp).2.1
+    have hp2 : (1 : ℝ) ≤ p := by exact_mod_cast hpp.one_lt.le
+    have h1 : 0 ≤ Real.log p / p := div_nonneg (Real.log_nonneg hp2) (by linarith)
+    have h2 : 0 ≤ 1 + Real.log ((N / p : ℕ) : ℝ) := by
+      have := Real.log_natCast_nonneg (N / p)
+      linarith
+    exact mul_nonneg h1 h2
+  rw [badProfile]
+  refine le_trans ?_ (Finset.sum_le_sum_of_subset_of_nonneg hsub hnn)
+  rw [badLogSum, Finset.mul_sum]
+  refine Finset.sum_le_sum fun p hp ↦ ?_
+  rw [badPrimesLE, Finset.mem_filter, Finset.mem_range] at hp
+  have hpp : p.Prime := hp.2.1
+  have hp1 : 1 ≤ p := hpp.one_lt.le.trans' (by norm_num)
+  have hpK : p ≤ K := by omega
+  have hpN : p ≤ N := le_trans hpK hKN
+  have hwnn : 0 ≤ Real.log p / p := by
+    have hp2 : (1 : ℝ) ≤ p := by exact_mod_cast hp1
+    exact div_nonneg (Real.log_nonneg hp2) (by linarith)
+  have hlogpK : Real.log p ≤ Real.log K := log_natCast_mono hpK
+  have hstep : Real.log N - Real.log K ≤ 1 + Real.log ((N / p : ℕ) : ℝ) := by
+    have := sub_log_le_one_add_log_div (N := N) (p := p) hp1 hpN
+    linarith
+  calc (Real.log N - Real.log K) * (Real.log p / p)
+      = Real.log p / p * (Real.log N - Real.log K) := by ring
+  _ ≤ Real.log p / p * (1 + Real.log ((N / p : ℕ) : ℝ)) :=
+        mul_le_mul_of_nonneg_left hstep hwnn
+
 end Wirsing
