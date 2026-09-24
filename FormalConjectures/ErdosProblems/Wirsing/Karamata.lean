@@ -161,4 +161,63 @@ theorem abs_functional_le (ha : ∀ n, 0 ≤ a n) {x : ℝ} (hx : 0 < x)
         exact mul_le_mul_of_nonneg_left (hg _ (rpow_neg_mem_Icc hx n)) h1
     _ = M * ∑' n : ℕ, a n * (n : ℝ) ^ (-x) := tsum_mul_left
 
+/-- A continuous function is bounded on `[0,1]`. -/
+@[category API, AMS 11]
+theorem exists_bound_of_continuousOn {g : ℝ → ℝ} (hg : ContinuousOn g (Set.Icc 0 1)) :
+    ∃ M : ℝ, ∀ u ∈ Set.Icc (0 : ℝ) 1, |g u| ≤ M := by
+  obtain ⟨M, hM⟩ := isCompact_Icc.exists_bound_of_continuousOn hg
+  exact ⟨M, fun u hu ↦ by simpa [Real.norm_eq_abs] using hM u hu⟩
+
+/-- **The monomial limit.**  `Λ_x(u^k) → c/(k+1) = c∫_0^1 u^k`. -/
+@[category API, AMS 11]
+theorem tendsto_functional_pow (ha0 : a 0 = 0) {c : ℝ}
+    (hlim : Tendsto (fun x ↦ x * series a x) (𝓝[>] (0 : ℝ)) (𝓝 c)) (k : ℕ) :
+    Tendsto (fun x ↦ functional a x (fun u ↦ u ^ k)) (𝓝[>] (0 : ℝ))
+      (𝓝 (c / ((k : ℝ) + 1))) := by
+  have hk1 : (0 : ℝ) < (k : ℝ) + 1 := by positivity
+  have hscale : Tendsto (fun x : ℝ ↦ ((k : ℝ) + 1) * x) (𝓝[>] (0 : ℝ)) (𝓝[>] (0 : ℝ)) := by
+    refine tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within _ ?_ ?_
+    · have hc : Tendsto (fun x : ℝ ↦ ((k : ℝ) + 1) * x) (𝓝 0) (𝓝 (((k : ℝ) + 1) * 0)) :=
+        (continuous_const.mul continuous_id).tendsto 0
+      simpa using hc.mono_left nhdsWithin_le_nhds
+    · filter_upwards [self_mem_nhdsWithin] with x hx using mul_pos hk1 hx
+  refine ((hlim.comp hscale).div_const ((k : ℝ) + 1)).congr' ?_
+  filter_upwards [self_mem_nhdsWithin] with x hx
+  exact (functional_pow ha0 hx k).symm
+
+/-- **The polynomial limit.**  `Λ_x(P) → c∫_0^1 P`. -/
+@[category API, AMS 11]
+theorem tendsto_functional_polynomial (ha : ∀ n, 0 ≤ a n) (ha0 : a 0 = 0)
+    (hsum : ∀ x : ℝ, 0 < x → Summable (fun n : ℕ ↦ a n * (n : ℝ) ^ (-x))) {c : ℝ}
+    (hlim : Tendsto (fun x ↦ x * series a x) (𝓝[>] (0 : ℝ)) (𝓝 c)) (P : Polynomial ℝ) :
+    Tendsto (fun x ↦ functional a x (fun u ↦ P.eval u)) (𝓝[>] (0 : ℝ))
+      (𝓝 (c * ∫ u in (0 : ℝ)..1, P.eval u)) := by
+  induction P using Polynomial.induction_on' with
+  | add p q hp hq =>
+    have hbp := exists_bound_of_continuousOn (g := fun u ↦ p.eval u) p.continuous.continuousOn
+    have hbq := exists_bound_of_continuousOn (g := fun u ↦ q.eval u) q.continuous.continuousOn
+    obtain ⟨Mp, hMp⟩ := hbp
+    obtain ⟨Mq, hMq⟩ := hbq
+    have hint : (∫ u in (0 : ℝ)..1, (p + q).eval u)
+        = (∫ u in (0 : ℝ)..1, p.eval u) + ∫ u in (0 : ℝ)..1, q.eval u := by
+      simp only [Polynomial.eval_add]
+      exact intervalIntegral.integral_add (p.continuous.intervalIntegrable 0 1)
+        (q.continuous.intervalIntegrable 0 1)
+    rw [hint, mul_add]
+    refine (hp.add hq).congr' ?_
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    simp only [Polynomial.eval_add]
+    exact (functional_add ha hx (hsum x hx) hMp hMq).symm
+  | monomial k r =>
+    have hint : (∫ u in (0 : ℝ)..1, (Polynomial.monomial k r).eval u) = r / ((k : ℝ) + 1) := by
+      simp only [Polynomial.eval_monomial]
+      rw [intervalIntegral.integral_const_mul, integral_pow]
+      push_cast
+      ring
+    rw [hint, show c * (r / ((k : ℝ) + 1)) = r * (c / ((k : ℝ) + 1)) by ring]
+    refine ((tendsto_functional_pow ha0 hlim k).const_mul r).congr' ?_
+    filter_upwards [self_mem_nhdsWithin] with x _
+    simp only [Polynomial.eval_monomial]
+    exact (functional_const_mul r (fun u ↦ u ^ k)).symm
+
 end Karamata
