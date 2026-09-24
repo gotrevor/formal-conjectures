@@ -486,4 +486,53 @@ theorem eq_of_mean_quotient_close (hf : IsPMOneMultiplicative f) {A ρ s x y : �
   have : ((M' : ℝ) - M) / M' < A - ρ := hclose
   linarith
 
+/--
+**The exact Abel identity between the two averages.**
+$$S(N) = N\,L(N) - \sum_{M < N} L(M),\qquad\text{equivalently}\qquad
+  \sigma(N) = L(N) - \frac1N\sum_{M < N} L(M).$$
+
+There is no error term: it is summation by parts applied to `f(n) = n\cdot(f(n)/n)`.  It
+expresses the mean value purely in terms of the logarithmic average, so the crux
+`Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero` becomes a statement about the single
+function `L`:
+$$L(N) - \frac1N\sum_{M<N}L(M) - \frac{L(N)}{\log N} \to 0.$$
+Since the weight `1/N` concentrates on `M` within a bounded ratio of `N`, the left side is
+governed by the increments of `L` over *bounded* multiplicative ranges, while the proved
+input `L(N) = o(\log N)` is global; that gap is exactly the Tauberian difficulty.
+-/
+@[category API, AMS 11]
+theorem partialSum_eq_mul_logMean_sub_sum (N : ℕ) :
+    partialSum f N = N * logMean f N - ∑ M ∈ Icc 1 (N - 1), logMean f M := by
+  induction N with
+  | zero => simp [partialSum, logMean]
+  | succ n ih =>
+    rcases Nat.eq_zero_or_pos n with rfl | hn
+    · simp [partialSum, logMean]
+    · have hstep : logMean f (n + 1) = logMean f n + f (n + 1) / ((n : ℝ) + 1) := by
+        rw [logMean, logMean, Finset.sum_Icc_succ_top (by omega)]
+        push_cast
+        ring
+      have hsum : ∑ M ∈ Icc 1 (n + 1 - 1), logMean f M
+          = ∑ M ∈ Icc 1 (n - 1), logMean f M + logMean f n := by
+        rw [show n + 1 - 1 = n from by omega, show n = (n - 1) + 1 from by omega,
+          Finset.sum_Icc_succ_top (by omega)]
+        simp [show n - 1 + 1 = n from by omega]
+      have hS : partialSum f (n + 1) = partialSum f n + f (n + 1) := by
+        rw [partialSum, partialSum, Finset.sum_Icc_succ_top (by omega)]
+      have hn1 : ((n : ℝ) + 1) ≠ 0 := by positivity
+      rw [hS, ih, hstep, hsum]
+      push_cast
+      field_simp
+      ring
+
+/-- The identity of `Wirsing.partialSum_eq_mul_logMean_sub_sum`, for the mean. -/
+@[category API, AMS 11]
+theorem mean_eq_logMean_sub_sum {N : ℕ} (hN : 1 ≤ N) :
+    mean f N = logMean f N - (∑ M ∈ Icc 1 (N - 1), logMean f M) / N := by
+  have hNR : (0 : ℝ) < (N : ℝ) := by
+    have : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+    linarith
+  rw [mean_eq_partialSum_div, partialSum_eq_mul_logMean_sub_sum]
+  field_simp
+
 end Wirsing

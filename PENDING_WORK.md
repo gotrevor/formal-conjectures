@@ -118,6 +118,19 @@ All three are the same obstruction: an `O(1)` Mertens error accumulated over `\l
 adding one to this repository is not acceptable upstream.  **Do not spend a lap on the
 transfer.**  Step 3 above avoids it entirely: it compares `σ` at two quotients directly.
 
+### The crux as a statement about `L` alone (lap 6, `partialSum_eq_mul_logMean_sub_sum`)
+
+The exact summation by parts `S(N) = N L(N) - ∑_{M < N} L(M)` (no error term) gives
+`σ(N) = L(N) - (1/N)∑_{M<N}L(M)`, so the crux reads
+
+    L(N) - (1/N)∑_{M<N}L(M) - L(N)/\log N → 0.
+
+The weight `1/N` concentrates on `M` within a bounded *ratio* of `N`, so the left side is a
+functional of the increments of `L` over bounded multiplicative ranges, whereas the proved
+input `L(N) = o(\log N)` is global.  That is the Tauberian gap, now visible in one line and
+in one function.  Any proof must produce local information about `L` from global
+information, and that is also what every refuted route above failed to do.
+
 ### Next attack, in order
 
 1. **DONE** — `mean_quotient_near_extremal` and `sum_bad_weight_le_step`: (C) and its
@@ -228,6 +241,19 @@ Conclusion: the missing ingredient is a **joint** second moment — Cauchy–Sch
 in `N` simultaneously (the "inversion of the order of summation in `∑_{n ≤ x} f(n)\log n`"
 that [Hi86] is described as using).  That is what `ON-LINE-REQUEST.md` now asks for, and it is
 the only remaining gap in the divergent case: every other input is formalised here.
+
+### The crux as a statement about `L` alone (lap 6, `partialSum_eq_mul_logMean_sub_sum`)
+
+The exact summation by parts `S(N) = N L(N) - ∑_{M < N} L(M)` (no error term) gives
+`σ(N) = L(N) - (1/N)∑_{M<N}L(M)`, so the crux reads
+
+    L(N) - (1/N)∑_{M<N}L(M) - L(N)/\log N → 0.
+
+The weight `1/N` concentrates on `M` within a bounded *ratio* of `N`, so the left side is a
+functional of the increments of `L` over bounded multiplicative ranges, whereas the proved
+input `L(N) = o(\log N)` is global.  That is the Tauberian gap, now visible in one line and
+in one function.  Any proof must produce local information about `L` from global
+information, and that is also what every refuted route above failed to do.
 
 ### Next attack, in order
 
