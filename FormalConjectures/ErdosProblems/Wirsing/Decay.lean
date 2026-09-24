@@ -1182,4 +1182,72 @@ theorem envelopeInf_eq_zero (hf : IsPMOneMultiplicative f)
   have htail := sub_badPrimeSum_le_sum_tail f n Q
   linarith [hkey n, htail, hn]
 
+open scoped Classical in
+/-- The envelope tends to its infimum, which `Wirsing.envelopeInf_eq_zero` makes `0`. -/
+@[category API, AMS 11]
+theorem tendsto_envelope_atTop_zero (hf : IsPMOneMultiplicative f)
+    (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
+    Tendsto (fun N : ℕ ↦ envelope f N) atTop (𝓝 0) := by
+  have hzero := envelopeInf_eq_zero f hf hdiv
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  obtain ⟨M₀, hM₀2, hM₀⟩ := exists_envelope_lt f hε
+  rw [hzero, zero_add] at hM₀
+  refine ⟨M₀, fun n hn ↦ ?_⟩
+  have h1 : envelope f n ≤ envelope f M₀ := envelope_antitone f hf hM₀2 hn
+  have h2 : 0 ≤ envelope f n := envelope_nonneg f (by omega)
+  rw [Real.dist_eq, sub_zero, abs_of_nonneg h2]
+  linarith
+
+open scoped Classical in
+/--
+**Halász in logarithmic form, via the potential.**  If the bad primes have divergent
+reciprocal sum then `L(N) = o(\log N)`.
+
+The bound is `|L(N)|/\log N ≤ 2 G(N) + 64/(\log N)^2 + 64/\log N` with `G` the envelope,
+which `Wirsing.tendsto_envelope_atTop_zero` sends to `0`.
+-/
+@[category API, AMS 11]
+theorem tendsto_abs_logMean_div_log_atTop_zero (hf : IsPMOneMultiplicative f)
+    (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
+    Tendsto (fun N : ℕ ↦ |logMean f N| / Real.log N) atTop (𝓝 0) := by
+  have henv := tendsto_envelope_atTop_zero f hf hdiv
+  have hlogtop : Tendsto (fun N : ℕ ↦ Real.log (N : ℝ)) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  have hsqtop : Tendsto (fun N : ℕ ↦ Real.log (N : ℝ) ^ 2) atTop atTop :=
+    by simpa [pow_two] using hlogtop.atTop_mul_atTop₀ hlogtop
+  have h1 : Tendsto (fun N : ℕ ↦ 64 / Real.log (N : ℝ) ^ 2) atTop (𝓝 0) :=
+    (tendsto_const_nhds (x := (64 : ℝ)) (f := atTop (α := ℕ))).div_atTop hsqtop
+  have h2 : Tendsto (fun N : ℕ ↦ 64 / Real.log (N : ℝ)) atTop (𝓝 0) :=
+    (tendsto_const_nhds (x := (64 : ℝ)) (f := atTop (α := ℕ))).div_atTop hlogtop
+  have hmaj : Tendsto (fun N : ℕ ↦ 2 * envelope f N
+      + 64 / Real.log (N : ℝ) ^ 2 + 64 / Real.log (N : ℝ)) atTop (𝓝 0) := by
+    simpa using ((henv.const_mul 2).add h1).add h2
+  refine squeeze_zero' ?_ ?_ hmaj
+  · filter_upwards [eventually_ge_atTop 1] with N hN
+    have : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+    exact div_nonneg (abs_nonneg _) (Real.log_nonneg this)
+  · filter_upwards [eventually_ge_atTop 2] with N hN
+    have hNR : (2 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+    have hlog : 0 < Real.log (N : ℝ) := Real.log_pos (by linarith)
+    have hstep := abs_logMean_mul_log_le_potential f hf N
+    have hD := badWeight_nonneg f N
+    have hkey : |logMean f N| * Real.log (N : ℝ)
+        ≤ 2 * potential f N + 64 + 64 * Real.log (N : ℝ) := by linarith
+    have hquot : |logMean f N| / Real.log (N : ℝ)
+        ≤ (2 * potential f N + 64 + 64 * Real.log (N : ℝ)) / Real.log (N : ℝ) ^ 2 := by
+      rw [div_le_div_iff₀ hlog (by positivity)]
+      nlinarith [mul_le_mul_of_nonneg_right hkey hlog.le]
+    have hexp2 : (2 * potential f N + 64 + 64 * Real.log (N : ℝ)) / Real.log (N : ℝ) ^ 2
+        = 2 * (potential f N / Real.log (N : ℝ) ^ 2) + 64 / Real.log (N : ℝ) ^ 2
+          + 64 / Real.log (N : ℝ) := by
+      field_simp
+    have henvge : potential f N / Real.log (N : ℝ) ^ 2 ≤ envelope f N := by
+      rw [envelope]
+      have h1 : (0 : ℝ) ≤ 128 * (1 / Real.log (N : ℝ)) := by positivity
+      have h2 : (0 : ℝ) ≤ 4 * (1 / (N : ℝ)) := by positivity
+      linarith
+    rw [hexp2] at hquot
+    linarith
+
 end Wirsing
