@@ -498,6 +498,126 @@ theorem log_sub_log_le_sum_Ioc_one_div {a b : ℕ} (hab : a ≤ b) :
       push_cast at hstep ⊢
       linarith
 
+/-- `\log(1-y) \ge -2y` for `0 \le y \le 1/2`. -/
+@[category API, AMS 11]
+theorem neg_two_mul_le_log_one_sub {y : ℝ} (hy0 : 0 ≤ y) (hy : y ≤ 1 / 2) :
+    -(2 * y) ≤ Real.log (1 - y) := by
+  have h1 : (0 : ℝ) < 1 - y := by linarith
+  have h2 : (0 : ℝ) < 1 / (1 - y) := by positivity
+  have h := Real.log_le_sub_one_of_pos h2
+  rw [Real.log_div (by norm_num) (ne_of_gt h1), Real.log_one] at h
+  have he : 1 / (1 - y) - 1 = y / (1 - y) := by
+    field_simp
+    ring
+  rw [he] at h
+  have hyy : y / (1 - y) ≤ 2 * y := by
+    rw [div_le_iff₀ h1]
+    nlinarith
+  linarith
+
+/--
+**Every scale at which `|D|` is small sits at the top of a window of positive harmonic
+weight on which `|D|` is small.**  With `w = \lfloor s/\rho\rfloor + 1`:
+
+* `|D(n)| \le \Delta/2` for every `w \le n \le s` (the window transfer);
+* `\sum_{w \le n \le s} 1/n \ge (\log\rho)/2`;
+* `s \le \rho w`, which is what places the window inside one block.
+
+The two largeness hypotheses on `s` are what make the window nonempty and its weight at least
+half of `\log\rho`; both hold for all large `s` once `\rho > 1` is fixed.
+-/
+@[category API, AMS 11]
+theorem exists_window_of_abs_dilationDiff_le {g : ℕ → ℝ} (hg : IsBddMultiplicative g) {q : ℕ}
+    (hq : 1 ≤ q) {Δ ρ : ℝ} (hρ1 : 1 < ρ)
+    (hlip : (2 + 4 * (q : ℝ)) * Real.log ρ ≤ Δ / 4)
+    {s : ℕ} (hs : |dilationDiff g q s| ≤ Δ / 4)
+    (hs1 : 2 * ρ / (ρ - 1) ≤ (s : ℝ)) (hs2 : 4 * (ρ - 1) / Real.log ρ ≤ (s : ℝ))
+    (hs3 : ρ ≤ (s : ℝ)) :
+    ∃ w : ℕ, 1 ≤ w ∧ w ≤ s ∧ (s : ℝ) ≤ ρ * w ∧
+      (∀ n, w ≤ n → n ≤ s → |dilationDiff g q n| ≤ Δ / 2) ∧
+      Real.log ρ / 2 ≤ ∑ n ∈ Ioc (w - 1) s, (1 : ℝ) / n := by
+  have hρ0 : (0 : ℝ) < ρ := by linarith
+  have hρm : (0 : ℝ) < ρ - 1 := by linarith
+  have hlogρ : 0 < Real.log ρ := Real.log_pos hρ1
+  have hsR : (0 : ℝ) < (s : ℝ) := by
+    have : (0 : ℝ) < 2 * ρ / (ρ - 1) := by positivity
+    linarith
+  set w : ℕ := ⌊(s : ℝ) / ρ⌋₊ + 1 with hwdef
+  have hw1 : 1 ≤ w := by omega
+  have hwR : (0 : ℝ) < (w : ℝ) := by
+    have : (1 : ℝ) ≤ (w : ℝ) := by exact_mod_cast hw1
+    linarith
+  -- `s ≤ ρ w`
+  have hwu : (s : ℝ) ≤ ρ * w := by
+    have h := Nat.lt_floor_add_one ((s : ℝ) / ρ)
+    have hlt : (s : ℝ) / ρ < (w : ℝ) := by
+      rw [hwdef]
+      push_cast
+      exact h
+    rw [div_lt_iff₀ hρ0] at hlt
+    linarith [mul_comm (w : ℝ) ρ]
+  -- `w ≤ s/ρ + 1`
+  have hwlo : (w : ℝ) ≤ (s : ℝ) / ρ + 1 := by
+    have h := Nat.floor_le (a := (s : ℝ) / ρ) (by positivity)
+    rw [hwdef]
+    push_cast
+    linarith
+  -- `w ≤ s`
+  have hws : w ≤ s := by
+    have hsρ : (s : ℝ) / ρ + 1 ≤ (s : ℝ) := by
+      rw [div_add' _ _ _ (ne_of_gt hρ0), div_le_iff₀ hρ0]
+      have h1 : 2 * ρ ≤ (s : ℝ) * (ρ - 1) := by
+        rw [div_le_iff₀ hρm] at hs1
+        linarith
+      nlinarith
+    have : (w : ℝ) ≤ (s : ℝ) := le_trans hwlo hsρ
+    exact_mod_cast this
+  refine ⟨w, hw1, hws, hwu, ?_, ?_⟩
+  · -- the window transfer
+    intro n hwn hns
+    have hn1 : 1 ≤ n := le_trans hw1 hwn
+    have hnR : (0 : ℝ) < (n : ℝ) := by
+      have : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn1
+      linarith
+    have hlow : (s : ℝ) ≤ ρ * n := by
+      have : (w : ℝ) ≤ (n : ℝ) := by exact_mod_cast hwn
+      nlinarith
+    exact abs_dilationDiff_le_of_window hg hq hρ1.le hlip hn1 hns hlow hs
+  · -- the harmonic weight
+    have hsum := log_sub_log_le_sum_Ioc_one_div (a := w - 1) (b := s) (by omega)
+    have hcast : ((w - 1 : ℕ) : ℝ) + 1 = (w : ℝ) := by
+      have : (1 : ℕ) ≤ w := hw1
+      push_cast [Nat.cast_sub this]
+      ring
+    rw [hcast] at hsum
+    -- `log (s+1) - log w ≥ log ρ / 2`
+    have hlogw : Real.log w ≤ Real.log ((s : ℝ) / ρ + 1) :=
+      Real.log_le_log hwR hwlo
+    have hkey : Real.log ρ / 2 ≤ Real.log ((s : ℝ) + 1) - Real.log ((s : ℝ) / ρ + 1) := by
+      have hq1 : (s : ℝ) / ρ + 1 = ((s : ℝ) + ρ) / ρ := by field_simp
+      rw [hq1, Real.log_div (by positivity) (ne_of_gt hρ0)]
+      have hy : ((s : ℝ) + 1) / ((s : ℝ) + ρ) = 1 - (ρ - 1) / ((s : ℝ) + ρ) := by
+        field_simp
+        ring
+      have hylow : (0 : ℝ) ≤ (ρ - 1) / ((s : ℝ) + ρ) := by positivity
+      have hyhalf : (ρ - 1) / ((s : ℝ) + ρ) ≤ 1 / 2 := by
+        rw [div_le_div_iff₀ (by positivity) (by norm_num)]
+        linarith
+      have hlog1 : -(2 * ((ρ - 1) / ((s : ℝ) + ρ))) ≤ Real.log (1 - (ρ - 1) / ((s : ℝ) + ρ)) :=
+        neg_two_mul_le_log_one_sub hylow hyhalf
+      have hsplit : Real.log ((s : ℝ) + 1) - Real.log ((s : ℝ) + ρ)
+          = Real.log (((s : ℝ) + 1) / ((s : ℝ) + ρ)) := by
+        rw [Real.log_div (by positivity) (by positivity)]
+      have hsmall : 2 * ((ρ - 1) / ((s : ℝ) + ρ)) ≤ Real.log ρ / 2 := by
+        rw [div_le_iff₀ hlogρ] at hs2
+        have h : (ρ - 1) / ((s : ℝ) + ρ) ≤ Real.log ρ / 4 := by
+          rw [div_le_div_iff₀ (by positivity) (by norm_num)]
+          nlinarith [hlogρ, hρ0]
+        linarith
+      rw [← hy, ← hsplit] at hlog1
+      linarith
+    linarith
+
 /-! ### Saturation -/
 
 open scoped Classical in

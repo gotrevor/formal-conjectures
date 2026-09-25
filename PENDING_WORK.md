@@ -93,6 +93,13 @@ Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
   block is at least that of one multiplicative window of ratio `c`, which is what
   `Newman.tendsto_sum_log_prime_div_window` bounds below.
 
+* `neg_two_mul_le_log_one_sub`, `exists_window_of_abs_dilationDiff_le` — **the deficit window,
+  proved** (sixth commit of lap 16): from `|D(s)| \le \Delta/4` and `\rho > 1` with
+  `(2+4q)\log\rho \le \Delta/4`, the window `w = \lfloor s/\rho\rfloor + 1 \le n \le s`
+  satisfies `|D(n)| \le \Delta/2` throughout, has harmonic weight at least `(\log\rho)/2`, and
+  sits inside `[s/\rho, s]`.  Three explicit largeness hypotheses on `s` (all of the form
+  `s \ge` constant in `\rho`) make the window nonempty and its weight at least half.
+
 ### Next lap, in order
 
 1. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
