@@ -290,6 +290,82 @@ theorem exists_abs_dilationDiff_le_of_block {g : ℕ → ℝ} (hg : IsBddMultipl
   have hin2 : r + 1 ≤ m := le_trans (by omega) (htle k)
   exact absurd hfin (not_le.2 (hcon (r + 1) hin1 hin2))
 
+/-! ### The multiplicative window -/
+
+/-- The dilation difference telescopes over an interval of scales. -/
+@[category API, AMS 11]
+theorem dilationDiff_sub_eq_sum_Ioc (g : ℕ → ℝ) (q : ℕ) {w n : ℕ} (hwn : w ≤ n) :
+    dilationDiff g q n - dilationDiff g q w
+      = ∑ m ∈ Ioc w n, (dilationDiff g q m - dilationDiff g q (m - 1)) := by
+  induction n, hwn using Nat.le_induction with
+  | base => simp
+  | succ k hk ih =>
+      rw [Finset.sum_Ioc_succ_top hk, ← ih]
+      simp only [Nat.add_sub_cancel]
+      ring
+
+/--
+**`D` is Lipschitz in the logarithm of the scale.**  For `1 \le w \le n`,
+`|D(n) - D(w)| \le (2 + 4q)(\log n - \log w)`.
+
+Summing the step bound `|D(m) - D(m-1)| \le (2+4q)/m` over `w < m \le n` and comparing the
+harmonic sum with the logarithm (`Wirsing.harmonicSum_sub_le_log_sub`).
+-/
+@[category API, AMS 11]
+theorem abs_dilationDiff_sub_le_log_sub {g : ℕ → ℝ} (hg : IsBddMultiplicative g) {q : ℕ}
+    (hq : 1 ≤ q) {w n : ℕ} (hw : 1 ≤ w) (hwn : w ≤ n) :
+    |dilationDiff g q n - dilationDiff g q w|
+      ≤ (2 + 4 * (q : ℝ)) * (Real.log n - Real.log w) := by
+  have hc0 : (0 : ℝ) ≤ 2 + 4 * (q : ℝ) := by positivity
+  rw [dilationDiff_sub_eq_sum_Ioc g q hwn]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  have hterm : ∀ m ∈ Ioc w n, |dilationDiff g q m - dilationDiff g q (m - 1)|
+      ≤ (2 + 4 * (q : ℝ)) * ((1 : ℝ) / m) := by
+    intro m hm
+    have hm2 : 2 ≤ m := by
+      have := (mem_Ioc.1 hm).1
+      omega
+    have := abs_dilationDiff_sub_le hg hq hm2
+    rw [mul_one_div]
+    exact this
+  refine (Finset.sum_le_sum hterm).trans ?_
+  rw [← Finset.mul_sum]
+  refine mul_le_mul_of_nonneg_left ?_ hc0
+  have hharm : ∑ m ∈ Ioc w n, (1 : ℝ) / m = harmonicSum n - harmonicSum w :=
+    (harmonicSum_sub w n hwn).symm
+  rw [hharm]
+  exact harmonicSum_sub_le_log_sub hw hwn
+
+/--
+**The window transfer.**  If `|D(s)| \le \Delta/4` and `w \le s \le \rho w` with
+`(2 + 4q)\log\rho \le \Delta/4`, then `|D(w)| \le \Delta/2`.
+
+So one scale at which `|D|` is small forces `|D|` to be small on a whole multiplicative window
+below it, of any fixed ratio `\rho` small enough in terms of `\Delta` and `q`.
+-/
+@[category API, AMS 11]
+theorem abs_dilationDiff_le_of_window {g : ℕ → ℝ} (hg : IsBddMultiplicative g) {q : ℕ}
+    (hq : 1 ≤ q) {Δ ρ : ℝ} (hρ : 1 ≤ ρ)
+    (hlip : (2 + 4 * (q : ℝ)) * Real.log ρ ≤ Δ / 4)
+    {s w : ℕ} (hw : 1 ≤ w) (hws : w ≤ s) (hlow : (s : ℝ) ≤ ρ * w)
+    (hs : |dilationDiff g q s| ≤ Δ / 4) :
+    |dilationDiff g q w| ≤ Δ / 2 := by
+  have hc0 : (0 : ℝ) ≤ 2 + 4 * (q : ℝ) := by positivity
+  have hwR : (1 : ℝ) ≤ (w : ℝ) := by exact_mod_cast hw
+  have hsR : (1 : ℝ) ≤ (s : ℝ) := by
+    have : (1 : ℕ) ≤ s := le_trans hw hws
+    exact_mod_cast this
+  have hlog : Real.log s - Real.log w ≤ Real.log ρ := by
+    have h1 : Real.log s ≤ Real.log (ρ * w) := Real.log_le_log (by linarith) hlow
+    rw [Real.log_mul (by linarith) (by linarith)] at h1
+    linarith
+  have hstep := abs_dilationDiff_sub_le_log_sub hg hq hw hws
+  have hstep' : |dilationDiff g q s - dilationDiff g q w| ≤ Δ / 4 :=
+    le_trans hstep (le_trans (mul_le_mul_of_nonneg_left hlog hc0) hlip)
+  have := abs_sub_abs_le_abs_sub (dilationDiff g q w) (dilationDiff g q s)
+  rw [abs_sub_comm] at this
+  linarith [abs_le.1 hstep' |>.1, abs_le.1 hstep' |>.2]
+
 /-! ### Saturation -/
 
 open scoped Classical in

@@ -78,6 +78,13 @@ Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
   `|D(s)| \le \Delta/4`.  The realness of `g` enters here and only here.
 * `card_le_of_forall_dilationDiff_le_neg` — the negative-sign companion of the run bound.
 
+* `dilationDiff_sub_eq_sum_Ioc`, `abs_dilationDiff_sub_le_log_sub` — **`D` is Lipschitz in
+  `\log` of the scale**: `|D(n) - D(w)| \le (2+4q)(\log n - \log w)`, by summing the step bound
+  against `harmonicSum_sub_le_log_sub`.
+* `abs_dilationDiff_le_of_window` — **the window transfer, proved** (third commit of lap 16):
+  one scale `s` with `|D(s)| \le \Delta/4` forces `|D| \le \Delta/2` on the whole window
+  `w \le s \le \rho w`, for any fixed `\rho` with `(2+4q)\log\rho \le \Delta/4`.
+
 ### Next lap, in order
 
 1. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
