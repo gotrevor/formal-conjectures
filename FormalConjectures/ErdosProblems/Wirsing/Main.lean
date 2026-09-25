@@ -29,6 +29,7 @@ public import FormalConjectures.ErdosProblems.Wirsing.GoodPrime
 public import FormalConjectures.ErdosProblems.Wirsing.TuranDeficit
 public import FormalConjectures.ErdosProblems.Wirsing.Contract
 public import FormalConjectures.ErdosProblems.Wirsing.Dilation
+public import FormalConjectures.ErdosProblems.Wirsing.BddPrimeCos
 
 /-!
 # Wirsing's mean value theorem: assembly

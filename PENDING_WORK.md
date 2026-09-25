@@ -66,6 +66,21 @@
   **`(log N)^{-1}∑_{n≤N}|mean g n|/n → 0  ⟹  mean g N → 0`**.  Any Halász-type route needs
   this, because the coprime restrictions are not `±1`-valued.
 
+* `Wirsing/BddPrimeCos.lean` (new, sorry-free) — **the arithmetic input to Halász, for the
+  bounded class**.  The `±1` proofs used the values only through the pointwise inequality
+  `¼(1 - cos 2θ) ≤ 1 - g cos θ`, which holds whenever `|g| ≤ 1` because
+  `1 + cos²θ - 2g cos θ = ½(1-g)(1+cos θ)² + ½(1+g)(1-cos θ)²`.  So the whole package
+  transfers:
+  * `quarter_one_sub_cos_two_le_of_abs_le_one`;
+  * `bdd_eventually_sum_primeWeight_one_sub_mul_cos_ge` — `∑_{p≤N}(log p/p)(1-g(p)cos(t log p))
+    ≥ (log N)/8` eventually, for `t ≠ 0`;
+  * `bdd_not_summable_one_sub_mul_cos` — `∑_p (1-g(p)cos(t log p))/p = ∞` for `t ≠ 0`;
+  * `bdd_exists_forall_primeDefect_ge` — the **`t`-uniform** version on `|t| ≤ T`.
+
+  With `bdd_tendsto_mean_of_tendsto_logAvg` and `bdd_abs_mean_mul_log_sub_sum_prime_le`, the
+  bounded class now has every ingredient the `±1` class had.  A Halász endgame can be written
+  entirely inside it.
+
 ### REFUTED this lap: the soft "two near-periods" argument
 
 The idea below is recorded *because it fails*, so that no later lap re-runs it.
