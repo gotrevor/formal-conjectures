@@ -871,6 +871,181 @@ theorem le_of_block_recursion {Φ : ℕ → ℝ} {T N₀ : ℕ} {B γ C : ℝ} (
           _ = γ := hκT
       nlinarith [hIH, hstepN, hshift]
 
+/-! ### The self-improvement step -/
+
+/-- The trivial bound `\Phi(N) \le 2(1 + \log N)`. -/
+@[category API, AMS 11]
+theorem sum_abs_dilationDiff_div_le {g : ℕ → ℝ} (hg : IsBddMultiplicative g) (q N : ℕ) :
+    ∑ n ∈ Icc 1 N, |dilationDiff g q n| / n ≤ 2 * (1 + Real.log N) := by
+  have hterm : ∀ n ∈ Icc 1 N, |dilationDiff g q n| / n ≤ 2 * ((1 : ℝ) / n) := by
+    intro n hn
+    have hn1 : 1 ≤ n := (mem_Icc.1 hn).1
+    have hnR : (0 : ℝ) < (n : ℝ) := by
+      have : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn1
+      linarith
+    rw [mul_one_div]
+    exact (div_le_div_iff_of_pos_right hnR).mpr (abs_dilationDiff_le_two hg q n)
+  refine (Finset.sum_le_sum hterm).trans ?_
+  rw [← Finset.mul_sum]
+  exact mul_le_mul_of_nonneg_left (sum_one_div_le N) (by norm_num)
+
+/--
+**The self-improvement step.**  For every target `\Delta \in (0, 2]` there is a
+`\kappa = \kappa(\Delta, q) > 0` such that *any* bound `|D| \le B` beyond some point, with
+`\Delta \le B \le 2`, improves eventually to `|D| \le B - \kappa`.
+
+This is the whole crossing argument: Claim A gives a scale with `|D| \le \Delta/4` in every
+geometric block, the window transfer spreads that over a window of harmonic weight
+`\ge (\log\rho)/2` with `\rho = e^{\Delta/(4(2+4q))}`, the packing induction converts one such
+deficit per block into `\Phi(N) \le (B - 4\kappa)\log N + C`, and the differential inequality
+`Wirsing.exists_abs_dilationDiff_mul_log_le` turns that into a pointwise gain.
+
+Note that `\kappa` does not depend on `B` or on where the bound `B` starts to hold: only the
+implied `N_0` does.  That is what lets the step be iterated a fixed finite number of times.
+-/
+@[category API, AMS 11]
+theorem exists_improvement (g : ℕ → ℝ) (hg : IsBddMultiplicative g) {q : ℕ} (hq2 : 2 ≤ q)
+    {Δ : ℝ} (hΔ : 0 < Δ) (hΔ2 : Δ ≤ 2) :
+    ∃ κ : ℝ, 0 < κ ∧ ∀ B : ℝ, Δ ≤ B → B ≤ 2 → ∀ n₀ : ℕ, 1 ≤ n₀ →
+      (∀ n, n₀ ≤ n → |dilationDiff g q n| ≤ B) →
+      ∀ᶠ N : ℕ in atTop, |dilationDiff g q N| ≤ B - κ := by
+  classical
+  have hq1 : 1 ≤ q := by omega
+  have hqR : (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq2
+  -- the block length
+  obtain ⟨J, hJgt⟩ := exists_nat_gt (8 / Δ)
+  have hJ : 2 < (J : ℝ) * (Δ / 4) := by
+    rw [div_lt_iff₀ hΔ] at hJgt
+    nlinarith
+  -- the window ratio
+  have hcq : (0 : ℝ) < 4 * (2 + 4 * (q : ℝ)) := by positivity
+  set ρ : ℝ := Real.exp (Δ / (4 * (2 + 4 * (q : ℝ)))) with hρdef
+  have hlogρ : Real.log ρ = Δ / (4 * (2 + 4 * (q : ℝ))) := Real.log_exp _
+  have hlogρ0 : 0 < Real.log ρ := by rw [hlogρ]; positivity
+  have hρ1 : 1 < ρ := by
+    rw [hρdef]
+    calc (1 : ℝ) = Real.exp 0 := by simp
+      _ < Real.exp (Δ / (4 * (2 + 4 * (q : ℝ)))) := Real.exp_lt_exp.2 (by positivity)
+  have hρ2 : ρ ≤ 2 := by
+    have hsmall : Δ / (4 * (2 + 4 * (q : ℝ))) ≤ Real.log 2 := by
+      have h1 : Δ / (4 * (2 + 4 * (q : ℝ))) ≤ 2 / 40 := by
+        rw [div_le_div_iff₀ hcq (by norm_num)]
+        nlinarith
+      have h2 := Real.log_two_gt_d9
+      linarith
+    calc ρ ≤ Real.exp (Real.log 2) := by rw [hρdef]; exact Real.exp_le_exp.2 hsmall
+      _ = 2 := Real.exp_log (by norm_num)
+  have hlip : (2 + 4 * (q : ℝ)) * Real.log ρ ≤ Δ / 4 := by
+    rw [hlogρ]
+    rw [mul_div_assoc', div_le_div_iff₀ hcq (by norm_num)]
+    ring_nf
+    nlinarith [hΔ.le]
+  -- the block ratio and the drop
+  set T : ℕ := 4 * q ^ J with hTdef
+  have hRpos : 1 ≤ q ^ J := Nat.one_le_pow _ _ (by omega)
+  have hT2 : 2 ≤ T := by omega
+  have hTR : (2 : ℝ) ≤ (T : ℝ) := by exact_mod_cast hT2
+  have hlogT : 0 < Real.log (2 * (T : ℝ)) := Real.log_pos (by linarith)
+  set γ₀ : ℝ := Δ / 2 * (Real.log ρ / 2) with hγ₀
+  have hγ₀0 : 0 < γ₀ := by rw [hγ₀]; positivity
+  set κ₁ : ℝ := γ₀ / Real.log (2 * (T : ℝ)) with hκ₁
+  have hκ₁0 : 0 < κ₁ := by rw [hκ₁]; positivity
+  refine ⟨κ₁ / 4, by positivity, ?_⟩
+  intro B hΔB hB2 n₀ hn₀1 hbd
+  have hB0 : 0 ≤ B := by linarith
+  have hBΔ : Δ / 2 ≤ B := by linarith
+  -- the seven largeness conditions hold eventually
+  set X : ℕ → ℝ := fun N ↦ ((N / q ^ J : ℕ) : ℝ) with hX
+  have hXtop : Tendsto X atTop atTop :=
+    tendsto_natCast_atTop_atTop.comp (tendsto_natDiv_atTop hRpos)
+  set c₀ : ℝ := max (max 1 (4 * (2 + 4 * (q : ℝ)) / Δ))
+    (max (2 * ρ / (ρ - 1)) (max (4 * (ρ - 1) / Real.log ρ) ρ)) with hc₀
+  obtain ⟨N₁, hN₁⟩ := eventually_atTop.1 (hXtop.eventually_ge_atTop c₀)
+  obtain ⟨N₂, hN₂⟩ := eventually_atTop.1
+    ((tendsto_natDiv_atTop (a := T) (by omega)).eventually_ge_atTop n₀)
+  set N₀ : ℕ := max (max N₁ N₂) (max (2 * T) 1) with hN₀def
+  have hN₀T : 2 * T ≤ N₀ := le_trans (le_max_left _ _) (le_max_right _ _)
+  have hN₀1 : 1 ≤ N₀ := le_trans (le_max_right _ _) (le_max_right _ _)
+  -- the block step
+  have hstep : ∀ N, N₀ ≤ N →
+      (∑ n ∈ Icc 1 N, |dilationDiff g q n| / n)
+        ≤ (∑ n ∈ Icc 1 (N / T), |dilationDiff g q n| / n)
+          + B * (Real.log N - Real.log ((N / T : ℕ) : ℝ)) - γ₀ := by
+    intro N hN
+    have h1 : N₁ ≤ N := le_trans (le_trans (le_max_left _ _) (le_max_left _ _)) hN
+    have h2 : N₂ ≤ N := le_trans (le_trans (le_max_right _ _) (le_max_left _ _)) hN
+    have hXc : c₀ ≤ X N := hN₁ N h1
+    have hXm : ∀ y, y ≤ c₀ → y ≤ X N := fun y hy ↦ le_trans hy hXc
+    have hA1 : 1 ≤ N / q ^ J := by
+      have h' : (1 : ℝ) ≤ X N := hXm 1 (le_trans (le_max_left _ _) (le_max_left _ _))
+      simp only [hX] at h'
+      exact_mod_cast h'
+    have hA2 : (2 + 4 * (q : ℝ)) / ((N / q ^ J : ℕ) : ℝ) ≤ Δ / 4 := by
+      have hge : 4 * (2 + 4 * (q : ℝ)) / Δ ≤ X N :=
+        hXm _ (le_trans (le_max_right _ _) (le_max_left _ _))
+      have hXpos : (0 : ℝ) < X N := by
+        have : (1 : ℝ) ≤ X N := hXm 1 (le_trans (le_max_left _ _) (le_max_left _ _))
+        linarith
+      simp only [hX] at hXpos hge
+      rw [div_le_div_iff₀ hXpos (by norm_num)]
+      rw [div_le_iff₀ hΔ] at hge
+      nlinarith
+    have hs1 : 2 * ρ / (ρ - 1) ≤ ((N / q ^ J : ℕ) : ℝ) :=
+      hXm _ (le_trans (le_max_left _ _) (le_max_right _ _))
+    have hs2 : 4 * (ρ - 1) / Real.log ρ ≤ ((N / q ^ J : ℕ) : ℝ) :=
+      hXm _ (le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) (le_max_right _ _))
+    have hs3 : ρ ≤ ((N / q ^ J : ℕ) : ℝ) :=
+      hXm _ (le_trans (le_trans (le_max_right _ _) (le_max_right _ _)) (le_max_right _ _))
+    have hn₀M : n₀ ≤ N / T := hN₂ N h2
+    have hTN : T ≤ N := le_trans (by omega) hN
+    have hkey := sum_abs_dilationDiff_div_block_step hg hq1 hρ1 hρ2 hlip hJ hn₀1 hbd hBΔ
+      hA1 hA2 hs1 hs2 hs3 hn₀M hTN
+    have hγle : γ₀ ≤ (B - Δ / 2) * (Real.log ρ / 2) := by
+      rw [hγ₀]
+      refine mul_le_mul_of_nonneg_right (by linarith) (by positivity)
+    rw [hTdef]
+    linarith [hkey]
+  -- the base case
+  set C : ℝ := 2 + 2 * Real.log N₀ + κ₁ * Real.log N₀ with hC
+  have hbase : ∀ N, N < N₀ →
+      (∑ n ∈ Icc 1 N, |dilationDiff g q n| / n) ≤ (B - κ₁) * Real.log N + C := by
+    intro N hN
+    have hlogle : Real.log N ≤ Real.log N₀ := log_natCast_mono hN.le
+    have hlog0 : 0 ≤ Real.log N := Real.log_natCast_nonneg _
+    have htriv := sum_abs_dilationDiff_div_le hg q N
+    have hBκ : -(κ₁ * Real.log N) ≤ (B - κ₁) * Real.log N := by
+      have : 0 ≤ B * Real.log N := mul_nonneg hB0 hlog0
+      nlinarith
+    have : κ₁ * Real.log N ≤ κ₁ * Real.log N₀ :=
+      mul_le_mul_of_nonneg_left hlogle hκ₁0.le
+    rw [hC]
+    linarith
+  -- the packing induction
+  have hpack := le_of_block_recursion (Φ := fun N ↦ ∑ n ∈ Icc 1 N, |dilationDiff g q n| / n)
+    (T := T) (N₀ := N₀) (B := B) (γ := γ₀) (C := C) hT2 hN₀T hγ₀0.le
+    (by simpa only [hκ₁] using hbase) (by simpa using hstep)
+  -- the differential inequality
+  obtain ⟨C', hC'⟩ := exists_abs_dilationDiff_mul_log_le g hg hq1 (ε := κ₁ / 2) (by positivity)
+  -- conclude
+  have hdiv : Tendsto (fun N : ℕ ↦ Real.log N) atTop atTop :=
+    Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop
+  filter_upwards [hdiv.eventually_ge_atTop ((C + C') / (κ₁ / 4) + 1),
+    eventually_ge_atTop (2 * q), hdiv.eventually_ge_atTop 1] with N hN hN2 hNlog
+  have hlogpos : (0 : ℝ) < Real.log N := by linarith
+  have h1 := hC' N hN2
+  have h2 : (∑ n ∈ Icc 1 N, |dilationDiff g q n| / n)
+      ≤ (B - κ₁) * Real.log N + C := by
+    simpa only [hκ₁] using hpack N
+  have h3 : |dilationDiff g q N| * Real.log N
+      ≤ (B - κ₁ / 2) * Real.log N + (C + C') := by nlinarith [h1, h2]
+  have h5 : C + C' ≤ (κ₁ / 4) * Real.log N := by
+    have hpos : (0 : ℝ) < κ₁ / 4 := by positivity
+    have h' : (C + C') / (κ₁ / 4) ≤ Real.log N := by linarith
+    rw [div_le_iff₀ hpos] at h'
+    linarith
+  have h6 : |dilationDiff g q N| * Real.log N ≤ (B - κ₁ / 4) * Real.log N := by nlinarith
+  exact le_of_mul_le_mul_right (by linarith) hlogpos
+
 /-! ### Saturation -/
 
 open scoped Classical in

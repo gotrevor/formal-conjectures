@@ -120,6 +120,18 @@ Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
   `N < N_0`) and the seven eventual hypotheses of the block step are left, then the `limsup`
   contradiction.
 
+* `sum_abs_dilationDiff_div_le`, `exists_improvement` — **THE CROSSING ARGUMENT IS PROVED**
+  (tenth commit of lap 16).  For every target `\Delta \in (0,2]` there is
+  `\kappa = \kappa(\Delta,q) > 0` such that any bound `|D| \le B` holding beyond some point,
+  with `\Delta \le B \le 2`, improves eventually to `|D| \le B - \kappa`.  `\kappa` depends only
+  on `\Delta` and `q`, never on `B` or on where the bound starts — which is exactly what lets the
+  step be iterated a fixed finite number of times.
+
+  All that is left of the crux is bookkeeping: iterate `exists_improvement`
+  `\lceil (2-\Delta)/\kappa\rceil` times from the trivial bound `|D| \le 2` to get
+  `\forall\varepsilon>0`, eventually `|D| \le \varepsilon`, i.e. `D \to 0`, and discharge
+  `Main.dilationInvariant_prime`.
+
 ### Next lap, in order
 
 1. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
