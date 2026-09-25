@@ -19,6 +19,7 @@ public import FormalConjecturesUtil
 public import FormalConjectures.ErdosProblems.Wirsing.Decay
 public import FormalConjectures.ErdosProblems.Wirsing.Newman
 public import FormalConjectures.ErdosProblems.Wirsing.Window
+public import FormalConjectures.ErdosProblems.Wirsing.Rigidity
 
 /-!
 # The sharp weight comparison
@@ -375,5 +376,119 @@ theorem exists_abs_sum_primeWeight_comp_sub_sum_div_le {ε : ℝ} (hε : 0 < ε)
         + (11 + 16 * Real.log M₀)) := by
       have : ε / 2 * Real.log N ≤ ε * Real.log N := by nlinarith
       linarith
+
+open scoped Classical in
+/--
+The sharp weight comparison, scaled to increments `2/m` and bound `2`: the form the mean
+value `\sigma = ` `Wirsing.mean` actually satisfies (`Wirsing.abs_mean_sub_mean_le` gives
+`|\sigma(m) - \sigma(m-1)| \le 2/m`, not `1/m`).
+-/
+@[category API, AMS 11]
+theorem exists_abs_sum_primeWeight_comp_sub_sum_div_le_two {ε : ℝ} (hε : 0 < ε) :
+    ∃ C : ℝ, ∀ (g : ℕ → ℝ) (N : ℕ),
+      (∀ m, 2 ≤ m → m ≤ N → |g m - g (m - 1)| ≤ 2 / m) → (∀ m, |g m| ≤ 2) →
+        |(∑ k ∈ Icc 1 N, primeWeight k * g (N / k)) - ∑ n ∈ Icc 1 N, g n / n|
+          ≤ ε * Real.log N + C := by
+  obtain ⟨C, hC⟩ := exists_abs_sum_primeWeight_comp_sub_sum_div_le (ε := ε / 2) (by positivity)
+  refine ⟨2 * C, fun g N hinc hbd ↦ ?_⟩
+  have h := hC (fun n ↦ g n / 2) N (fun m hm2 hmN ↦ ?_) (fun m ↦ ?_)
+  · have e1 : ∑ k ∈ Icc 1 N, primeWeight k * (g (N / k) / 2)
+        = (∑ k ∈ Icc 1 N, primeWeight k * g (N / k)) / 2 := by
+      rw [Finset.sum_div]
+      exact Finset.sum_congr rfl fun k _ ↦ by ring
+    have e2 : ∑ n ∈ Icc 1 N, (g n / 2) / n = (∑ n ∈ Icc 1 N, g n / n) / 2 := by
+      rw [Finset.sum_div]
+      exact Finset.sum_congr rfl fun n _ ↦ by ring
+    rw [e1, e2, div_sub_div_same, abs_div] at h
+    rw [show |(2 : ℝ)| = 2 by norm_num] at h
+    rw [div_le_iff₀ (by norm_num : (0:ℝ) < 2)] at h
+    linarith
+  · have := hinc m hm2 hmN
+    have h2 : |g m / 2 - g (m - 1) / 2| = |g m - g (m - 1)| / 2 := by
+      rw [div_sub_div_same, abs_div, show |(2 : ℝ)| = 2 by norm_num]
+    have hm0 : (0 : ℝ) < m := by
+      have : (2 : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm2
+      linarith
+    have h4 : (2 / (m : ℝ)) / 2 = 1 / (m : ℝ) := by field_simp
+    rw [h2]
+    calc |g m - g (m - 1)| / 2 ≤ (2 / (m : ℝ)) / 2 := by linarith
+    _ = 1 / (m : ℝ) := h4
+  · have := hbd m
+    rw [abs_div, show |(2 : ℝ)| = 2 by norm_num]
+    rw [div_le_one (by norm_num : (0:ℝ) < 2)]
+    linarith
+
+variable (f : ℕ → ℝ)
+
+open scoped Classical in
+/--
+**The differential inequality for `|\sigma|`.**  For every `\varepsilon > 0` there is a
+constant `C` with
+$$|\sigma(N)|\log N \le \sum_{n \le N}\frac{|\sigma(n)|}{n} + \varepsilon\log N + C
+\qquad (N \ge 1),$$
+where `\sigma = ` `Wirsing.mean`.
+
+This is the combination of the log-weighted functional relation
+`Wirsing.abs_mean_mul_log_sub_sum_prime_le` (`\sigma(N)\log N = \sum_p(\log p/p)f(p)
+\sigma(\lfloor N/p\rfloor) + O(1)`) with the sharp weight comparison: the prime weights are
+replaced by harmonic ones at a cost of `\varepsilon\log N`, which the `O(1)`-error Mertens
+comparison could not do.  In the log variable `u = \log N`, `F(u) = \sigma(e^u)`,
+`\Phi(u) = \int_0^u|F|`, it reads `u\Phi'(u) \le \Phi(u) + \varepsilon u + O(1)`: the function
+`\Phi(u)/u` is non-increasing up to `\varepsilon`, hence convergent.
+-/
+@[category API, AMS 11]
+theorem exists_abs_mean_mul_log_le (hf : IsPMOneMultiplicative f) {ε : ℝ} (hε : 0 < ε) :
+    ∃ C : ℝ, ∀ N : ℕ, 1 ≤ N →
+      |mean f N| * Real.log N ≤ (∑ n ∈ Icc 1 N, |mean f n| / n) + ε * Real.log N + C := by
+  classical
+  obtain ⟨C, hC⟩ := exists_abs_sum_primeWeight_comp_sub_sum_div_le_two hε
+  refine ⟨C + (9 + Real.log 4), fun N hN ↦ ?_⟩
+  set g : ℕ → ℝ := fun n ↦ |mean f n| with hgdef
+  have hbd : ∀ m, |g m| ≤ 2 := by
+    intro m
+    simp only [hgdef, abs_abs]
+    linarith [abs_mean_le_one f hf m]
+  have hinc : ∀ m, 2 ≤ m → m ≤ N → |g m - g (m - 1)| ≤ 2 / (m : ℝ) := by
+    intro m hm2 hmN
+    have hcast : ((m - 1 : ℕ) : ℝ) = (m : ℝ) - 1 := by
+      rw [Nat.cast_sub (by omega : 1 ≤ m), Nat.cast_one]
+    have h := abs_mean_sub_mean_le f hf (M := m - 1) (N := m) (by omega) (by omega)
+    rw [hcast] at h
+    have heq : 2 * ((m : ℝ) - ((m : ℝ) - 1)) / (m : ℝ) = 2 / (m : ℝ) := by ring_nf
+    rw [heq] at h
+    exact le_trans (abs_abs_sub_abs_le_abs_sub _ _) h
+  have hcmp := hC g N hinc hbd
+  -- the prime side dominates `|σ(N)| log N`
+  have hprime : |mean f N| * Real.log N
+      ≤ (∑ k ∈ Icc 1 N, primeWeight k * g (N / k)) + (9 + Real.log 4) := by
+    have h := abs_mean_mul_log_sub_sum_prime_le f hf hN
+    have hps : ∑ k ∈ Icc 1 N, primeWeight k * g (N / k)
+        = ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * g (N / p) :=
+      sum_primeWeight_mul (fun k ↦ g (N / k)) N
+    have hdom : |∑ p ∈ (Icc 1 N).filter Nat.Prime,
+          Real.log p / p * (f p * mean f (N / p))|
+        ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * g (N / p) := by
+      refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum ?_)
+      intro p hp
+      simp only [Finset.mem_filter, Finset.mem_Icc] at hp
+      obtain ⟨⟨hp1, hpN⟩, hpp⟩ := hp
+      have hlogp : (0 : ℝ) ≤ Real.log p / p := by
+        have : (0 : ℝ) ≤ Real.log p := Real.log_natCast_nonneg p
+        positivity
+      rw [abs_mul, abs_mul, abs_of_nonneg hlogp, abs_eq_one_of_one_le f hf hp1, one_mul]
+    have hlogN : 0 ≤ Real.log N := Real.log_natCast_nonneg N
+    have habs : |mean f N * Real.log N| = |mean f N| * Real.log N := by
+      rw [abs_mul, abs_of_nonneg hlogN]
+    rw [hps]
+    have := abs_sub_abs_le_abs_sub (mean f N * Real.log N)
+      (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (f p * mean f (N / p)))
+    rw [habs] at this
+    linarith [hdom, h, this]
+  have hsum : (∑ k ∈ Icc 1 N, primeWeight k * g (N / k))
+      ≤ (∑ n ∈ Icc 1 N, g n / n) + ε * Real.log N + C := by
+    have := abs_le.1 hcmp
+    linarith [this.2]
+  simp only [hgdef] at hsum ⊢
+  linarith [hprime, hsum]
 
 end Wirsing

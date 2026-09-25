@@ -23,9 +23,29 @@ bounded discrepancy costs `E` times the total variation of `g`, i.e. `log N`.  `
 constant.  Supporting lemmas: `sum_Icc_one_div_mul_pred` (`∑_{2≤m≤N} 1/(m(m-1)) = 1 - 1/N`),
 `sum_Icc_one_div_mul_pred_le`.
 
+### Landed too: the differential inequality
+
+`Wirsing.exists_abs_mean_mul_log_le` (axiom-clean): for every `ε > 0` there is `C` with
+
+    |σ(N)| log N ≤ ∑_{n ≤ N} |σ(n)|/n + ε log N + C     (N ≥ 1),  σ = mean f.
+
+This is `abs_mean_mul_log_sub_sum_prime_le` (the log-weighted functional relation) fed through
+the sharp comparison in its `2/m`-increment form
+`exists_abs_sum_primeWeight_comp_sub_sum_div_le_two` (`mean` is `2/m`-Lipschitz, by
+`abs_mean_sub_mean_le`, not `1/m`; the comparison is homogeneous in `g`, so the scaled form is
+a one-line corollary).  In the log variable with `Φ(u) = ∫_0^u |F|` it is
+`u Φ'(u) ≤ Φ(u) + ε u + O(1)`.
+
 ### Next attack on the crux
 
-1. Apply it with `g = fun n ↦ |mean f n|` (increments: `Wirsing.abs_abs_logMean_sub_le` is the
+0. **Exploit the differential inequality.**  With `Ψ(N) = ∑_{n ≤ N} |σ(n)|/n` the inequality is
+   `|σ(N)| log N ≤ Ψ(N) + ε log N + C`, and `Ψ(N) - Ψ(N-1) = |σ(N)|/N`.  So
+   `Ψ'(N) ≤ (Ψ(N) + ε log N + C)/(N log N)`, whence `Ψ(N)/log N` is non-increasing up to `ε`:
+   `(Ψ/log)' = (Ψ' log N - Ψ/N)/log²N ≤ (ε log N + C)/(N log²N)`, whose sum over `N` converges.
+   Hence `Ψ(N)/log N → β` for some `β ≥ 0`, and `limsup |σ(N)| ≤ β + ε`.  `Decay.lean` already
+   has the potential `Φ(N) = ∑_{n≤N}|L(n)|/n` machinery for exactly this shape — check
+   `Wirsing.Decay` before rebuilding it.
+1. (superseded by 0, kept for reference) Apply it with `g = fun n ↦ |mean f n|` (increments: `Wirsing.abs_abs_logMean_sub_le` is the
    analogue for `logMean`; the `mean` version has to be checked — if `mean` is not `1/m`-
    Lipschitz, run the comparison with `logMean` instead and use
    `Wirsing.abs_mean_mul_log_sub_sum_prime_le`) to get
