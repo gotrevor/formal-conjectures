@@ -618,6 +618,84 @@ theorem exists_window_of_abs_dilationDiff_le {g : ℕ → ℝ} (hg : IsBddMultip
       linarith
     linarith
 
+/-! ### The packing step -/
+
+open scoped Classical in
+/--
+**One block contributes a deficit.**  Suppose `|D| \le B` on `(M, N]` and `|D| \le \Delta'` on a
+sub-window `[w, s] \subseteq (M, N]` of harmonic weight at least `\gamma/(B - \Delta')`.  Then
+
+    \sum_{n \le N}\frac{|D(n)|}{n}
+      \le \sum_{n \le M}\frac{|D(n)|}{n} + B\sum_{M < n \le N}\frac1n - \gamma .
+
+Iterating this over the blocks `(\lfloor N/T^{k+1}\rfloor, \lfloor N/T^k\rfloor]` is what beats
+the trivial bound `\sum_{n\le N}|D(n)|/n \le B\log N` by a constant factor, and hence beats the
+differential inequality `Wirsing.exists_abs_dilationDiff_mul_log_le`.
+-/
+@[category API, AMS 11]
+theorem sum_abs_dilationDiff_div_le_of_window {g : ℕ → ℝ} {q : ℕ} {B Δ' γ : ℝ}
+    {w s M N : ℕ} (hMw : M < w) (hsN : s ≤ N) (hMN : M ≤ N)
+    (hbdd : ∀ n, M < n → n ≤ N → |dilationDiff g q n| ≤ B)
+    (hwin : ∀ n, w ≤ n → n ≤ s → |dilationDiff g q n| ≤ Δ')
+    (hγ : γ ≤ (B - Δ') * ∑ n ∈ Ioc (w - 1) s, (1 : ℝ) / n) :
+    ∑ n ∈ Icc 1 N, |dilationDiff g q n| / n
+      ≤ (∑ n ∈ Icc 1 M, |dilationDiff g q n| / n)
+        + B * (∑ n ∈ Ioc M N, (1 : ℝ) / n) - γ := by
+  classical
+  set F : ℕ → ℝ := fun n ↦ |dilationDiff g q n| / n with hF
+  -- the split at `M`
+  have hsplit : ∑ n ∈ Icc 1 N, F n = (∑ n ∈ Icc 1 M, F n) + ∑ n ∈ Ioc M N, F n := by
+    rw [show Icc 1 N = Ioc 0 N from rfl, show Icc 1 M = Ioc 0 M from rfl,
+      ← Finset.sum_Ioc_consecutive F (Nat.zero_le M) hMN]
+  -- the window sits inside the block
+  set W := Ioc (w - 1) s with hW
+  have hWsub : W ⊆ Ioc M N := by
+    intro n hn
+    rw [hW, mem_Ioc] at hn
+    exact mem_Ioc.2 ⟨by omega, le_trans hn.2 hsN⟩
+  have hwin' : ∀ n ∈ W, F n ≤ Δ' * (1 / n) := by
+    intro n hn
+    rw [hW, mem_Ioc] at hn
+    have hn1 : 1 ≤ n := by omega
+    have hnR : (0 : ℝ) < (n : ℝ) := by
+      have : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn1
+      linarith
+    have := hwin n (by omega) hn.2
+    rw [hF, mul_one_div]
+    exact (div_le_div_iff_of_pos_right hnR).mpr this
+  have hbdd' : ∀ n ∈ Ioc M N, F n ≤ B * (1 / n) := by
+    intro n hn
+    rw [mem_Ioc] at hn
+    have hn1 : 1 ≤ n := by omega
+    have hnR : (0 : ℝ) < (n : ℝ) := by
+      have : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn1
+      linarith
+    have := hbdd n hn.1 hn.2
+    rw [hF, mul_one_div]
+    exact (div_le_div_iff_of_pos_right hnR).mpr this
+  -- split the block at the window
+  have hsplit2 : ∑ n ∈ Ioc M N, F n = (∑ n ∈ W, F n) + ∑ n ∈ Ioc M N \ W, F n := by
+    rw [add_comm]
+    exact (Finset.sum_sdiff hWsub).symm
+  have hsplit3 : ∑ n ∈ Ioc M N, (1 : ℝ) / n
+      = (∑ n ∈ W, (1 : ℝ) / n) + ∑ n ∈ Ioc M N \ W, (1 : ℝ) / n := by
+    rw [add_comm]
+    exact (Finset.sum_sdiff hWsub).symm
+  have hb1 : ∑ n ∈ W, F n ≤ Δ' * ∑ n ∈ W, (1 : ℝ) / n := by
+    rw [Finset.mul_sum]
+    exact Finset.sum_le_sum hwin'
+  have hb2 : ∑ n ∈ Ioc M N \ W, F n ≤ B * ∑ n ∈ Ioc M N \ W, (1 : ℝ) / n := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun n hn ↦ hbdd' n (Finset.mem_sdiff.1 hn).1
+  rw [hsplit, hsplit2, hsplit3]
+  have hexp : B * ((∑ n ∈ W, (1 : ℝ) / n) + ∑ n ∈ Ioc M N \ W, (1 : ℝ) / n)
+      = B * (∑ n ∈ W, (1 : ℝ) / n) + B * ∑ n ∈ Ioc M N \ W, (1 : ℝ) / n := by ring
+  rw [hexp]
+  have hsub : Δ' * (∑ n ∈ W, (1 : ℝ) / n) ≤ B * (∑ n ∈ W, (1 : ℝ) / n) - γ := by
+    have : γ ≤ (B - Δ') * ∑ n ∈ W, (1 : ℝ) / n := hγ
+    nlinarith [this]
+  linarith
+
 /-! ### Saturation -/
 
 open scoped Classical in

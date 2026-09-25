@@ -100,6 +100,12 @@ Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
   sits inside `[s/\rho, s]`.  Three explicit largeness hypotheses on `s` (all of the form
   `s \ge` constant in `\rho`) make the window nonempty and its weight at least half.
 
+* `sum_abs_dilationDiff_div_le_of_window` — **the packing step, proved** (seventh commit of
+  lap 16): if `|D| \le B` on `(M, N]` and `|D| \le \Delta'` on a sub-window `[w,s]` of that
+  block, then `\Phi(N) \le \Phi(M) + B\sum_{M<n\le N}1/n - \gamma` with
+  `\gamma = (B-\Delta')\cdot` (window weight).  This is the single inequality the strong
+  induction iterates.
+
 ### Next lap, in order
 
 1. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
