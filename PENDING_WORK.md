@@ -82,6 +82,52 @@ from the sharp comparison actually landing:
   that `exists_abs_sum_primeWeight_comp_sub_sum_div_le` can be applied to `g = L/(1 + log ·)`,
   which *is* bounded by `1` with increments `≤ 2/m`.
 
+### THE ROUTE THAT NOW LOOKS RIGHT: Turán–Kubilius, not the log-weighted relation
+
+`OmegaE.exists_functional_relation` (proved long ago, and overlooked since) says
+
+    |σ(N)·E(N) + ∑_{p ∈ E, p ≤ N} σ(⌊N/p⌋)/p| ≤ C(√(E(N)+1) + 1),   E(N) = ∑_{p ≤ N, f p = -1} 1/p.
+
+The weights `1/p` have total mass `E(N)` and the error is `O(√E(N))`, so **error/main term → 0**
+under `hdiv`.  That is the decisive difference from the log-weighted relation of `Rigidity.lean`,
+whose error `c(M₀) + 2δ log N` sits against a main term `ρ log N` while the bad primes may be
+far sparser than `log N` — the tension recorded above, and the reason lap 10's route died.
+
+**Landed this lap**: `Wirsing/TuranDeficit.lean` (new, sorry-free, axiom-clean),
+`exists_sum_tk_deficit_le`: with `A ≥ 0`, `|σ(M)| ≤ A + δ` for `M ≥ M₀`, `|s| = 1` and
+`A - δ ≤ s σ(N)`, the `1/p`-weight of the bad primes where `-s σ(⌊N/p⌋)` is **not** within `ρ`
+of `A` is at most
+
+    (2δ·E(N) + C(√(E(N)+1)+1) + tail) / (ρ + δ) + tail,
+    tail = tailWeight f M₀ N = ∑_{p bad, ⌊N/p⌋ < M₀} 1/p.
+
+At `δ = ε²` and `E(N) ≥ ε^{-4}` this is `≤ 3ε·E(N) + O(tail)`: a small **fraction** of the total
+weight, with no `log N` anywhere.  So `σ` flips sign, to within `ρ`, at almost every bad scale.
+
+### The plan to finish (write it in this order)
+
+1. `tail → 0`: `tail ≤ π(N)/(N/M₀) ≤ 2M₀/log N` from `Newman`'s PNT (`π(N) ≲ 2N/log N` needs a
+   short Chebyshev-style corollary of `tendsto_chebyshevPsi_div_atTop_one`).
+2. **Use `limsup`, not `sup`** — this is what unblocks the ordering problem that killed the
+   log-weighted route.  Put `A = limsup |σ|`; choose `M₀` with `|σ(M)| ≤ A + δ/2` for `M ≥ M₀`;
+   then there are *infinitely many* `N` with `|σ(N)| ≥ A - δ`, so `N` may be taken larger than
+   any `M₀ Y^k`.  `Extremal.lean`'s `meanSup`/`deficitInf` are no longer needed.
+3. Iterate `exists_sum_tk_deficit_le` at `N/p₁`, `N/(p₁p₂)`, …: at level `j` the slack is `ρ_{j-1}`,
+   so thresholds grow geometrically, `ρ_j ≈ ρ_1 ε^{-(j-1)}`, and `ρ_j ≤ A/2` bounds the number of
+   levels by `k ≈ log(A/ρ_1)/log(1/ε)`.  Unlike lap 10's route this is **not** a limitation:
+   `ρ_1 ≥ (δ E + C√E)/(ε E)` can be made arbitrarily small by taking `δ → 0` and `E → ∞` first,
+   so `k` can be made arbitrarily large.  Conclusion: `s(-1)^j σ(⌊N/(p_1⋯p_j)⌋) ≥ A - ρ_j` for
+   choices of bad primes `p_i` outside sets of small weight.
+4. **The finish, a subset-sum pigeonhole.**  Take `k` bad primes `p_1 < … < p_k ≤ Y` from the
+   good sets.  Among the `2^{k-1}` even-size and `2^{k-1}` odd-size subsets of `{1..k}`, split
+   `[0, k log Y]` into `2^{k-1}` buckets: some bucket holds one subset of each parity, so there
+   are `I, J` of opposite parity with `|log ∏_I p - log ∏_J p| ≤ k log Y/2^{k-1}`.  The two
+   scales `N/∏_I`, `N/∏_J` are then within ratio `1 + tiny` but carry opposite signs of a
+   near-extremal `σ`, contradicting `abs_mean_sub_mean_le` (`|σ(M') - σ(M)| ≤ 2(M'-M)/M'`) once
+   `2(A - ρ_k) > 2·tiny`.  Hence `A = 0`.
+   *Care*: step 3 must be run with **distinct** primes and the level-`j` relation applies to
+   `f(p_1⋯p_j) = (-1)^j` — fine for squarefree products of distinct bad primes.
+
 ### Landed: good primes in a window (`Wirsing/GoodPrime.lean`, new, axiom-clean)
 
 * `exists_window_weight_gt K X₀`: some `X ≥ X₀` has prime weight `> K` in `(X, e^{|K|+1}X]`.

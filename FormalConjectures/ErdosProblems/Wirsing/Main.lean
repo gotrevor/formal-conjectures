@@ -26,6 +26,7 @@ public import FormalConjectures.ErdosProblems.Wirsing.Weighted
 public import FormalConjectures.ErdosProblems.Wirsing.Extremal
 public import FormalConjectures.ErdosProblems.Wirsing.Sharp
 public import FormalConjectures.ErdosProblems.Wirsing.GoodPrime
+public import FormalConjectures.ErdosProblems.Wirsing.TuranDeficit
 
 /-!
 # Wirsing's mean value theorem: assembly
