@@ -43,9 +43,20 @@ identity `mean_eq_logMean_sub_sum` plus `Filter.Tendsto.cesaro` gives
 
     L(N) → 0   ⟹   mean f N → 0.
 
-So the only `sorry` in `src/` is now
-`Wirsing.tendsto_logMean_atTop_zero_of_badPrimeSum_atTop` : `L(N) → 0` under `hdiv`.
+Moreover the limit is irrelevant: Cesàro gives `L(N) → c ⟹ mean f N → 0` for **any** `c`
+(`tendsto_mean_atTop_zero_of_tendsto_logMean`, `..._of_exists_tendsto_logMean`).  So the only
+`sorry` in `src/` is now
+
+    Wirsing.exists_tendsto_logMean_of_badPrimeSum_atTop :
+      Tendsto (badPrimeSum f) atTop atTop → ∃ c, Tendsto (logMean f) atTop (𝓝 c)
+
+i.e. **the Dirichlet series of `f` converges at `s = 1`** — no value needed.
 `tendsto_mean_atTop_zero_of_badPrimeSum_atTop` is a one-line consequence.
+
+Note this is a deliberate overshoot: the exactly equivalent form of the headline is
+`L(N) - (1/N)∑_{M<N}L(M) → 0`, and `σ → 0` does allow `L` to drift (take `σ(t) = 1/log t`).
+Convergence is the classical statement and the shape `Decay.lean` is built for, so it is the
+target; if it stalls, fall back to the drift form.
 
 **Why this is the right target, and the direct mean route is not** — the finding of this lap,
 from the sharp comparison actually landing:

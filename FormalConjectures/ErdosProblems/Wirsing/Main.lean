@@ -68,24 +68,20 @@ theorem tendsto_logMean_div_log_atTop_zero (hf : IsPMOneMultiplicative f)
   simp only [Function.comp_apply, abs_div, abs_of_nonneg hlog, le_refl]
 
 /--
-**The Tauberian bridge: `L(N) \to 0` implies `\sigma(N) \to 0`.**
+**The Tauberian bridge: if `L` converges at all, then `\sigma(N) \to 0`.**
 
 The exact Abel identity `Wirsing.mean_eq_logMean_sub_sum` gives
 `\sigma(N) = L(N) - \frac1N\sum_{M<N}L(M)` with no error term, and the second term is a Cesàro
-average of `L`.  So the crux reduces to the *logarithmic* statement `L(N) \to 0`, i.e.
-`\sum_{n \le N} f(n)/n \to 0`.
+average of `L`.  If `L(N) \to c` then the Cesàro average tends to the *same* `c`, whatever `c`
+is, so the difference tends to `0`.
 
-This reduction is the right one because the logarithmic average has a factor `\log N` of room
-that the mean value does not: `|L(N)| \le 1 + \log N`, the engine identity
-`Wirsing.abs_logMean_mul_log_sub_defect_le` carries the defect weight `1 + f(p)` *exactly* (no
-absolute values), and the potential `\Phi(N) = \sum_{n\le N}|L(n)|/n` has main term
-`\sim \alpha(\log N)^2/2`, against which the `O(\log N)` error of the weight comparison is
-negligible.  For `\sigma` the main term is only `A\log N`, the same size as the comparison
-error, which is what defeats the direct attack (see `PENDING_WORK.md`).
+The value of the limit is therefore irrelevant: the crux reduces to the mere **convergence** of
+`\sum_{n \le N} f(n)/n`.  In the continuous variable this is the elementary Tauberian fact that
+`W' + W \to c` forces `W \to c` and hence `W' \to 0`, with `W(u) = \int_0^u \sigma(e^v)\,dv`.
 -/
 @[category API, AMS 11]
-theorem tendsto_mean_atTop_zero_of_tendsto_logMean
-    (h : Tendsto (logMean f) atTop (𝓝 0)) : Tendsto (mean f) atTop (𝓝 0) := by
+theorem tendsto_mean_atTop_zero_of_tendsto_logMean {c : ℝ}
+    (h : Tendsto (logMean f) atTop (𝓝 c)) : Tendsto (mean f) atTop (𝓝 0) := by
   have hL0 : logMean f 0 = 0 := by simp [logMean]
   have hces := h.cesaro
   have hsub : Tendsto (fun N : ℕ ↦ logMean f N - (N : ℝ)⁻¹ * ∑ i ∈ Finset.range N, logMean f i)
@@ -102,13 +98,31 @@ theorem tendsto_mean_atTop_zero_of_tendsto_logMean
     simp [hL0]
   rw [mean_eq_logMean_sub_sum f hN, hset, hsplit, div_eq_inv_mul]
 
+/-- `Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` with the limit left unnamed: the
+convergence of `\sum_{n\le N}f(n)/n` alone gives the mean value `0`. -/
+@[category API, AMS 11]
+theorem tendsto_mean_atTop_zero_of_exists_tendsto_logMean
+    (h : ∃ c : ℝ, Tendsto (logMean f) atTop (𝓝 c)) : Tendsto (mean f) atTop (𝓝 0) :=
+  h.elim fun _ hc ↦ tendsto_mean_atTop_zero_of_tendsto_logMean f hc
+
 /--
 **THE CRUX, in logarithmic form.**  If the bad primes have divergent reciprocal sum then the
-logarithmic average tends to `0`:
-$$L(N) = \sum_{n \le N}\frac{f(n)}{n} \longrightarrow 0 .$$
+logarithmic average *converges*:
+$$L(N) = \sum_{n \le N}\frac{f(n)}{n} \longrightarrow c \quad\text{for some } c .$$
+
+The value of `c` does not matter (`Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean`), so this
+is strictly weaker than `L(N) \to 0`; it is the classical statement that the Dirichlet series
+of `f` converges at `s = 1`.
 
 `Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` reduces the headline to this, and it is
 the form to attack: everything about `L` has a factor `\log N` of room that `\sigma` has not.
+
+**This is an overshoot, deliberately.**  The exactly equivalent form of the headline is
+`L(N) - \frac1N\sum_{M<N}L(M) \to 0`, which is weaker than convergence of `L`: `\sigma(N) \to 0`
+allows `L` to drift, as `\sigma(t) = 1/\log t` shows.  Convergence is nevertheless the form to
+prove, because it is the classical statement (the Dirichlet series of `f` converges at `s = 1`,
+with limit `0`, the size being `\exp(-\sum_{p \le N}(1 - f(p))/p)` heuristically) and the form
+that `Wirsing/Decay.lean`'s machinery is shaped for.
 
 **What is already proved.**  `Wirsing.tendsto_abs_logMean_div_log_atTop_zero` (lap 5, from the
 envelope machinery of `Wirsing/Decay.lean`) gives `L(N) = o(\log N)`.  The gap is therefore
@@ -127,9 +141,9 @@ logarithmic variable the main term is `\alpha(\log N)^2/2`, against which an `O(
 *is* negligible: that is the whole reason route C works.
 -/
 @[category API, AMS 11]
-theorem tendsto_logMean_atTop_zero_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
+theorem exists_tendsto_logMean_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
     (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
-    Tendsto (logMean f) atTop (𝓝 0) := by
+    ∃ c : ℝ, Tendsto (logMean f) atTop (𝓝 c) := by
   sorry
 
 /--
@@ -168,8 +182,8 @@ The state of the attack is in `PENDING_WORK.md`.
 theorem tendsto_mean_atTop_zero_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
     (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
     Tendsto (mean f) atTop (𝓝 0) :=
-  tendsto_mean_atTop_zero_of_tendsto_logMean f
-    (tendsto_logMean_atTop_zero_of_badPrimeSum_atTop f hf hdiv)
+  tendsto_mean_atTop_zero_of_exists_tendsto_logMean f
+    (exists_tendsto_logMean_of_badPrimeSum_atTop f hf hdiv)
 
 /--
 The divergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p = \infty$ then the mean
