@@ -43,3 +43,12 @@ There is no open obligation left in the 239 chain.  Optional tidying, none of it
 * `STATUS.md` and `DIRECTION.md` still carry per-lap narration from laps 3–16; an altitude pass
   would compress it now that the route is settled.
 * Nothing in `FormalConjecturesForMathlib/` has a `sorry`.
+
+## Note for the host / self-stop gate
+
+`box done` was declined because the repo-wide gate counts ~4467 open `sorry`s. That is by
+design and **not** this run's scope: Formal Conjectures is a *statement* repository — almost
+every problem in `FormalConjectures/` is deliberately `sorry`, and `CONTRIBUTING.md`/`AGENTS.md`
+say so. This run's target was Erdős 239 alone, and it is met and axiom-clean. A relaunch should
+be scoped, e.g. `--done-when 'sorry-free:FormalConjectures/ErdosProblems/Wirsing'`, or simply
+stopped by the operator.
