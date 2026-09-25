@@ -36,6 +36,41 @@ the sharp comparison in its `2/m`-increment form
 a one-line corollary).  In the log variable with `Φ(u) = ∫_0^u |F|` it is
 `u Φ'(u) ≤ Φ(u) + ε u + O(1)`.
 
+### THE CRUX IS NOW IN LOGARITHMIC FORM (the decisive reformulation of this lap)
+
+`Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` (proved, axiom-clean): the exact Abel
+identity `mean_eq_logMean_sub_sum` plus `Filter.Tendsto.cesaro` gives
+
+    L(N) → 0   ⟹   mean f N → 0.
+
+So the only `sorry` in `src/` is now
+`Wirsing.tendsto_logMean_atTop_zero_of_badPrimeSum_atTop` : `L(N) → 0` under `hdiv`.
+`tendsto_mean_atTop_zero_of_badPrimeSum_atTop` is a one-line consequence.
+
+**Why this is the right target, and the direct mean route is not** — the finding of this lap,
+from the sharp comparison actually landing:
+
+* `L` has a factor `log N` of room that `σ` has not: `|L(N)| ≤ 1 + log N`, the engine identity
+  `abs_logMean_mul_log_sub_defect_le` carries the defect weight `1 + f(p)` *exactly* (no
+  absolute values, so no loss), and the potential `Φ(N) = ∑_{n≤N}|L(n)|/n` has main term
+  `≈ α(log N)²/2`, against which the `O(log N)` comparison error is negligible.  That is why
+  `Decay.lean` could prove `L(N) = o(log N)` with `O(1)`-error Mertens only.
+* For `σ` the main term of `exists_abs_mean_mul_log_le` is `A log N`, the *same size* as its
+  `ε log N` error, so no iteration contracts.  Worse, the bad-prime deficit it leaves is
+  `2∑_{f(p)=-1}(log p/p)|σ(⌊N/p⌋)| ≈ 2Aβ(N)` with `β(N) = ∑_{bad p ≤ N} log p/p → ∞`, and
+  `β(N) = o(log N)` whenever the bad primes are sparse — so `ε log N` swamps the gain.  The
+  same accounting kills the window/rigidity endgame of the previous section: its exceptional
+  weight `K` is constant only at the variational point, and making `K` beat `β` needs an
+  *effective* PNT error term, which the Newman proof does not supply.  **Do not retry the
+  direct `σ` deficit argument.**
+* Consequently the remaining gap is `L(N) = o(log N)` (proved) ⟹ `L(N) → 0`: two factors of
+  `log N`, to be supplied by the `1 + f(p)` defect.  The natural next step is to re-run the
+  `Decay.lean` envelope/Gronwall iteration with the potential normalised by `log N` instead of
+  `(log N)²` — i.e. ask whether `envelope` with exponent 1 is still antitone up to summable
+  errors — now that `|L| = o(log N)` is available as an input rather than a conclusion, and
+  that `exists_abs_sum_primeWeight_comp_sub_sum_div_le` can be applied to `g = L/(1 + log ·)`,
+  which *is* bounded by `1` with increments `≤ 2/m`.
+
 ### Landed: good primes in a window (`Wirsing/GoodPrime.lean`, new, axiom-clean)
 
 * `exists_window_weight_gt K X₀`: some `X ≥ X₀` has prime weight `> K` in `(X, e^{|K|+1}X]`.

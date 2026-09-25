@@ -68,6 +68,71 @@ theorem tendsto_logMean_div_log_atTop_zero (hf : IsPMOneMultiplicative f)
   simp only [Function.comp_apply, abs_div, abs_of_nonneg hlog, le_refl]
 
 /--
+**The Tauberian bridge: `L(N) \to 0` implies `\sigma(N) \to 0`.**
+
+The exact Abel identity `Wirsing.mean_eq_logMean_sub_sum` gives
+`\sigma(N) = L(N) - \frac1N\sum_{M<N}L(M)` with no error term, and the second term is a Cesàro
+average of `L`.  So the crux reduces to the *logarithmic* statement `L(N) \to 0`, i.e.
+`\sum_{n \le N} f(n)/n \to 0`.
+
+This reduction is the right one because the logarithmic average has a factor `\log N` of room
+that the mean value does not: `|L(N)| \le 1 + \log N`, the engine identity
+`Wirsing.abs_logMean_mul_log_sub_defect_le` carries the defect weight `1 + f(p)` *exactly* (no
+absolute values), and the potential `\Phi(N) = \sum_{n\le N}|L(n)|/n` has main term
+`\sim \alpha(\log N)^2/2`, against which the `O(\log N)` error of the weight comparison is
+negligible.  For `\sigma` the main term is only `A\log N`, the same size as the comparison
+error, which is what defeats the direct attack (see `PENDING_WORK.md`).
+-/
+@[category API, AMS 11]
+theorem tendsto_mean_atTop_zero_of_tendsto_logMean
+    (h : Tendsto (logMean f) atTop (𝓝 0)) : Tendsto (mean f) atTop (𝓝 0) := by
+  have hL0 : logMean f 0 = 0 := by simp [logMean]
+  have hces := h.cesaro
+  have hsub : Tendsto (fun N : ℕ ↦ logMean f N - (N : ℝ)⁻¹ * ∑ i ∈ Finset.range N, logMean f i)
+      atTop (𝓝 0) := by
+    simpa using h.sub hces
+  refine hsub.congr' ?_
+  filter_upwards [eventually_ge_atTop 1] with N hN
+  have hset : Finset.Icc 1 (N - 1) = Finset.Ico 1 N := by
+    ext x
+    simp only [Finset.mem_Icc, Finset.mem_Ico]
+    omega
+  have hsplit : ∑ i ∈ Finset.range N, logMean f i = ∑ i ∈ Finset.Ico 1 N, logMean f i := by
+    rw [Finset.range_eq_Ico, ← Finset.sum_Ico_consecutive _ (Nat.zero_le 1) hN]
+    simp [hL0]
+  rw [mean_eq_logMean_sub_sum f hN, hset, hsplit, div_eq_inv_mul]
+
+/--
+**THE CRUX, in logarithmic form.**  If the bad primes have divergent reciprocal sum then the
+logarithmic average tends to `0`:
+$$L(N) = \sum_{n \le N}\frac{f(n)}{n} \longrightarrow 0 .$$
+
+`Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` reduces the headline to this, and it is
+the form to attack: everything about `L` has a factor `\log N` of room that `\sigma` has not.
+
+**What is already proved.**  `Wirsing.tendsto_abs_logMean_div_log_atTop_zero` (lap 5, from the
+envelope machinery of `Wirsing/Decay.lean`) gives `L(N) = o(\log N)`.  The gap is therefore
+`o(\log N) \Rightarrow o(1)`, two whole factors of `\log N`, and the mechanism that must supply
+them is the defect weight `1 + f(p)` of `Wirsing.abs_logMean_mul_log_sub_defect_le`, which
+vanishes exactly on the primes counted by `hdiv`.
+
+**Why the mean cannot be attacked directly** (lap 13).  The sharp weight comparison
+`Wirsing.exists_abs_sum_primeWeight_comp_sub_sum_div_le` gives
+`|\sigma(N)|\log N \le \sum_{n\le N}|\sigma(n)|/n + \varepsilon\log N + C`
+(`Wirsing.exists_abs_mean_mul_log_le`), whose main term `A\log N` is the *same size* as the
+error, so no iteration contracts; and the bad-prime deficit it leaves,
+`2\sum_{f(p)=-1}(\log p/p)|\sigma(\lfloor N/p\rfloor)| \approx 2A\beta(N)`, is beaten by that
+`\varepsilon\log N` whenever the bad primes are sparse (`\beta(N) = o(\log N)`).  In the
+logarithmic variable the main term is `\alpha(\log N)^2/2`, against which an `O(\log N)` error
+*is* negligible: that is the whole reason route C works.
+-/
+@[category API, AMS 11]
+theorem tendsto_logMean_atTop_zero_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
+    (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
+    Tendsto (logMean f) atTop (𝓝 0) := by
+  sorry
+
+/--
 **The divergent case, as a single statement.**  If the bad primes have divergent reciprocal
 sum then the mean value is `0`.
 
@@ -102,8 +167,9 @@ The state of the attack is in `PENDING_WORK.md`.
 @[category API, AMS 11]
 theorem tendsto_mean_atTop_zero_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
     (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
-    Tendsto (mean f) atTop (𝓝 0) := by
-  sorry
+    Tendsto (mean f) atTop (𝓝 0) :=
+  tendsto_mean_atTop_zero_of_tendsto_logMean f
+    (tendsto_logMean_atTop_zero_of_badPrimeSum_atTop f hf hdiv)
 
 /--
 The divergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p = \infty$ then the mean
