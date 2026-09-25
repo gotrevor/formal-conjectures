@@ -696,6 +696,114 @@ theorem sum_abs_dilationDiff_div_le_of_window {g : ℕ → ℝ} {q : ℕ} {B Δ'
     nlinarith [this]
   linarith
 
+/--
+**The block step.**  Put `T = 4q^J` and `M = \lfloor N/T\rfloor`.  Under the largeness
+hypotheses on `N` below,
+
+    \Phi(N) \le \Phi(M) + B(\log N - \log M) - (B - \Delta/2)\frac{\log\rho}{2},
+
+where `\Phi(N) = \sum_{n \le N}|D(n)|/n` and `B` bounds `|D|` beyond `n_0`.
+
+This is `Wirsing.exists_abs_dilationDiff_le_of_block` (a small scale in every geometric block)
+followed by `Wirsing.exists_window_of_abs_dilationDiff_le` (a window of positive harmonic weight
+around it) followed by `Wirsing.sum_abs_dilationDiff_div_le_of_window` (the deficit).  Every
+hypothesis on `N` is monotone, so all of them hold for all large `N`.
+-/
+@[category API, AMS 11]
+theorem sum_abs_dilationDiff_div_block_step {g : ℕ → ℝ} (hg : IsBddMultiplicative g) {q : ℕ}
+    (hq : 1 ≤ q) {Δ ρ B : ℝ} (hρ1 : 1 < ρ) (hρ2 : ρ ≤ 2)
+    (hlip : (2 + 4 * (q : ℝ)) * Real.log ρ ≤ Δ / 4) {J : ℕ} (hJ : 2 < (J : ℝ) * (Δ / 4))
+    {n₀ : ℕ} (hn₀1 : 1 ≤ n₀) (hbd : ∀ n, n₀ ≤ n → |dilationDiff g q n| ≤ B)
+    (hBΔ : Δ / 2 ≤ B) {N : ℕ}
+    (hA1 : 1 ≤ N / q ^ J)
+    (hA2 : (2 + 4 * (q : ℝ)) / ((N / q ^ J : ℕ) : ℝ) ≤ Δ / 4)
+    (hs1 : 2 * ρ / (ρ - 1) ≤ ((N / q ^ J : ℕ) : ℝ))
+    (hs2 : 4 * (ρ - 1) / Real.log ρ ≤ ((N / q ^ J : ℕ) : ℝ))
+    (hs3 : ρ ≤ ((N / q ^ J : ℕ) : ℝ))
+    (hn₀M : n₀ ≤ N / (4 * q ^ J)) (hT : 4 * q ^ J ≤ N) :
+    ∑ n ∈ Icc 1 N, |dilationDiff g q n| / n
+      ≤ (∑ n ∈ Icc 1 (N / (4 * q ^ J)), |dilationDiff g q n| / n)
+        + B * (Real.log N - Real.log ((N / (4 * q ^ J) : ℕ) : ℝ))
+        - (B - Δ / 2) * (Real.log ρ / 2) := by
+  have hΔ : 0 < Δ := by
+    have hlogρ : 0 < Real.log ρ := Real.log_pos hρ1
+    nlinarith [hlogρ]
+  have hρ0 : (0 : ℝ) < ρ := by linarith
+  set R := q ^ J with hR
+  have hR1 : 1 ≤ R := Nat.one_le_pow _ _ (by omega)
+  set M := N / (4 * R) with hM
+  have hM1 : 1 ≤ M := le_trans hn₀1 hn₀M
+  have hMN : M ≤ N := Nat.div_le_self _ _
+  -- a small scale in the block
+  obtain ⟨s, hs1', hs2', hsmall⟩ :=
+    exists_abs_dilationDiff_le_of_block hg hq hΔ hJ hA1 hA2
+  have hXs : ((N / R : ℕ) : ℝ) ≤ (s : ℝ) := by exact_mod_cast hs1'
+  -- the deficit window
+  obtain ⟨w, hw1, hws, hwu, hwin, hweight⟩ :=
+    exists_window_of_abs_dilationDiff_le hg hq hρ1 hlip hsmall
+      (le_trans hs1 hXs) (le_trans hs2 hXs) (le_trans hs3 hXs)
+  -- the window lies above `M`
+  have hMw : M < w := by
+    have hNR : (0 : ℝ) < (N : ℝ) := by
+      have : (1 : ℕ) ≤ N := le_trans (by omega : 1 ≤ 4 * R) hT
+      exact_mod_cast Nat.lt_of_lt_of_le Nat.zero_lt_one this
+    have hRR : (1 : ℝ) ≤ (R : ℝ) := by exact_mod_cast hR1
+    -- `M ≤ N / (4R)`
+    have hMub : (M : ℝ) ≤ (N : ℝ) / (4 * R) := by
+      rw [le_div_iff₀ (by positivity)]
+      have h := Nat.div_mul_le_self N (4 * R)
+      have h' : ((N / (4 * R) * (4 * R) : ℕ) : ℝ) ≤ (N : ℝ) := by exact_mod_cast h
+      push_cast at h'
+      rw [hM]
+      linarith
+    -- `N/R - 1 ≤ ⌊N/R⌋`
+    have hXlb : (N : ℝ) / R - 1 ≤ ((N / R : ℕ) : ℝ) := by
+      have hlt : N < (N / R + 1) * R := (Nat.div_lt_iff_lt_mul (by omega)).1 (Nat.lt_succ_self _)
+      have hc : (N : ℝ) < (((N / R : ℕ) : ℝ) + 1) * (R : ℝ) := by exact_mod_cast hlt
+      rw [sub_le_iff_le_add, div_le_iff₀ (by positivity)]
+      linarith
+    have hwlb : (s : ℝ) / ρ ≤ (w : ℝ) := by
+      rw [div_le_iff₀ hρ0]
+      linarith [hwu, mul_comm ρ (w : ℝ)]
+    have hsρ : (N : ℝ) / (2 * R) - 1 / 2 ≤ (s : ℝ) / ρ := by
+      have h1 : (N : ℝ) / R - 1 ≤ (s : ℝ) := le_trans hXlb hXs
+      have h2 : (s : ℝ) / 2 ≤ (s : ℝ) / ρ := by
+        refine div_le_div_of_nonneg_left ?_ hρ0 hρ2
+        have : (0 : ℝ) ≤ ((N / R : ℕ) : ℝ) := by positivity
+        linarith [hXs, hs3]
+      have h3 : ((N : ℝ) / R - 1) / 2 ≤ (s : ℝ) / 2 := by linarith
+      have h4 : (N : ℝ) / (2 * R) - 1 / 2 = ((N : ℝ) / R - 1) / 2 := by
+        field_simp
+      linarith
+    have hbig : (N : ℝ) / (4 * R) ≥ 1 := by
+      rw [ge_iff_le, le_div_iff₀ (by positivity)]
+      have : ((4 * R : ℕ) : ℝ) ≤ (N : ℝ) := by exact_mod_cast hT
+      push_cast at this
+      linarith
+    have hhalf : (N : ℝ) / (2 * R) = 2 * ((N : ℝ) / (4 * R)) := by
+      field_simp
+      ring
+    have : (M : ℝ) < (w : ℝ) := by
+      have hk := hMub
+      rw [hhalf] at hsρ
+      linarith [hwlb, hsρ, hbig]
+    exact_mod_cast this
+  -- the block bound on `|D|`
+  have hbdd : ∀ n, M < n → n ≤ N → |dilationDiff g q n| ≤ B := by
+    intro n hn _
+    exact hbd n (le_trans hn₀M (by omega))
+  have hγ : (B - Δ / 2) * (Real.log ρ / 2) ≤ (B - Δ / 2) * ∑ n ∈ Ioc (w - 1) s, (1 : ℝ) / n :=
+    mul_le_mul_of_nonneg_left hweight (by linarith)
+  have hstep := sum_abs_dilationDiff_div_le_of_window (g := g) (q := q) (B := B) (Δ' := Δ / 2)
+    (γ := (B - Δ / 2) * (Real.log ρ / 2)) hMw hs2' hMN hbdd hwin hγ
+  -- the harmonic weight of the block, from above
+  have hharm : ∑ n ∈ Ioc M N, (1 : ℝ) / n ≤ Real.log N - Real.log ((M : ℕ) : ℝ) := by
+    rw [← harmonicSum_sub M N hMN]
+    exact harmonicSum_sub_le_log_sub hM1 hMN
+  have hB0 : 0 ≤ B := by linarith
+  have := mul_le_mul_of_nonneg_left hharm hB0
+  linarith
+
 /-! ### Saturation -/
 
 open scoped Classical in

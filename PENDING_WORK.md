@@ -106,6 +106,14 @@ Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
   `\gamma = (B-\Delta')\cdot` (window weight).  This is the single inequality the strong
   induction iterates.
 
+* `sum_abs_dilationDiff_div_block_step` — **the block step, proved** (eighth commit of lap 16):
+  with `T = 4q^J` and `M = \lfloor N/T\rfloor`,
+  `\Phi(N) \le \Phi(M) + B(\log N - \log M) - (B-\Delta/2)(\log\rho)/2`.
+  Claim A, then the deficit window, then the packing step.  Its seven hypotheses on `N` are all
+  monotone, so each holds eventually; the remaining work is the strong induction on `N` with rate
+  `\kappa = (B-\Delta/2)(\log\rho)/2 / \log(2T)` and the `limsup` contradiction against
+  `exists_abs_dilationDiff_mul_log_le`.
+
 ### Next lap, in order
 
 1. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
