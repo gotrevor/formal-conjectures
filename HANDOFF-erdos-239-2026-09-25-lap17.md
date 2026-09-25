@@ -52,3 +52,9 @@ every problem in `FormalConjectures/` is deliberately `sorry`, and `CONTRIBUTING
 say so. This run's target was Erdős 239 alone, and it is met and axiom-clean. A relaunch should
 be scoped, e.g. `--done-when 'sorry-free:FormalConjectures/ErdosProblems/Wirsing'`, or simply
 stopped by the operator.
+
+## Faithfulness check (lap 17)
+
+`git diff main -- FormalConjectures/ErdosProblems/239.lean` touches only the `module`/`public
+import` header and the proof body. The theorem statement, its docstring, `answer(True)` and its
+attributes are byte-identical to `main`, as the standing charter requires.
