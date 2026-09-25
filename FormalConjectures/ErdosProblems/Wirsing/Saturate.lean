@@ -109,22 +109,186 @@ theorem exists_sign_change {h : ℕ → ℝ} {a b : ℕ} (hab : a ≤ b) (ha : h
         exact ⟨t, ht1, ht2.trans (Nat.lt_succ_self n), ht3, ht4⟩
 
 /--
-**A sign change of `D` forces `|D|` to be small.**  If `D` straddles `0` between `m` and
-`m + 1` then both values are at most the step bound `(2 + 4q)/(m+1)`.
+**A sign change of `D` forces `|D|` to be small.**  If `D(m)` and `D(m+1)` have opposite signs
+then both are at most the step bound `(2 + 4q)/(m+1)`.
 -/
 @[category API, AMS 11]
 theorem abs_dilationDiff_le_of_straddle {g : ℕ → ℝ} (hg : IsBddMultiplicative g) {q : ℕ}
-    (hq : 1 ≤ q) {m : ℕ} (hm : 1 ≤ m) (h1 : dilationDiff g q m ≤ 0)
-    (h2 : 0 ≤ dilationDiff g q (m + 1)) :
+    (hq : 1 ≤ q) {m : ℕ} (hm : 1 ≤ m)
+    (h : dilationDiff g q m * dilationDiff g q (m + 1) ≤ 0) :
     |dilationDiff g q (m + 1)| ≤ (2 + 4 * (q : ℝ)) / (m + 1) := by
   have hstep := abs_dilationDiff_sub_le hg hq (m := m + 1) (by omega)
-  have hcast : ((m + 1 - 1 : ℕ) : ℝ) = (m : ℝ) := by
-    simp
   simp only [Nat.add_sub_cancel] at hstep
-  rw [abs_of_nonneg h2]
+  push_cast at hstep
   rw [abs_le] at hstep
-  push_cast at hstep ⊢
-  linarith [hstep.2]
+  set x := dilationDiff g q m with hx
+  set y := dilationDiff g q (m + 1) with hy
+  rcases le_or_gt 0 y with hy0 | hy0
+  · rcases eq_or_lt_of_le hy0 with heq | hpos
+    · rw [← heq, abs_zero]
+      positivity
+    · have hxle : x ≤ 0 := by nlinarith
+      rw [abs_of_pos hpos]
+      linarith [hstep.2]
+  · have hxge : 0 ≤ x := by nlinarith
+    rw [abs_of_neg hy0]
+    linarith [hstep.1]
+
+/-- A run of terms all at most `-δ < 0` has at most `2/δ` terms. -/
+@[category API, AMS 11]
+theorem card_le_of_forall_dilationDiff_le_neg {g : ℕ → ℝ} (hg : IsBddMultiplicative g) (q N : ℕ)
+    {i₁ i₂ : ℕ} (h : i₁ ≤ i₂) {δ : ℝ}
+    (hrun : ∀ i ∈ Ico i₁ i₂, dilationDiff g q (N / q ^ i) ≤ -δ) :
+    ((i₂ - i₁ : ℕ) : ℝ) * δ ≤ 2 := by
+  have hsum : ∑ i ∈ Ico i₁ i₂, dilationDiff g q (N / q ^ i) ≤ ((i₂ - i₁ : ℕ) : ℝ) * (-δ) := by
+    have := Finset.sum_le_card_nsmul (Ico i₁ i₂) (fun i ↦ dilationDiff g q (N / q ^ i)) (-δ) hrun
+    simpa [Nat.card_Ico, nsmul_eq_mul] using this
+  have habs := abs_sum_Ico_dilationDiff_le_two hg q N h
+  have := (abs_le.1 habs).1
+  linarith
+
+/--
+**Every geometric block contains a scale at which `|D|` is small.**  Fix `J` with
+`J\cdot\Delta/4 > 2`.  Then in the block of scales `[\lfloor m/q^J\rfloor, m]` there is an `s`
+with `|D(s)| \le \Delta/4`.
+
+Proof: the run bound forbids all `J` progression values `D(\lfloor m/q^i\rfloor)` from being
+`\ge \Delta/4`, and forbids them all from being `\le -\Delta/4`.  So either one of them already
+has `|D| \le \Delta/4`, or two adjacent ones have opposite signs — and then, since `D` is
+**real** with steps `O(1/s)`, the discrete intermediate value theorem produces a scale between
+them at which `|D|` is at most the step bound.
+
+This is the only step of the crossing argument that uses that `g` is real; for
+`g(n) = n^{i\theta}` the dilation difference rotates at constant modulus and never crosses `0`.
+-/
+@[category API, AMS 11]
+theorem exists_abs_dilationDiff_le_of_block {g : ℕ → ℝ} (hg : IsBddMultiplicative g) {q : ℕ}
+    (hq : 1 ≤ q) {Δ : ℝ} (hΔ : 0 < Δ) {J m : ℕ} (hJ : 2 < (J : ℝ) * (Δ / 4))
+    (hmlow : 1 ≤ m / q ^ J)
+    (hstep : (2 + 4 * (q : ℝ)) / ((m / q ^ J : ℕ) : ℝ) ≤ Δ / 4) :
+    ∃ s, m / q ^ J ≤ s ∧ s ≤ m ∧ |dilationDiff g q s| ≤ Δ / 4 := by
+  by_contra hcon
+  push Not at hcon
+  set t : ℕ → ℕ := fun i ↦ m / q ^ i with ht
+  have htmono : ∀ i, i ≤ J → m / q ^ J ≤ t i := by
+    intro i hi
+    exact Nat.div_le_div_left (Nat.pow_le_pow_right hq hi) (Nat.pow_pos (by omega))
+  have htle : ∀ i, t i ≤ m := fun i ↦ Nat.div_le_self _ _
+  have hsucc : ∀ i, t (i + 1) = t i / q := by
+    intro i
+    simp only [ht, Nat.div_div_eq_div_mul, pow_succ]
+  have hbig : ∀ i, i ≤ J → Δ / 4 < |dilationDiff g q (t i)| :=
+    fun i hi ↦ hcon (t i) (htmono i hi) (htle i)
+  have hJ1 : 1 ≤ J := by
+    rcases Nat.eq_zero_or_pos J with h | h
+    · rw [h] at hJ
+      norm_num at hJ
+    · exact h
+  have hnotpos : ¬ (∀ i, i < J → 0 < dilationDiff g q (t i)) := by
+    intro hall
+    have hrun : ∀ i ∈ Ico 0 J, Δ / 4 ≤ dilationDiff g q (m / q ^ i) := by
+      intro i hi
+      have hi' : i < J := (mem_Ico.1 hi).2
+      have h1 := hbig i hi'.le
+      have h2 := hall i hi'
+      rw [abs_of_pos h2] at h1
+      exact h1.le
+    have hcard := card_le_of_forall_dilationDiff_ge hg q m (Nat.zero_le J) hrun
+    simp only [Nat.sub_zero] at hcard
+    linarith
+  have hnotneg : ¬ (∀ i, i < J → dilationDiff g q (t i) < 0) := by
+    intro hall
+    have hrun : ∀ i ∈ Ico 0 J, dilationDiff g q (m / q ^ i) ≤ -(Δ / 4) := by
+      intro i hi
+      have hi' : i < J := (mem_Ico.1 hi).2
+      have h1 := hbig i hi'.le
+      have h2 := hall i hi'
+      rw [abs_of_neg h2] at h1
+      linarith
+    have hcard := card_le_of_forall_dilationDiff_le_neg hg q m (Nat.zero_le J) hrun
+    simp only [Nat.sub_zero] at hcard
+    linarith
+  push Not at hnotpos hnotneg
+  obtain ⟨j, hjJ, hjneg⟩ := hnotpos
+  obtain ⟨i, hiJ, hipos⟩ := hnotneg
+  have hjneg' : dilationDiff g q (t j) < 0 := by
+    rcases lt_or_eq_of_le hjneg with h | h
+    · exact h
+    · have hb := hbig j hjJ.le
+      rw [h, abs_zero] at hb
+      linarith
+  have hipos' : 0 < dilationDiff g q (t i) := by
+    rcases lt_or_eq_of_le hipos with h | h
+    · exact h
+    · have hb := hbig i hiJ.le
+      rw [← h, abs_zero] at hb
+      linarith
+  -- an adjacent pair of progression indices with opposite signs
+  have hadj : ∃ k, k + 1 ≤ J ∧
+      dilationDiff g q (t k) * dilationDiff g q (t (k + 1)) ≤ 0 := by
+    rcases le_or_gt i j with hij | hij
+    · obtain ⟨k, hk1, hk2, hk3, hk4⟩ :=
+        exists_sign_change (h := fun k ↦ - dilationDiff g q (t k)) hij
+          (neg_lt_zero.2 hipos') (neg_nonneg.2 hjneg'.le)
+      have h3 : -dilationDiff g q (t k) ≤ 0 := hk3
+      have h4 : 0 ≤ -dilationDiff g q (t (k + 1)) := hk4
+      refine ⟨k, by omega, ?_⟩
+      nlinarith
+    · obtain ⟨k, hk1, hk2, hk3, hk4⟩ :=
+        exists_sign_change (h := fun k ↦ dilationDiff g q (t k)) hij.le hjneg' hipos'.le
+      have h3 : dilationDiff g q (t k) ≤ 0 := hk3
+      have h4 : 0 ≤ dilationDiff g q (t (k + 1)) := hk4
+      refine ⟨k, by omega, ?_⟩
+      nlinarith
+  obtain ⟨k, hkJ, hkprod⟩ := hadj
+  have hbu : Δ / 4 < |dilationDiff g q (t k)| := hbig k (by omega)
+  have hbv : Δ / 4 < |dilationDiff g q (t (k + 1))| := hbig (k + 1) hkJ
+  set u := t k with hu
+  set v := t (k + 1) with hv
+  have hvu : v ≤ u := by rw [hv, hsucc k]; exact Nat.div_le_self _ _
+  have hvlow : m / q ^ J ≤ v := htmono (k + 1) hkJ
+  -- the intermediate value theorem in the scale variable
+  have hcross : ∃ r, v ≤ r ∧ r < u ∧
+      dilationDiff g q r * dilationDiff g q (r + 1) ≤ 0 := by
+    rcases le_or_gt 0 (dilationDiff g q u) with hpos | hneg
+    · rw [abs_of_nonneg hpos] at hbu
+      have hDu : 0 < dilationDiff g q u := by linarith
+      have hvle : dilationDiff g q v ≤ 0 := by nlinarith
+      have hvneg : dilationDiff g q v < 0 := by
+        rcases lt_or_eq_of_le hvle with h | h
+        · exact h
+        · rw [h, abs_zero] at hbv; linarith
+      obtain ⟨r, hr1, hr2, hr3, hr4⟩ :=
+        exists_sign_change (h := fun r ↦ dilationDiff g q r) hvu hvneg hpos
+      have h3 : dilationDiff g q r ≤ 0 := hr3
+      have h4 : 0 ≤ dilationDiff g q (r + 1) := hr4
+      exact ⟨r, hr1, hr2, by nlinarith⟩
+    · rw [abs_of_neg hneg] at hbu
+      have hvge : 0 ≤ dilationDiff g q v := by nlinarith
+      have hvpos : 0 < dilationDiff g q v := by
+        rcases lt_or_eq_of_le hvge with h | h
+        · exact h
+        · rw [← h, abs_zero] at hbv; linarith
+      obtain ⟨r, hr1, hr2, hr3, hr4⟩ :=
+        exists_sign_change (h := fun r ↦ - dilationDiff g q r) hvu (neg_lt_zero.2 hvpos)
+          (neg_nonneg.2 hneg.le)
+      have h3 : -dilationDiff g q r ≤ 0 := hr3
+      have h4 : 0 ≤ -dilationDiff g q (r + 1) := hr4
+      exact ⟨r, hr1, hr2, by nlinarith⟩
+  obtain ⟨r, hr1, hr2, hrprod⟩ := hcross
+  have hr0 : 1 ≤ r := le_trans (le_trans hmlow hvlow) hr1
+  have hbound := abs_dilationDiff_le_of_straddle hg hq hr0 hrprod
+  have hmono : (2 + 4 * (q : ℝ)) / ((r : ℝ) + 1) ≤ (2 + 4 * (q : ℝ)) / ((m / q ^ J : ℕ) : ℝ) := by
+    have hd1 : (0 : ℝ) < ((m / q ^ J : ℕ) : ℝ) := by exact_mod_cast hmlow
+    have hd2 : ((m / q ^ J : ℕ) : ℝ) ≤ (r : ℝ) + 1 := by
+      have h' : (m / q ^ J : ℕ) ≤ r := le_trans hvlow hr1
+      have h'' : ((m / q ^ J : ℕ) : ℝ) ≤ (r : ℝ) := by exact_mod_cast h'
+      linarith
+    exact div_le_div_of_nonneg_left (by positivity) hd1 hd2
+  have hfin : |dilationDiff g q (r + 1)| ≤ Δ / 4 := le_trans hbound (le_trans hmono hstep)
+  have hin1 : m / q ^ J ≤ r + 1 := le_trans (le_trans hvlow hr1) (by omega)
+  have hin2 : r + 1 ≤ m := le_trans (by omega) (htle k)
+  exact absurd hfin (not_le.2 (hcon (r + 1) hin1 hin2))
 
 /-! ### Saturation -/
 

@@ -73,11 +73,14 @@ Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
 * `abs_dilationDiff_le_of_straddle` — at a sign change, `|D| ≤ (2+4q)/(m+1)`.
 * `exists_saturation` — the saturation inequality of step 3, with an existential constant.
 
+* `exists_abs_dilationDiff_le_of_block` — **Claim A, proved** (second commit of lap 16): every
+  geometric block `[\lfloor m/q^J\rfloor, m]` with `J\Delta/4 > 2` contains a scale `s` with
+  `|D(s)| \le \Delta/4`.  The realness of `g` enters here and only here.
+* `card_le_of_forall_dilationDiff_le_neg` — the negative-sign companion of the run bound.
+
 ### Next lap, in order
 
-1. **Claim A** (`exists_abs_dilationDiff_le_of_block`): assemble 1 + 2.  Pure bookkeeping over
-   `Ico 0 J`, plus "a sign vector with no adjacent sign change is constant" (a `Nat` induction).
-2. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
+1. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
    `(2+4q)/m`; and `⌊N/p⌋ ∈ [s, ρs]` for `p` in a window of ratio `≈ ρ`.
 3. **The block/window packing** and the final contradiction, consuming
    `Newman.tendsto_sum_log_prime_div_window`.
