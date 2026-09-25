@@ -1,24 +1,36 @@
 # STATUS — fc-erdos-239 📊
 
 **Erdős 239 (Wirsing's mean value theorem for `±1`-valued multiplicative functions), formalised
-in Lean 4 / Mathlib.** · **Build**: 🟢 green (8947 jobs) · **Updated**: lap 14 · 2026-09-25 ·
-`65d9697b`+
+in Lean 4 / Mathlib.** · **Build**: 🟢 green (8957 jobs) · **Updated**: lap 17 · 2026-09-25 ·
+`7fc4edc7`
 
 ## Where it stands
 
-`Erdos239.erdos_239` reduces to `Wirsing.exists_hasMeanValue`, whose **convergent (Wintner)
-half is complete and sorry-free**.  All the analytic infrastructure is now proved and
-axiom-clean: Newman's Tauberian theorem, the **prime number theorem**, sharp Mertens, the
-multiplicative window statement, the Turán–Kubilius functional relation and deficit, and the
-sharp prime-weight/harmonic-weight comparison.  Exactly **one `sorry`** is left in `src/`:
-the divergent case `Wirsing.tendsto_mean_atTop_zero_of_badPrimeSum_atTop`.
+**COMPLETE.**  `Erdos239.erdos_239` is proved and axiom-clean:
 
-Lap 14 found that the statement laps 11–13 were attacking — convergence of `logMean f` — is
-**false**, deleted it, restated the crux on `mean` directly, and reduced it (on paper) to one
-classical lemma, `DilationInvariant` (Elliott's Lipschitz estimate), via an error-free coprime
-splitting identity.  That reduction is what `Wirsing/Split.lean` is being built to carry.
+```
+#print axioms Erdos239.erdos_239
+'Erdos239.erdos_239' depends on axioms: [propext, Classical.choice, Quot.sound]
+```
+
+No `sorry` remains in the Erdős 239 chain.  The last one,
+`Wirsing.dilationInvariant_prime` (Elliott's Lipschitz estimate for a prime dilation), was
+discharged in lap 17 by the crossing argument of `Wirsing/Saturate.lean`:
+`Wirsing.exists_improvement` improves any bound `|D| \le B` on
+`D(N) = mean g N - mean g \lfloor N/q\rfloor` to `|D| \le B - \kappa` with `\kappa` independent
+of `B`, so a finite iteration from the trivial bound `|D| \le 2` drives `D \to 0`
+(`Wirsing.eventually_abs_dilationDiff_le_of_pos`,
+`Wirsing.tendsto_dilationDiff_atTop_nhds_zero`).
+
+The chain: `tendsto_dilationDiff_atTop_nhds_zero` → `dilationInvariant_prime` →
+`dilationInvariant` → `tendsto_mean_atTop_zero_of_badPrimeSum_atTop` →
+`hasMeanValue_zero_of_not_summable` → `exists_hasMeanValue` → `Erdos239.erdos_239`.
 
 ## What's happened (newest first)
+* **2026-09-25 (lap 17)** — **the target is met.**  The finite iteration of
+  `Wirsing.exists_improvement` from `|D| \le 2` closes `dilationInvariant_prime`;
+  `#print axioms Erdos239.erdos_239` shows no `sorryAx`.
+
 * **2026-09-25 (lap 14, review)** — **two refutations**.  (a) The lap-11..13 crux
   `∃ c, logMean f → c` is **FALSE**: for `f` completely multiplicative with `f p = -1` iff
   `p ≡ 3 (mod 8)`, `hdiv` holds while `F(s) ≫ (s-1)^{-1/2} → ∞` forbids a bounded `logMean`;
