@@ -27,6 +27,7 @@ public import FormalConjectures.ErdosProblems.Wirsing.Extremal
 public import FormalConjectures.ErdosProblems.Wirsing.Sharp
 public import FormalConjectures.ErdosProblems.Wirsing.GoodPrime
 public import FormalConjectures.ErdosProblems.Wirsing.TuranDeficit
+public import FormalConjectures.ErdosProblems.Wirsing.Contract
 
 /-!
 # Wirsing's mean value theorem: assembly
@@ -140,6 +141,26 @@ need not converge.  `Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` above i
 -/
 
 /--
+**Elliott's Lipschitz estimate** — the single remaining open obligation of Wirsing's theorem.
+
+For every real multiplicative `g` with `|g| \le 1` and every fixed `a \ge 1`,
+$$\frac1N\sum_{n \le N} g(n) - \frac{1}{\lfloor N/a\rfloor}\sum_{n \le N/a} g(n)
+   \longrightarrow 0 .$$
+
+Everything else in the divergent case is reduced to this by `Wirsing/Split.lean` and
+`Wirsing/Contract.lean`: the coprime splitting identity is exact, the Euler factor of a bad
+prime is at most `1 - 1/(2p)`, and `\sum_{p \text{ bad}} 1/p = \infty` then drives the mean to
+`0`.  The statement is strictly weaker than the headline — it asserts only that the mean moves
+slowly, not that it converges — and it is false for complex `g` (take `g(n) = n^{i\theta}`),
+so any proof must use that `g` is real.
+
+*Status.*  Open here.  It is [El79, Ch. 6]; Granville–Harper–Soundararajan derive Halász's
+theorem from it in [GHS19].
+-/
+@[category research open, AMS 11]
+theorem dilationInvariant : DilationInvariant := by sorry
+
+/--
 **THE CRUX.**  If the bad primes have divergent reciprocal sum then the mean value is `0`:
 $$\sum_{p : f(p) = -1}\frac1p = \infty \quad\Longrightarrow\quad
   \frac1N\sum_{n\le N}f(n) \longrightarrow 0 .$$
@@ -165,8 +186,8 @@ because `f(p) = -1`.  Iterating over a finite set `T` of bad primes gives
 @[category API, AMS 11]
 theorem tendsto_mean_atTop_zero_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
     (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
-    Tendsto (mean f) atTop (𝓝 0) := by
-  sorry
+    Tendsto (mean f) atTop (𝓝 0) :=
+  tendsto_mean_atTop_zero_of_dilationInvariant dilationInvariant f hf hdiv
 
 /--
 The divergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p = \infty$ then the mean
