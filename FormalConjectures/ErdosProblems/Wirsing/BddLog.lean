@@ -299,4 +299,58 @@ theorem bdd_abs_mean_mul_log_sub_sum_prime_le (hg : IsBddMultiplicative g) {N : 
       ≤ 9 * N + Real.log 4 * N := hcomb
   _ = (N : ℝ) * (9 + Real.log 4) := by ring
 
+/-- `|S(M)| ≤ M` for a bounded multiplicative `g`. -/
+@[category API, AMS 11]
+theorem bdd_abs_partialSum_le (hg : IsBddMultiplicative g) (M : ℕ) :
+    |partialSum g M| ≤ (M : ℝ) := by
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  calc ∑ n ∈ Icc 1 M, |g n| ≤ ∑ _n ∈ Icc 1 M, (1 : ℝ) :=
+        Finset.sum_le_sum fun n hn ↦ hg.abs_le_one n (mem_Icc.1 hn).1
+  _ = M := by simp
+
+/-- **The mean is log-Lipschitz**, for a bounded multiplicative `g`: for `1 ≤ M ≤ N`,
+`|\sigma(N) - \sigma(M)| \le 2(N-M)/N`. -/
+@[category API, AMS 11]
+theorem bdd_abs_mean_sub_mean_le (hg : IsBddMultiplicative g) {M N : ℕ} (hM : 1 ≤ M)
+    (hMN : M ≤ N) : |mean g N - mean g M| ≤ 2 * ((N : ℝ) - M) / N := by
+  have hM1 : (1 : ℝ) ≤ (M : ℝ) := by exact_mod_cast hM
+  have hMNR : (M : ℝ) ≤ (N : ℝ) := by exact_mod_cast hMN
+  have hMpos : (0 : ℝ) < (M : ℝ) := by linarith
+  have hNpos : (0 : ℝ) < (N : ℝ) := by linarith
+  have hinc : |partialSum g N - partialSum g M| ≤ (N : ℝ) - M := by
+    have hsplit : partialSum g N - partialSum g M = ∑ n ∈ Ioc M N, g n := by
+      rw [partialSum, partialSum, (by rfl : Icc 1 N = Ioc 0 N), (by rfl : Icc 1 M = Ioc 0 M),
+        ← Finset.sum_Ioc_consecutive _ (Nat.zero_le M) hMN]
+      ring
+    rw [hsplit]
+    refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+    have hcard : ∑ n ∈ Ioc M N, |g n| ≤ ((N - M : ℕ) : ℝ) := by
+      calc ∑ n ∈ Ioc M N, |g n| ≤ ∑ _n ∈ Ioc M N, (1 : ℝ) :=
+            Finset.sum_le_sum fun n hn ↦ hg.abs_le_one n
+              (by have := (Finset.mem_Ioc.1 hn).1; omega)
+      _ = ((N - M : ℕ) : ℝ) := by simp [Nat.card_Ioc]
+    have hcast : ((N - M : ℕ) : ℝ) = (N : ℝ) - M := by
+      push_cast [Nat.cast_sub hMN]; ring
+    linarith [hcast ▸ hcard]
+  have hSM : |partialSum g M| ≤ (M : ℝ) := bdd_abs_partialSum_le g hg M
+  have hrw : mean g N - mean g M
+      = (partialSum g N - partialSum g M) / N - partialSum g M * (((N : ℝ) - M) / (N * M)) := by
+    rw [mean_eq_partialSum_div, mean_eq_partialSum_div]
+    field_simp
+    ring
+  rw [hrw]
+  have h1 : |(partialSum g N - partialSum g M) / N| ≤ ((N : ℝ) - M) / N := by
+    rw [abs_div, abs_of_pos hNpos]
+    exact div_le_div_of_nonneg_right hinc hNpos.le
+  have h2 : |partialSum g M * (((N : ℝ) - M) / (N * M))| ≤ ((N : ℝ) - M) / N := by
+    rw [abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ ((N : ℝ) - M) / (N * M))]
+    calc |partialSum g M| * (((N : ℝ) - M) / (N * M))
+        ≤ (M : ℝ) * (((N : ℝ) - M) / (N * M)) :=
+          mul_le_mul_of_nonneg_right hSM (by positivity)
+      _ = ((N : ℝ) - M) / N := by field_simp
+  have hgoal : 2 * ((N : ℝ) - M) / N = ((N : ℝ) - M) / N + ((N : ℝ) - M) / N := by ring
+  rw [hgoal]
+  linarith [abs_sub ((partialSum g N - partialSum g M) / N)
+    (partialSum g M * (((N : ℝ) - M) / (N * M)))]
+
 end Wirsing

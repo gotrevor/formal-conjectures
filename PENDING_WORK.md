@@ -38,6 +38,24 @@
   (`eventually_abs_mean_le` only ever dilates by powers of the single prime it removes, so
   nothing is lost.)
 
+* **The differential inequality for `D`, and the log-average bridge** (`Dilation.lean`):
+  * `bdd_abs_mean_sub_mean_le` (in `BddLog.lean`) — the mean is log-Lipschitz for
+    `IsBddMultiplicative`: `|σ(N) - σ(M)| ≤ 2(N-M)/N`.
+  * `abs_dilationDiff_sub_le` — `|D(m) - D(m-1)| ≤ (2+4a)/m`.
+  * `exists_abs_sum_primeWeight_comp_sub_sum_div_le_scaled` — `Sharp`'s weight comparison with
+    the constant `2` replaced by an arbitrary `c > 0`.
+  * `exists_abs_dilationDiff_mul_log_le` — **the analogue of `Sharp.exists_abs_mean_mul_log_le`
+    for `D`**: for every `ε > 0` there is `C` with
+
+        |D(N)| log N ≤ ∑_{n≤N} |D(n)|/n + ε log N + C      (N ≥ 2a).
+
+  * `tendsto_dilationDiff_of_tendsto_logAvg` — hence **`D(N) → 0` follows from the logarithmic
+    average `(1/log N)∑_{n≤N}|D(n)|/n → 0`.**
+
+  This is the substantive reformulation of the crux: the remaining obligation is now a
+  *logarithmic-average* statement, which is automatically stable under dilation, instead of a
+  pointwise one.  Attack `dilationInvariant_prime` through it.
+
 ### The obstruction this exposes, and the next attack
 
 The relation for `D` is **homogeneous and exactly critical**: `∑_{p≤N/a} log p/p = log N + O(1)`

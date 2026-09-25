@@ -18,6 +18,7 @@ module
 public import FormalConjecturesUtil
 public import FormalConjectures.ErdosProblems.Wirsing.BddLog
 public import FormalConjectures.ErdosProblems.Wirsing.Contract
+public import FormalConjectures.ErdosProblems.Wirsing.Sharp
 
 /-!
 # The functional relation satisfied by the dilation difference
@@ -208,5 +209,258 @@ theorem dilationInvariant_of_prime
       refine hsum.congr fun N ↦ ?_
       simp only [Function.comp_apply, Nat.div_div_eq_div_mul]
       ring
+
+/-- `|D(N)| ≤ 2`. -/
+@[category API, AMS 11]
+theorem abs_dilationDiff_le_two {g : ℕ → ℝ} (hg : IsBddMultiplicative g) (a N : ℕ) :
+    |dilationDiff g a N| ≤ 2 := by
+  refine (abs_sub _ _).trans ?_
+  linarith [abs_mean_le_one_of_bdd hg N, abs_mean_le_one_of_bdd hg (N / a)]
+
+/-- **The dilation difference is log-Lipschitz**: `|D(m) - D(m-1)| \le (2 + 4a)/m`. -/
+@[category API, AMS 11]
+theorem abs_dilationDiff_sub_le {g : ℕ → ℝ} (hg : IsBddMultiplicative g) {a : ℕ} (ha : 1 ≤ a)
+    {m : ℕ} (hm : 2 ≤ m) :
+    |dilationDiff g a m - dilationDiff g a (m - 1)| ≤ (2 + 4 * (a : ℝ)) / m := by
+  have hmR : (2 : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm
+  have haR : (1 : ℝ) ≤ (a : ℝ) := by exact_mod_cast ha
+  have hcast : ((m - 1 : ℕ) : ℝ) = (m : ℝ) - 1 := by
+    rw [Nat.cast_sub (by omega : 1 ≤ m), Nat.cast_one]
+  -- the first term
+  have t1 : |mean g m - mean g (m - 1)| ≤ 2 / (m : ℝ) := by
+    have h := bdd_abs_mean_sub_mean_le g hg (M := m - 1) (N := m) (by omega) (by omega)
+    rw [hcast] at h
+    calc |mean g m - mean g (m - 1)| ≤ 2 * ((m : ℝ) - ((m : ℝ) - 1)) / m := h
+      _ = 2 / (m : ℝ) := by ring_nf
+  -- the second term
+  set M := m / a with hMdef
+  set M' := (m - 1) / a with hM'def
+  have hMM' : M' ≤ M := Nat.div_le_div_right (by omega)
+  have hMM'1 : M ≤ M' + 1 := by
+    have h1 : m ≤ (m - 1) + a := by omega
+    calc M ≤ ((m - 1) + a) / a := Nat.div_le_div_right h1
+      _ = (m - 1) / a + 1 := Nat.add_div_right _ (by omega)
+  have t2 : |mean g M - mean g M'| ≤ 4 * (a : ℝ) / m := by
+    rcases eq_or_lt_of_le hMM' with heq | hlt
+    · rw [heq]; simp; positivity
+    · have hM : M = M' + 1 := by omega
+      rcases Nat.eq_zero_or_pos M' with hM'0 | hM'1
+      · -- `M = 1`, so `m ≤ a`
+        have hmle : m ≤ a := by
+          have hlt : m - 1 < a := by
+            by_contra hc
+            simp only [not_lt] at hc
+            have h1 : 1 ≤ (m - 1) / a := (Nat.one_le_div_iff (by omega)).2 hc
+            rw [← hM'def] at h1
+            omega
+          omega
+        have hmleR : (m : ℝ) ≤ (a : ℝ) := by exact_mod_cast hmle
+        have hbig : (1 : ℝ) ≤ 4 * (a : ℝ) / m := by
+          rw [le_div_iff₀ (by linarith)]
+          linarith
+        rw [hM, hM'0]
+        simp only [zero_add]
+        have h1 : mean g 0 = 0 := by simp [mean]
+        rw [h1, sub_zero]
+        exact le_trans (abs_mean_le_one_of_bdd hg 1) hbig
+      · have hMpos : 1 ≤ M := by omega
+        have h := bdd_abs_mean_sub_mean_le g hg (M := M') (N := M) hM'1 hMM'
+        have hMR : (1 : ℝ) ≤ (M : ℝ) := by exact_mod_cast hMpos
+        have hM'R : (M' : ℝ) = (M : ℝ) - 1 := by
+          rw [hM]; push_cast; ring
+        rw [hM'R] at h
+        have hstep : 2 * ((M : ℝ) - ((M : ℝ) - 1)) / M = 2 / (M : ℝ) := by ring_nf
+        rw [hstep] at h
+        -- `m < a(M+1) ≤ 2aM`
+        have hmlt : m < a * M + a := by
+          have h1 := Nat.div_add_mod m a
+          have h2 := Nat.mod_lt m (show 0 < a by omega)
+          rw [hMdef]
+          omega
+        have hmltR : (m : ℝ) < (a : ℝ) * (M : ℝ) + (a : ℝ) := by exact_mod_cast hmlt
+        have haR : (0 : ℝ) < (a : ℝ) := by
+          have : (1 : ℝ) ≤ (a : ℝ) := by exact_mod_cast ha
+          linarith
+        have hkey : (m : ℝ) ≤ 2 * (a : ℝ) * (M : ℝ) := by nlinarith [hmltR, hMR, haR]
+        have hfin : 2 / (M : ℝ) ≤ 4 * (a : ℝ) / m := by
+          rw [div_le_div_iff₀ (by linarith) (by linarith)]
+          nlinarith
+        linarith
+  have hexp : dilationDiff g a m - dilationDiff g a (m - 1)
+      = (mean g m - mean g (m - 1)) - (mean g M - mean g M') := by
+    simp only [dilationDiff, hMdef, hM'def]
+    ring
+  rw [hexp]
+  calc |(mean g m - mean g (m - 1)) - (mean g M - mean g M')|
+      ≤ |mean g m - mean g (m - 1)| + |mean g M - mean g M'| := abs_sub _ _
+    _ ≤ 2 / (m : ℝ) + 4 * (a : ℝ) / m := add_le_add t1 t2
+    _ = (2 + 4 * (a : ℝ)) / m := by ring
+
+/-- The sharp weight comparison, scaled to increments `c/m` and bound `c`. -/
+@[category API, AMS 11]
+theorem exists_abs_sum_primeWeight_comp_sub_sum_div_le_scaled {ε c : ℝ} (hε : 0 < ε)
+    (hc : 0 < c) :
+    ∃ C : ℝ, ∀ (h : ℕ → ℝ) (N : ℕ),
+      (∀ m, 2 ≤ m → m ≤ N → |h m - h (m - 1)| ≤ c / m) → (∀ m, |h m| ≤ c) →
+        |(∑ k ∈ Icc 1 N, primeWeight k * h (N / k)) - ∑ n ∈ Icc 1 N, h n / n|
+          ≤ ε * Real.log N + C := by
+  obtain ⟨C, hC⟩ := exists_abs_sum_primeWeight_comp_sub_sum_div_le (ε := ε / c) (by positivity)
+  refine ⟨c * C, fun h N hinc hbd ↦ ?_⟩
+  have hinc' : ∀ m, 2 ≤ m → m ≤ N → |h m / c - h (m - 1) / c| ≤ 1 / (m : ℝ) := by
+    intro m hm2 hmN
+    have hmR : (2 : ℝ) ≤ (m : ℝ) := by exact_mod_cast hm2
+    rw [div_sub_div_same, abs_div, abs_of_pos hc, div_le_iff₀ hc]
+    have he : (1 : ℝ) / m * c = c / m := by ring
+    linarith [hinc m hm2 hmN, he]
+  have hbd' : ∀ m, |h m / c| ≤ 1 := by
+    intro m
+    rw [abs_div, abs_of_pos hc, div_le_one hc]
+    exact hbd m
+  have hb := hC (fun n ↦ h n / c) N hinc' hbd'
+  have e1 : ∑ k ∈ Icc 1 N, primeWeight k * (h (N / k) / c)
+      = (∑ k ∈ Icc 1 N, primeWeight k * h (N / k)) / c := by
+    rw [Finset.sum_div]; exact Finset.sum_congr rfl fun k _ ↦ by ring
+  have e2 : ∑ n ∈ Icc 1 N, (h n / c) / n = (∑ n ∈ Icc 1 N, h n / n) / c := by
+    rw [Finset.sum_div]; exact Finset.sum_congr rfl fun n _ ↦ by ring
+  simp only [e1, e2, ← sub_div, abs_div, abs_of_pos hc, div_le_iff₀ hc] at hb
+  calc |(∑ k ∈ Icc 1 N, primeWeight k * h (N / k)) - ∑ n ∈ Icc 1 N, h n / n|
+      ≤ (ε / c * Real.log N + C) * c := hb
+    _ = ε * Real.log N + c * C := by field_simp
+
+/--
+**The differential inequality for the dilation difference.**  For every `\varepsilon > 0` there
+is a constant `C` with
+$$|D(N)|\log N \le \sum_{n \le N}\frac{|D(n)|}{n} + \varepsilon\log N + C \qquad (N \ge 2a).$$
+
+This is the exact analogue of `Wirsing.exists_abs_mean_mul_log_le`, obtained from the
+functional relation `Wirsing.abs_dilationDiff_mul_log_sub_sum_le` for `D` and the sharp
+weight comparison.  Its consequence `Wirsing.tendsto_dilationDiff_of_tendsto_logAvg` is the
+point: `D(N) \to 0` follows from the **logarithmic average** of `|D|` tending to `0`, a
+statement that is itself invariant under dilation.
+-/
+@[category API, AMS 11]
+theorem exists_abs_dilationDiff_mul_log_le (g : ℕ → ℝ) (hg : IsBddMultiplicative g) {a : ℕ}
+    (ha : 1 ≤ a) {ε : ℝ} (hε : 0 < ε) :
+    ∃ C : ℝ, ∀ N : ℕ, 2 * a ≤ N →
+      |dilationDiff g a N| * Real.log N
+        ≤ (∑ n ∈ Icc 1 N, |dilationDiff g a n| / n) + ε * Real.log N + C := by
+  classical
+  set c : ℝ := 2 + 4 * (a : ℝ) with hcdef
+  have hc : (0 : ℝ) < c := by
+    have : (1 : ℝ) ≤ (a : ℝ) := by exact_mod_cast ha
+    simp only [hcdef]; linarith
+  obtain ⟨C, hC⟩ := exists_abs_sum_primeWeight_comp_sub_sum_div_le_scaled hε hc
+  set h : ℕ → ℝ := fun n ↦ |dilationDiff g a n| with hhdef
+  have hinc : ∀ m, 2 ≤ m → |h m - h (m - 1)| ≤ c / m := fun m hm ↦
+    le_trans (abs_abs_sub_abs_le_abs_sub _ _) (abs_dilationDiff_sub_le hg ha hm)
+  have hbd : ∀ m, |h m| ≤ c := by
+    intro m
+    have : (1 : ℝ) ≤ (a : ℝ) := by exact_mod_cast ha
+    simp only [hhdef, abs_abs, hcdef]
+    linarith [abs_dilationDiff_le_two hg a m]
+  refine ⟨C + (2 * (9 + Real.log 4) + 2 * (Real.log 4 + 8) + 2 * Real.log (2 * a)), fun N hN ↦ ?_⟩
+  have haN : a ≤ N := by omega
+  have hN1 : 1 ≤ N := by omega
+  have hNR : (0 : ℝ) < N := by exact_mod_cast hN1
+  have haR : (0 : ℝ) < (a : ℝ) := by exact_mod_cast ha
+  -- the Mertens drift is bounded by `log (2a)`
+  have hdrift : Real.log N - Real.log ((N / a : ℕ) : ℝ) ≤ Real.log (2 * a) := by
+    have hq1 : 1 ≤ N / a := (Nat.one_le_div_iff (by omega)).2 haN
+    have hnat : N ≤ 2 * (a * (N / a)) := by
+      have hmod := Nat.div_add_mod N a
+      have hlt := Nat.mod_lt N (show 0 < a by omega)
+      omega
+    have hqR : (0 : ℝ) < ((N / a : ℕ) : ℝ) := by exact_mod_cast hq1
+    have hkey : (N : ℝ) ≤ (2 * (a : ℝ)) * ((N / a : ℕ) : ℝ) :=
+      calc (N : ℝ) ≤ ((2 * (a * (N / a)) : ℕ) : ℝ) := by exact_mod_cast hnat
+        _ = (2 * (a : ℝ)) * ((N / a : ℕ) : ℝ) := by push_cast; ring
+    have hlog := Real.log_le_log (by positivity) hkey
+    rw [Real.log_mul (by positivity) (by positivity)] at hlog
+    linarith
+  -- the prime side dominates
+  have hprime : |dilationDiff g a N| * Real.log N
+      ≤ (∑ k ∈ Icc 1 N, primeWeight k * h (N / k))
+        + (2 * (9 + Real.log 4) + 2 * (Real.log 4 + 8) + 2 * Real.log (2 * a)) := by
+    have hrel := abs_dilationDiff_mul_log_sub_sum_le g hg ha haN
+    have hps : ∑ k ∈ Icc 1 N, primeWeight k * h (N / k)
+        = ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * h (N / p) :=
+      sum_primeWeight_mul (fun k ↦ h (N / k)) N
+    have hsub : (Icc 1 (N / a)).filter Nat.Prime ⊆ (Icc 1 N).filter Nat.Prime := by
+      intro q hq
+      simp only [mem_filter, mem_Icc] at hq ⊢
+      exact ⟨⟨hq.1.1, le_trans hq.1.2 (Nat.div_le_self _ _)⟩, hq.2⟩
+    have hdom : |∑ p ∈ (Icc 1 (N / a)).filter Nat.Prime,
+          Real.log p / p * (g p * dilationDiff g a (N / p))|
+        ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * h (N / p) := by
+      refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+      refine le_trans (Finset.sum_le_sum ?_) (Finset.sum_le_sum_of_subset_of_nonneg hsub ?_)
+      · intro q hq
+        simp only [mem_filter, mem_Icc] at hq
+        have hqp : q.Prime := hq.2
+        have hw : (0 : ℝ) ≤ Real.log q / q :=
+          div_nonneg (Real.log_natCast_nonneg _) (by positivity)
+        rw [abs_mul, abs_of_nonneg hw, abs_mul]
+        refine mul_le_mul_of_nonneg_left ?_ hw
+        simp only [hhdef]
+        calc |g q| * |dilationDiff g a (N / q)|
+            ≤ 1 * |dilationDiff g a (N / q)| :=
+              mul_le_mul_of_nonneg_right (hg.abs_le_one _ hqp.one_lt.le) (abs_nonneg _)
+          _ = |dilationDiff g a (N / q)| := one_mul _
+      · intro q hq _
+        have hqp : q.Prime := (mem_filter.1 hq).2
+        have hw : (0 : ℝ) ≤ Real.log q / q :=
+          div_nonneg (Real.log_natCast_nonneg _) (by positivity)
+        simp only [hhdef]
+        positivity
+    have hlogN : 0 ≤ Real.log N := Real.log_natCast_nonneg N
+    have habs : |dilationDiff g a N * Real.log N| = |dilationDiff g a N| * Real.log N := by
+      rw [abs_mul, abs_of_nonneg hlogN]
+    rw [hps]
+    have hsa := abs_sub_abs_le_abs_sub (dilationDiff g a N * Real.log N)
+      (∑ p ∈ (Icc 1 (N / a)).filter Nat.Prime,
+        Real.log p / p * (g p * dilationDiff g a (N / p)))
+    rw [habs] at hsa
+    linarith [hdom, hrel, hsa]
+  have hcmp := hC h N (fun m hm2 _ ↦ hinc m hm2) hbd
+  have hsum : (∑ k ∈ Icc 1 N, primeWeight k * h (N / k))
+      ≤ (∑ n ∈ Icc 1 N, h n / n) + ε * Real.log N + C := by
+    linarith [(abs_le.1 hcmp).2]
+  simp only [hhdef] at hsum hprime ⊢
+  linarith
+
+/--
+**The bridge.**  If the logarithmic average of `|D|` tends to `0`, so does `D`.
+-/
+@[category API, AMS 11]
+theorem tendsto_dilationDiff_of_tendsto_logAvg (g : ℕ → ℝ) (hg : IsBddMultiplicative g) {a : ℕ}
+    (ha : 1 ≤ a)
+    (hlog : Tendsto (fun N : ℕ ↦ (∑ n ∈ Icc 1 N, |dilationDiff g a n| / n) / Real.log N)
+      atTop (𝓝 0)) :
+    Tendsto (fun N : ℕ ↦ dilationDiff g a N) atTop (𝓝 0) := by
+  rw [NormedAddGroup.tendsto_nhds_zero]
+  intro ε hε
+  obtain ⟨C, hC⟩ := exists_abs_dilationDiff_mul_log_le g hg ha (ε := ε / 4) (by positivity)
+  have hA : ∀ᶠ N : ℕ in atTop,
+      (∑ n ∈ Icc 1 N, |dilationDiff g a n| / n) / Real.log N < ε / 4 := by
+    have := hlog.eventually_lt_const (show (0 : ℝ) < ε / 4 by positivity)
+    exact this
+  have hCsmall : ∀ᶠ N : ℕ in atTop, |C| / Real.log N < ε / 4 :=
+    (Filter.Tendsto.div_atTop (tendsto_const_nhds (x := |C|))
+      (Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop)).eventually_lt_const
+        (by positivity)
+  have hlogpos : ∀ᶠ N : ℕ in atTop, (0 : ℝ) < Real.log N :=
+    (Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop).eventually_gt_atTop 0
+  filter_upwards [hA, hCsmall, hlogpos, eventually_ge_atTop (2 * a)] with N hAN hCN hlN hNa
+  have h := hC N hNa
+  rw [Real.norm_eq_abs]
+  rw [div_lt_iff₀ hlN] at hAN hCN
+  have hCle : C ≤ |C| := le_abs_self C
+  have : |dilationDiff g a N| * Real.log N < ε * Real.log N := by
+    calc |dilationDiff g a N| * Real.log N
+        ≤ (∑ n ∈ Icc 1 N, |dilationDiff g a n| / n) + ε / 4 * Real.log N + C := h
+      _ < ε / 4 * Real.log N + ε / 4 * Real.log N + ε / 4 * Real.log N := by
+          linarith
+      _ < ε * Real.log N := by nlinarith
+  exact lt_of_mul_lt_mul_right (by linarith) hlN.le
 
 end Wirsing
