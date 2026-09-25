@@ -1,21 +1,36 @@
 # STATUS — fc-erdos-239 📊
 
 **Erdős 239 (Wirsing's mean value theorem for `±1`-valued multiplicative functions), formalised
-in Lean 4 / Mathlib.** · **Build**: 🟢 green (8940 jobs) · **Updated**: lap 11 · 2026-09-24 ·
-`1bc1c772`
+in Lean 4 / Mathlib.** · **Build**: 🟢 green (8947 jobs) · **Updated**: lap 14 · 2026-09-25 ·
+`65d9697b`+
 
 ## Where it stands
 
-`Erdos239.erdos_239` reduces to `Wirsing.exists_hasMeanValue`, whose **convergent (Wintner) half
-is complete and sorry-free**.  The divergent half is complete down to *one* analytic theorem:
-Newman's Tauberian theorem `Newman.tendsto_integral_of_analyticOn`.  Everything downstream of it
-is already proved — PNT (`tendsto_chebyshevPsi_div_atTop_one`), sharp Mertens, the window
-statement `tendsto_sum_log_prime_div_window`, and steps 1–5 of the rigidity chain over primes.
-The remaining `sorry`s in `src/` are that theorem, its application
-(`Newman.summable_psi_sub_div`) and the headline crux that consumes them
-(`Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero`).
+`Erdos239.erdos_239` reduces to `Wirsing.exists_hasMeanValue`, whose **convergent (Wintner)
+half is complete and sorry-free**.  All the analytic infrastructure is now proved and
+axiom-clean: Newman's Tauberian theorem, the **prime number theorem**, sharp Mertens, the
+multiplicative window statement, the Turán–Kubilius functional relation and deficit, and the
+sharp prime-weight/harmonic-weight comparison.  Exactly **one `sorry`** is left in `src/`:
+the divergent case `Wirsing.tendsto_mean_atTop_zero_of_badPrimeSum_atTop`.
+
+Lap 14 found that the statement laps 11–13 were attacking — convergence of `logMean f` — is
+**false**, deleted it, restated the crux on `mean` directly, and reduced it (on paper) to one
+classical lemma, `DilationInvariant` (Elliott's Lipschitz estimate), via an error-free coprime
+splitting identity.  That reduction is what `Wirsing/Split.lean` is being built to carry.
 
 ## What's happened (newest first)
+* **2026-09-25 (lap 14, review)** — **two refutations**.  (a) The lap-11..13 crux
+  `∃ c, logMean f → c` is **FALSE**: for `f` completely multiplicative with `f p = -1` iff
+  `p ≡ 3 (mod 8)`, `hdiv` holds while `F(s) ≫ (s-1)^{-1/2} → ∞` forbids a bounded `logMean`;
+  a sieve to `4·10^6` gives `logMean f N/√(log N) = 1.073` at every scale, i.e.
+  `logMean f N ≍ √(log N) → ∞` with `mean f N ≍ 1/√(log N) → 0`.  Lemma deleted, crux restated
+  on `mean`, and every Tauberian attack at `s = 1` (Newman included) is dead with it.
+  (b) The lap-13 Turán–Kubilius sign-flip iteration is capped: `E(N) ≤ log log N + O(1)`, so
+  its `E^{-1/2}` relative error supports `≤ ½log₂log log N` levels while the subset-sum parity
+  pigeonhole needs `≳ log₂ log N`.  Also refuted: lap 13's "next attack 0"
+  (`∑_N ε/(N log N)` diverges, so `Ψ/log N` is not quasi-monotone).  **New route**: the
+  error-free coprime splitting `∑_{n≤N}f n = ∑_k f(p^k)∑_{m≤N/p^k}v m`, which reduces the crux
+  to `Wirsing.DilationInvariant` alone.
 
 * **2026-09-24 (lap 11, review + proof)** — **route correction**: the lap-10 plan to feed the
   Newman *disc* estimate an analytic `G` on `closedBall 0 R` is **unreachable** —
@@ -51,41 +66,47 @@ The remaining `sorry`s in `src/` are that theorem, its application
 ## Outstanding
 
 ### Short-term (mirrors `PENDING_WORK.md`)
-1. **Done this lap**: `Newman.norm_sub_integral_le_rect`, Newman's estimate on the rectangle,
-   `‖G 0 - ∫_0^T F‖ ≤ (2Mδ + 5C)/R + R M e^{-δT}(1/δ + 2/R)`.
-2. `Newman.tendsto_integral_of_analyticOn` from it: the compactness step
-   (`IsCompact.exists_thickening_subset_open` gives `δ(R) > 0` with
-   `rect (-δ) R (-R) R ⊆ {z | AnalyticAt ℂ G z}`; fix `δ₀` first so one `M` serves all
-   `δ ≤ δ₀`), then the ε-chase `T → ∞`, `δ → 0`, `R → ∞`.
-3. `Newman.summable_psi_sub_div` — apply (2) to `F(t) = ψ(e^t)e^{-t} - 1`, whose transform is
-   `-ζ'/ζ(z+1)/(z+1) - 1/z`.
+1. `Wirsing/Split.lean`: `IsBddMultiplicative`, `coprimeRestrict`, closure lemma.
+2. **(SPLIT)** `∑_{n ≤ N} f n = ∑_{k ≤ log_p N} f(p^k)·∑_{m ≤ N/p^k} v m` — load-bearing,
+   an exact identity from `n = p^k·ord_compl[p] n`.
+3. `Summable (k ↦ f(p^k)/p^k)` and the Euler bound `|∑'| ≤ 1 - 1/p + 1/(p(p-1))` when `f p = -1`.
+4. The one-step contraction `limsup|mean f| ≤ |∑_k f(p^k)p^{-k}|·limsup|mean v|` from (SPLIT)
+   plus `DilationInvariant`; then `Finset.induction` over a finite set of bad primes and `hdiv`.
 
 ### Long-term
-* `Wirsing.tendsto_mean_sub_logMean_div_log_atTop_zero` — feed the now-unconditional window
-  statement into `Wirsing.eq_of_mean_quotient_close` and close the prime chain.
+* `Wirsing.DilationInvariant` — Elliott's Lipschitz estimate, the sole remaining obligation
+  once the splitting reduction lands.  Granville–Harper–Soundararajan (arXiv:1706.03749)
+  derive Halász's theorem from it.  Fallback if it stalls: the twisted splitting bound
+  `|L_θ(N)| ≪_θ (log N)^{1-1/16}` (from `PrimeCos`) plus a Parseval/Perron step.
 
 ### To completion
 `#print axioms Erdos239.erdos_239` free of `sorryAx`.
 
 ## Axiom ledger
 
+Verified by `#print axioms` this lap (lap 14).
+
 | headline theorem | paper claim | `#print axioms` shows | status |
 | --- | --- | --- | --- |
-| `Erdos239.erdos_239` | unconditional (Wirsing 1967) | `propext, sorryAx, Classical.choice, Quot.sound` | 🔴 `sorryAx` — 3 open `sorry`s (1 in `Wirsing/Main.lean`, 2 in `Wirsing/Newman.lean`) |
-| `Wirsing.exists_hasMeanValue_of_summable` | unconditional (Wintner) | `propext, Classical.choice, Quot.sound` | ✅ clean |
-| `Newman.tendsto_chebyshevPsi_div_atTop_one` (PNT) | unconditional | `propext, sorryAx, …` | 🔴 via `summable_psi_sub_div` only; the Zagier endgame itself is clean |
-| `Newman.tendsto_sum_log_prime_div_window` | unconditional | `propext, sorryAx, …` | 🔴 same single root |
-| `Newman.norm_sub_integral_le` | unconditional (Newman, disc form) | `propext, Classical.choice, Quot.sound` | ✅ clean, but **unused**: the disc hypothesis is unsatisfiable here |
-| `Newman.rectInt_div_self`, `Newman.rectInt_mul_kernel` | unconditional (residue on a rectangle) | `propext, Classical.choice, Quot.sound` | ✅ clean |
-| `Newman.norm_sub_integral_le_rect` | unconditional (Newman, rectangle form) | `propext, Classical.choice, Quot.sound` | ✅ clean — the live route |
+| `Erdos239.erdos_239` | unconditional (Wirsing 1967) | `propext, sorryAx, Classical.choice, Quot.sound` | 🔴 `sorryAx` — **one** open `sorry`, `Wirsing.tendsto_mean_atTop_zero_of_badPrimeSum_atTop` |
+| `Wirsing.exists_hasMeanValue` | unconditional | `propext, sorryAx, Classical.choice, Quot.sound` | 🔴 same single root |
+| `Wirsing.exists_hasMeanValue_of_summable` | unconditional (Wintner) | `propext, Classical.choice, Quot.sound` | ✅ clean — the convergent half |
+| `Newman.tendsto_integral_of_analyticOn` | unconditional (Newman 1980) | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Newman.tendsto_chebyshevPsi_div_atTop_one` (PNT) | unconditional | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Newman.tendsto_sum_log_prime_div_window` | unconditional | `propext, Classical.choice, Quot.sound` | ✅ clean |
 | `Wirsing.tendsto_logMean_div_log_atTop_zero` | unconditional (Halász, log form) | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Wirsing.exists_abs_mean_mul_log_le` | unconditional (sharp comparison) | `propext, Classical.choice, Quot.sound` | ✅ clean |
+| `Wirsing.exists_sum_tk_deficit_le` | unconditional (Turán–Kubilius deficit) | `propext, Classical.choice, Quot.sound` | ✅ clean, now **unused** (route refuted lap 14) |
+| `Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` | unconditional (Cesàro bridge) | `propext, Classical.choice, Quot.sound` | ✅ clean, but **unusable**: its hypothesis is never satisfied under `hdiv` |
 
-Math-axiom count (🟢+🟡+🟠): **0**.  The project carries no cited axioms; the only debt is the
-three disclosed `sorry`s, all rooted in the single analytic theorem
-`Newman.tendsto_integral_of_analyticOn`, which is why `sorryAx` is the single 🔴 entry.
+Math-axiom count (🟢+🟡+🟠): **0**.  The project cites no axioms at all; the sole debt is the
+one disclosed `sorry` on the divergent case, which is why `sorryAx` is the single 🔴 entry.
+Nothing here is 🟡/🟠 debt: PNT and Newman's theorem, the usual project-scale candidates, are
+both fully proved in-repo.
 
 ## Pointers
 
-`DIRECTION.md` (binding directive — lap 11: rectangle contour) · `PENDING_WORK.md` (attack
-path) · `HANDOFF-erdos-239-2026-09-24-lap11.md` (newest baton) ·
+`DIRECTION.md` (binding directive — lap 14: reduce the crux to `DilationInvariant` via
+`Wirsing/Split.lean`) · `PENDING_WORK.md` (attack path, with the lap-14 refutations) ·
+newest baton: `ls HANDOFF-*-lap*.md | sort -t p -k2 -n | tail -1` ·
 `KICKOFF-2026-09-24-erdos-239.md`

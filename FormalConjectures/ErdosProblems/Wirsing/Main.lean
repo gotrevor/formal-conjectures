@@ -106,85 +106,67 @@ theorem tendsto_mean_atTop_zero_of_exists_tendsto_logMean
     (h : ∃ c : ℝ, Tendsto (logMean f) atTop (𝓝 c)) : Tendsto (mean f) atTop (𝓝 0) :=
   h.elim fun _ hc ↦ tendsto_mean_atTop_zero_of_tendsto_logMean f hc
 
-/--
-**THE CRUX, in logarithmic form.**  If the bad primes have divergent reciprocal sum then the
-logarithmic average *converges*:
-$$L(N) = \sum_{n \le N}\frac{f(n)}{n} \longrightarrow c \quad\text{for some } c .$$
+/-!
+### The logarithmic crux is FALSE (lap 14)
 
-The value of `c` does not matter (`Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean`), so this
-is strictly weaker than `L(N) \to 0`; it is the classical statement that the Dirichlet series
-of `f` converges at `s = 1`.
+An earlier lap took as the crux
 
-`Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` reduces the headline to this, and it is
-the form to attack: everything about `L` has a factor `\log N` of room that `\sigma` has not.
+    exists_tendsto_logMean_of_badPrimeSum_atTop :
+      Tendsto (badPrimeSum f) atTop atTop → ∃ c, Tendsto (logMean f) atTop (𝓝 c),
 
-**This is an overshoot, deliberately.**  The exactly equivalent form of the headline is
-`L(N) - \frac1N\sum_{M<N}L(M) \to 0`, which is weaker than convergence of `L`: `\sigma(N) \to 0`
-allows `L` to drift, as `\sigma(t) = 1/\log t` shows.  Convergence is nevertheless the form to
-prove, because it is the classical statement (the Dirichlet series of `f` converges at `s = 1`,
-with limit `0`, the size being `\exp(-\sum_{p \le N}(1 - f(p))/p)` heuristically) and the form
-that `Wirsing/Decay.lean`'s machinery is shaped for.
+the convergence of the Dirichlet series of `f` at `s = 1`, and reduced the headline to it
+through `Wirsing.tendsto_mean_atTop_zero_of_exists_tendsto_logMean`.  **That statement is
+false**, so the reduction is a dead end and the lemma has been deleted.
 
-**What is already proved.**  `Wirsing.tendsto_abs_logMean_div_log_atTop_zero` (lap 5, from the
-envelope machinery of `Wirsing/Decay.lean`) gives `L(N) = o(\log N)`.  The gap is therefore
-`o(\log N) \Rightarrow o(1)`, two whole factors of `\log N`, and the mechanism that must supply
-them is the defect weight `1 + f(p)` of `Wirsing.abs_logMean_mul_log_sub_defect_le`, which
-vanishes exactly on the primes counted by `hdiv`.
+*Counterexample.*  Let `f` be completely multiplicative with `f p = -1` exactly for
+`p ≡ 3 (mod 8)`.  Then `badPrimeSum f N = ∑_{p ≡ 3 (8), p ≤ N} 1/p → ∞`, so `hdiv` holds,
+while for real `s > 1`
+$$F(s) = \sum_n \frac{f(n)}{n^s}
+       = \zeta(s)\prod_{p \equiv 3 (8)}\frac{1 - p^{-s}}{1 + p^{-s}}
+       \ge \frac{c}{s-1}\exp\Big(-2\sum_{p \equiv 3 (8)}p^{-s}\Big)
+       \ge c'(s-1)^{-1/2} ,$$
+using `∑_{p ≡ 3 (8)} p^{-s} = \tfrac14\log\frac1{s-1} + O(1)`.  If `logMean f N → c` then
+`logMean f` is bounded, and `F(s) = (s-1)\int_1^\infty (\text{logMean } f\ \lfloor t\rfloor)
+t^{-s}\,dt` would be bounded as `s \to 1^+`.  It is not.  In fact `logMean f N ≍ √(log N)`
+for this `f`; a direct computation to `N = 4·10^6` gives `logMean f N / √(log N) = 1.073`
+to three places at every scale from `10^3` up, with `logMean f N` itself rising from `2.86`
+to `4.18`.
 
-**Why the mean cannot be attacked directly** (lap 13).  The sharp weight comparison
-`Wirsing.exists_abs_sum_primeWeight_comp_sub_sum_div_le` gives
-`|\sigma(N)|\log N \le \sum_{n\le N}|\sigma(n)|/n + \varepsilon\log N + C`
-(`Wirsing.exists_abs_mean_mul_log_le`), whose main term `A\log N` is the *same size* as the
-error, so no iteration contracts; and the bad-prime deficit it leaves,
-`2\sum_{f(p)=-1}(\log p/p)|\sigma(\lfloor N/p\rfloor)| \approx 2A\beta(N)`, is beaten by that
-`\varepsilon\log N` whenever the bad primes are sparse (`\beta(N) = o(\log N)`).  In the
-logarithmic variable the main term is `\alpha(\log N)^2/2`, against which an `O(\log N)` error
-*is* negligible: that is the whole reason route C works.
+So `logMean f` may diverge, at rate `√(log N)`, while `mean f N ≍ 1/√(log N) → 0`.  The
+identity `logMean f N = ∫_1^N (\text{mean } f\ t)\,dt/t + \text{mean } f\ N` shows why: the
+headline only needs the *integrand* to vanish, and the integral of a positive `o(1)` function
+need not converge.  `Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` above is true but
+**unusable**: its hypothesis never holds in the divergent case.
 -/
-@[category API, AMS 11]
-theorem exists_tendsto_logMean_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
-    (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
-    ∃ c : ℝ, Tendsto (logMean f) atTop (𝓝 c) := by
-  sorry
 
 /--
-**The divergent case, as a single statement.**  If the bad primes have divergent reciprocal
-sum then the mean value is `0`.
+**THE CRUX.**  If the bad primes have divergent reciprocal sum then the mean value is `0`:
+$$\sum_{p : f(p) = -1}\frac1p = \infty \quad\Longrightarrow\quad
+  \frac1N\sum_{n\le N}f(n) \longrightarrow 0 .$$
 
-This is the whole of the remaining crux.  Earlier laps stated it as the unconditional
-Hildebrand asymptotic `\sigma(N) - L(N)/\log N \to 0`; that statement is strictly stronger
-than the headline needs, and lap 10's deficit-budget argument refuted the only route to it
-that the repository had.  The divergence hypothesis is put back where Wirsing and Halász use
-it.
+This is the whole of the remaining content of Wirsing's theorem.  It is stated on `mean`
+directly: the logarithmic reformulation is refuted above, and the sharp `\log`-weighted
+reformulation is refuted in `PENDING_WORK.md` (lap 13).
 
-**What the crux says, in the log variable.**  Partial summation gives
-`L(N) = \int_1^N \sigma(t)\,dt/t + \sigma(N)`, so with `u = \log N` and `F(u) = \sigma(e^u)`
-the Hildebrand asymptotic is exactly
-$$F(u) - \frac1u\int_0^u F(v)\,dv \to 0 :$$
-a bounded function agrees with its own logarithmic average.  That is false for a general
-bounded `F` — take `F(u) = \cos u` — and the counterexample is precisely `f(n) = n^{i\theta}`,
-which is why real-valuedness has to enter.  So the crux is a non-oscillation statement at
-every frequency `\theta`, and `Wirsing.tendsto_logMean_div_log_atTop_zero` supplies the
-logarithmic average: under `hdiv` it is `o(\log N)`, i.e. the average side already tends to
-`0` and only `F(u) \to 0` is left.
-
-**The two inputs that are now proved.**  Non-pretentiousness at frequency `\theta = 0` is the
-hypothesis `hdiv` itself.  At `\theta \ne 0` it is
-`Wirsing.eventually_sum_primeWeight_one_sub_mul_cos_ge`
-(`\sum_{p \le N}(\log p/p)(1 - f(p)\cos(\theta\log p)) \ge \log N/8`), made uniform on compact
-ranges of `\theta` by `Wirsing.exists_forall_primeDefect_ge`.  The quantitative prime input
-that every such argument needs — a multiplicative window of fixed ratio carries prime weight
-bounded away from `0` — is `Newman.tendsto_sum_log_prime_div_window`, proved from the
-prime number theorem in `Wirsing/Newman.lean`.
-
-The state of the attack is in `PENDING_WORK.md`.
+**The decomposition that is being built** (`Wirsing/Split.lean`, lap 14).  Split `f` along a
+single bad prime `p`: every `n` is uniquely `p^k m` with `p \nmid m`, so with
+`v = f \cdot 1_{p \nmid \cdot}`
+$$\frac1N\sum_{n\le N}f(n)
+   = \sum_{k \ge 0}\frac{f(p^k)}{p^k}\cdot\frac{1}{N/p^k}\sum_{m \le N/p^k}v(m) + O(1/N),$$
+an *exact* identity.  If the mean of `v` is asymptotically invariant under dilation by a fixed
+integer — `Wirsing.DilationInvariant`, Elliott's Lipschitz estimate — the right-hand side
+collapses to `\big(\sum_k f(p^k)p^{-k}\big)\cdot\text{mean } v\ N + o(1)`, and
+$$\Big|\sum_{k\ge0}\frac{f(p^k)}{p^k}\Big| \le 1 - \frac1p + \frac1{p(p-1)}
+   \le \exp\Big(-\frac{3}{4p}\Big) \qquad (p \ge 5)$$
+because `f(p) = -1`.  Iterating over a finite set `T` of bad primes gives
+`\limsup_N |\text{mean } f\ N| \le \exp(-\tfrac34\sum_{p \in T}1/p)`, which `hdiv` drives to
+`0`.  So the crux reduces to `Wirsing.DilationInvariant`, and *only* to it.
 -/
 @[category API, AMS 11]
 theorem tendsto_mean_atTop_zero_of_badPrimeSum_atTop (hf : IsPMOneMultiplicative f)
     (hdiv : Tendsto (badPrimeSum f) atTop atTop) :
-    Tendsto (mean f) atTop (𝓝 0) :=
-  tendsto_mean_atTop_zero_of_exists_tendsto_logMean f
-    (exists_tendsto_logMean_of_badPrimeSum_atTop f hf hdiv)
+    Tendsto (mean f) atTop (𝓝 0) := by
+  sorry
 
 /--
 The divergent case of Wirsing's theorem: if $\sum_p (1 - f(p))/p = \infty$ then the mean

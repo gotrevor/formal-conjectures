@@ -1,5 +1,141 @@
 # PENDING WORK — Erdős 239
 
+## Lap 14 (2026-09-25, review) — TWO REFUTATIONS AND A NEW ROUTE
+
+### 1. The crux `∃ c, logMean f → c` is FALSE (not an overshoot)
+
+Laps 11–13 carried
+
+    exists_tendsto_logMean_of_badPrimeSum_atTop :
+      Tendsto (badPrimeSum f) atTop atTop → ∃ c, Tendsto (logMean f) atTop (𝓝 c)
+
+as *the* crux, with a docstring calling it "a deliberate overshoot".  It is not an overshoot,
+it is false, and it has been **deleted** from `Main.lean`.
+
+*Counterexample.*  `f` completely multiplicative, `f p = -1` iff `p ≡ 3 (mod 8)`.  Then
+`badPrimeSum f N → ∞` (density ¼ of the primes), but for real `s > 1`
+
+    F(s) = ∑ f(n)/n^s = ζ(s)·∏_{p≡3(8)} (1-p^{-s})/(1+p^{-s})
+         ≥ (1/(s-1))·exp(-2∑_{p≡3(8)}p^{-s} - C) ≥ c(s-1)^{-1/2} → ∞,
+
+using Mertens in the progression, `∑_{p≡3(8)}p^{-s} = ¼log(1/(s-1)) + O(1)`.  But if
+`logMean f N → c` then `logMean f` is bounded and
+`F(s) = (s-1)∫_1^∞ (logMean f ⌊t⌋) t^{-s} dt` is bounded.  Contradiction.
+
+*Numerical confirmation* (pure-Python sieve to `4·10^6`; no compiler on the box, no numpy):
+
+    N          L(N)     L/√(log N)   mean f N    badPrimeSum
+    10^3     2.86494     1.09005     0.216000     0.64636
+    10^4     3.28457     1.08228     0.183000     0.71749
+    10^5     3.65595     1.07747     0.161200     0.77321
+    10^6     3.99318     1.07432     0.145906     0.81877
+    4·10^6   4.18353     1.07299     0.138871     0.84267
+
+`L/√log N` is constant to three places over three decades while `L` itself rises 46%: so
+`logMean f N ≍ √(log N) → ∞` and `mean f N ≍ 1/√(log N) → 0`, exactly as predicted.  Note
+`mean f N·√(log N) = L(N)/√(log N)`, i.e. `mean f N = L(N)/log N` to the digit — the
+Hildebrand asymptotic, visible in the data.
+
+*Consequences.*  `tendsto_mean_atTop_zero_of_tendsto_logMean` (Cesàro bridge) and
+`..._of_exists_tendsto_logMean` remain true and are kept, but are **unusable**: the hypothesis
+never holds under `hdiv`.  Any Tauberian attack on the Dirichlet series of `f` at `s = 1`
+(Newman included) is dead for the same reason — `∫_1^∞(mean f t)dt/t` diverges.  The crux must
+be stated on `mean` directly, and is: `tendsto_mean_atTop_zero_of_badPrimeSum_atTop`.
+
+### 2. The lap-13 Turán–Kubilius iteration is refuted by a hard ceiling
+
+Lap 13's four-step plan (iterate `exists_sum_tk_deficit_le` down a chain of bad primes, then a
+subset-sum parity pigeonhole) cannot be run, for an accounting reason lap 13 did not check:
+
+* `E(N) = badPrimeSum f N ≤ ∑_{p≤N}1/p = log log N + O(1)` — a **hard ceiling**.
+* `OmegaE.exists_functional_relation` has error `O(√(E+1))` against main term `E`, so its
+  relative precision is `≍ E^{-1/2} ≥ (log log N)^{-1/2}`.
+* A `k`-level sign-flip chain needs the level-`j` slack `ρ_j ≈ ρ_1 ε^{-(j-1)}` to stay `≤ A/2`,
+  with `ρ_1 ≳ 1/(ε√E)`; so `k ≤ log(A√E)/log(1/ε) ≤ ½log₂ E ≈ ½log₂ log log N` levels.
+* The pigeonhole of step 4 splits `[0, ∑_i log p_i]` into `2^{k-1}` buckets and needs bucket
+  width `< A/2`.  The scales must reach down to `M₀`, so `∑_i log p_i ≈ log N`, forcing
+  `2^{k-1} ≳ log N`, i.e. `k ≳ log₂ log N`.
+
+`½log₂log log N` versus `log₂ log N`: incompatible by an exponential, for every choice of the
+free parameters.  Also refuted on the way: choosing the `k` primes below a *fixed* `Y` to make
+the buckets narrow, because each level's exceptional set has weight `εE(N)` while `{p ≤ Y}`
+carries only `E(Y)`, and `E(Y) > εE(N)` then forces `log Y ≥ exp(√E(N))`, which puts
+`∑_i log p_i` back at the scale of `log N`.
+
+`Wirsing/TuranDeficit.lean` and `Wirsing/GoodPrime.lean` stay in `src/`, sorry-free and
+unused.  **Do not resume this route.**
+
+### 3. Also refuted: PENDING_WORK lap 13 "next attack 0"
+
+The differential inequality `|σ(N)|log N ≤ Ψ(N) + ε log N + C`, `Ψ(N) = ∑_{n≤N}|σ(n)|/n`, was
+claimed to give `Ψ(N)/log N → β` because `(Ψ/log)' ≤ (ε log N + C)/(N log²N)` has convergent
+sum.  It does not: `∑_N ε/(N log N) = ε log log N` **diverges**.  The honest content is
+`Ψ(u)/u ≤ Ψ(u₀)/u₀ + ε log(u/u₀) + C_ε/u₀`, which is weaker than the trivial `Ψ/u ≤ 1` once
+`log(u/u₀) > 1/ε`.  Chaining does not help (the errors telescope to the same single bound).
+What survives, and is free: at any `N` with `|σ(N)| ≥ A - δ`, `Ψ(N) ≥ (A - δ - ε)log N - C`,
+hence the log-weight of `{n ≤ N : |σ(n)| < A - ρ}` is `≤ 2δ log N/(ρ+δ) + C(M₀,ρ)`.  Kept for
+reference; it is not enough on its own (it feeds the refuted route 2).
+
+### 4. THE NEW ROUTE — the coprime splitting identity, and `DilationInvariant`
+
+Let `p` be a prime, `v = f·1_{p∤·}` (`coprimeRestrict f p`).  Every `n ≥ 1` is uniquely
+`n = p^k m` with `p ∤ m`, and `f(p^k m) = f(p^k)f(m)`, so **exactly**
+
+    ∑_{n ≤ N} f n = ∑_{k=0}^{⌊log_p N⌋} f(p^k) · ∑_{m ≤ N/p^k} v m .           (SPLIT)
+
+Divide by `N` and write `V(x)/x = mean v x`:
+
+    mean f N = ∑_k (f(p^k)/p^k)·mean v (N/p^k) + O(1/N)·(tail of the k-sum).
+
+If `mean v` is asymptotically invariant under dilation by a fixed integer, this collapses:
+
+    limsup |mean f| ≤ |∑_{k≥0} f(p^k)/p^k| · limsup |mean v| ≤ |∑_k f(p^k)p^{-k}| .
+
+And when `f p = -1`,
+
+    |∑_{k≥0}f(p^k)p^{-k}| ≤ 1 - 1/p + 1/(p(p-1)) = 1 - (1/p)(p-2)/(p-1) ≤ exp(-3/(4p))  (p ≥ 5).
+
+Iterating over a finite set `T` of bad primes `≥ 5` (each step replaces `f` by its
+`coprimeRestrict`, which is again bounded multiplicative, and `f p_j = -1` survives because
+`p_j` is coprime to `p_1…p_{j-1}`):
+
+    limsup_N |mean f N| ≤ exp(-¾ ∑_{p ∈ T} 1/p) ,
+
+which `hdiv` drives to `0`.  **So the crux reduces to, and only to:**
+
+    DilationInvariant :
+      ∀ g, IsBddMultiplicative g → ∀ a ≥ 1, Tendsto (fun N ↦ mean g N - mean g (N/a)) atTop (𝓝 0)
+
+This is **Elliott's Lipschitz estimate** for mean values of multiplicative functions.  It is
+true (it follows from Wirsing's theorem for real `|g| ≤ 1`, so it is not *stronger* than the
+headline), it is strictly weaker as a statement (`mean g N = sin(log log N)` satisfies it
+without converging), and it is exactly the lemma Granville–Harper–Soundararajan
+(arXiv:1706.03749, Compositio 2019) derive Halász's theorem *from*.  It needs real-valuedness:
+for `g(n) = n^{iθ}`, `mean g N - mean g (N/a) → (1 - a^{-iθ})N^{iθ}/(1+iθ) ↛ 0`.
+
+Why this route and not the log-weighted ones: the splitting identity has **no error term at
+all**, so none of the `ε log N`-versus-`β(N)` accounting that killed laps 2–5, 10 and 13 can
+arise.  The whole loss is concentrated in the dilation step.
+
+*Bonus (do not build it):* the same identity, applied to `logMean` instead of `mean`, gives a
+three-line proof of `logMean f N = o(log N)` — the 59 KB of `Decay.lean` — because
+`|L_v(N) - L_v(N/a)| ≤ log a + 1` is free, and one divides by `log N`.  It also twists: for
+`f_θ(n) = f(n)n^{-iθ}` it gives `|L_θ(N)| ≪_θ (log N)^{1-1/16}`, a power saving, from
+`PrimeCos.eventually_sum_primeWeight_one_sub_mul_cos_ge`.  That is the `(H1)` input for a
+Parseval-based Halász, the fallback if `DilationInvariant` stalls.
+
+### Attack order for `Wirsing/Split.lean`
+
+1. `IsBddMultiplicative`, `coprimeRestrict`, and the closure lemma
+   `IsBddMultiplicative f → p.Prime → IsBddMultiplicative (coprimeRestrict f p)`.
+2. **(SPLIT)**, via `Finset.sum_nbij'` between `Icc 1 N` and
+   `(range (Nat.log p N + 1)).sigma (fun k ↦ (Icc 1 (N/p^k)).filter (¬ p ∣ ·))`,
+   `n ↦ ⟨n.factorization p, ord_compl[p] n⟩`, `⟨k,m⟩ ↦ p^k * m`.  Load-bearing.
+3. `Summable (fun k ↦ f (p^k)/p^k)` and the Euler bound `|∑'| ≤ 1 - 1/p + 1/(p(p-1))`.
+4. The one-step contraction from (SPLIT) + `DilationInvariant`.
+5. `Finset.induction` over `T`, then `hdiv` to make `∑_{p∈T}1/p` large.
+
+
 ## Lap 13 (2026-09-24) — the SHARP weight comparison is proved
 
 `Wirsing.exists_abs_sum_primeWeight_comp_sub_sum_div_le` (in `Wirsing/Sharp.lean`),
