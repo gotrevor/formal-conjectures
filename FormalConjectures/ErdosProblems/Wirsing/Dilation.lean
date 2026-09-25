@@ -497,4 +497,99 @@ theorem abs_dilationDiff_sub_dilationDiff_le {g : ℕ → ℝ} (hg : IsBddMultip
   rw [dilationDiff_sub_dilationDiff, abs_sub_comm]
   exact bdd_abs_mean_sub_mean_le g hg hM1 hMM'
 
+/--
+**The differential inequality for the mean, in the bounded class.**  For every `\varepsilon > 0`
+there is a `C` with
+$$|\sigma(N)|\log N \le \sum_{n \le N}\frac{|\sigma(n)|}{n} + \varepsilon\log N + C
+\qquad (N \ge 1).$$
+This is `Wirsing.exists_abs_mean_mul_log_le` with `IsPMOneMultiplicative` relaxed to
+`Wirsing.IsBddMultiplicative`, which is the class the coprime restrictions live in.
+-/
+@[category API, AMS 11]
+theorem bdd_exists_abs_mean_mul_log_le (g : ℕ → ℝ) (hg : IsBddMultiplicative g) {ε : ℝ}
+    (hε : 0 < ε) :
+    ∃ C : ℝ, ∀ N : ℕ, 1 ≤ N →
+      |mean g N| * Real.log N ≤ (∑ n ∈ Icc 1 N, |mean g n| / n) + ε * Real.log N + C := by
+  classical
+  obtain ⟨C, hC⟩ := exists_abs_sum_primeWeight_comp_sub_sum_div_le_two hε
+  refine ⟨C + (9 + Real.log 4), fun N hN ↦ ?_⟩
+  set h : ℕ → ℝ := fun n ↦ |mean g n| with hhdef
+  have hbd : ∀ m, |h m| ≤ 2 := by
+    intro m
+    simp only [hhdef, abs_abs]
+    linarith [abs_mean_le_one_of_bdd hg m]
+  have hinc : ∀ m, 2 ≤ m → m ≤ N → |h m - h (m - 1)| ≤ 2 / (m : ℝ) := by
+    intro m hm2 _
+    have hcast : ((m - 1 : ℕ) : ℝ) = (m : ℝ) - 1 := by
+      rw [Nat.cast_sub (by omega : 1 ≤ m), Nat.cast_one]
+    have hlip := bdd_abs_mean_sub_mean_le g hg (M := m - 1) (N := m) (by omega) (by omega)
+    rw [hcast] at hlip
+    have heq : 2 * ((m : ℝ) - ((m : ℝ) - 1)) / (m : ℝ) = 2 / (m : ℝ) := by ring_nf
+    rw [heq] at hlip
+    exact le_trans (abs_abs_sub_abs_le_abs_sub _ _) hlip
+  have hcmp := hC h N hinc hbd
+  have hprime : |mean g N| * Real.log N
+      ≤ (∑ k ∈ Icc 1 N, primeWeight k * h (N / k)) + (9 + Real.log 4) := by
+    have hrel := bdd_abs_mean_mul_log_sub_sum_prime_le g hg hN
+    have hps : ∑ k ∈ Icc 1 N, primeWeight k * h (N / k)
+        = ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * h (N / p) :=
+      sum_primeWeight_mul (fun k ↦ h (N / k)) N
+    have hdom : |∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (g p * mean g (N / p))|
+        ≤ ∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * h (N / p) := by
+      refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum ?_)
+      intro q hq
+      simp only [mem_filter, mem_Icc] at hq
+      have hqp : q.Prime := hq.2
+      have hw : (0 : ℝ) ≤ Real.log q / q :=
+        div_nonneg (Real.log_natCast_nonneg _) (by positivity)
+      rw [abs_mul, abs_of_nonneg hw, abs_mul]
+      refine mul_le_mul_of_nonneg_left ?_ hw
+      simp only [hhdef]
+      calc |g q| * |mean g (N / q)| ≤ 1 * |mean g (N / q)| :=
+            mul_le_mul_of_nonneg_right (hg.abs_le_one _ hqp.one_lt.le) (abs_nonneg _)
+        _ = |mean g (N / q)| := one_mul _
+    have hlogN : 0 ≤ Real.log N := Real.log_natCast_nonneg N
+    have habs : |mean g N * Real.log N| = |mean g N| * Real.log N := by
+      rw [abs_mul, abs_of_nonneg hlogN]
+    rw [hps]
+    have hsa := abs_sub_abs_le_abs_sub (mean g N * Real.log N)
+      (∑ p ∈ (Icc 1 N).filter Nat.Prime, Real.log p / p * (g p * mean g (N / p)))
+    rw [habs] at hsa
+    linarith [hdom, hrel, hsa]
+  have hsum : (∑ k ∈ Icc 1 N, primeWeight k * h (N / k))
+      ≤ (∑ n ∈ Icc 1 N, h n / n) + ε * Real.log N + C := by
+    linarith [(abs_le.1 hcmp).2]
+  simp only [hhdef] at hsum hprime ⊢
+  linarith
+
+/--
+**The mean vanishes as soon as its logarithmic average does.**  For a bounded multiplicative
+`g`, if `(\log N)^{-1}\sum_{n \le N}|\sigma(n)|/n \to 0` then `\sigma(N) \to 0`.
+-/
+@[category API, AMS 11]
+theorem bdd_tendsto_mean_of_tendsto_logAvg (g : ℕ → ℝ) (hg : IsBddMultiplicative g)
+    (hlog : Tendsto (fun N : ℕ ↦ (∑ n ∈ Icc 1 N, |mean g n| / n) / Real.log N) atTop (𝓝 0)) :
+    Tendsto (mean g) atTop (𝓝 0) := by
+  rw [NormedAddGroup.tendsto_nhds_zero]
+  intro ε hε
+  obtain ⟨C, hC⟩ := bdd_exists_abs_mean_mul_log_le g hg (ε := ε / 4) (by positivity)
+  have hA := hlog.eventually_lt_const (show (0 : ℝ) < ε / 4 by positivity)
+  have hCsmall : ∀ᶠ N : ℕ in atTop, |C| / Real.log N < ε / 4 :=
+    (Filter.Tendsto.div_atTop (tendsto_const_nhds (x := |C|))
+      (Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop)).eventually_lt_const
+        (by positivity)
+  have hlogpos : ∀ᶠ N : ℕ in atTop, (0 : ℝ) < Real.log N :=
+    (Real.tendsto_log_atTop.comp tendsto_natCast_atTop_atTop).eventually_gt_atTop 0
+  filter_upwards [hA, hCsmall, hlogpos, eventually_ge_atTop 1] with N hAN hCN hlN hN1
+  have h := hC N hN1
+  rw [Real.norm_eq_abs]
+  rw [div_lt_iff₀ hlN] at hAN hCN
+  have hCle : C ≤ |C| := le_abs_self C
+  have hkey : |mean g N| * Real.log N < ε * Real.log N := by
+    calc |mean g N| * Real.log N
+        ≤ (∑ n ∈ Icc 1 N, |mean g n| / n) + ε / 4 * Real.log N + C := h
+      _ < ε / 4 * Real.log N + ε / 4 * Real.log N + ε / 4 * Real.log N := by linarith
+      _ < ε * Real.log N := by nlinarith
+  exact lt_of_mul_lt_mul_right (by linarith) hlN.le
+
 end Wirsing

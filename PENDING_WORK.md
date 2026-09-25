@@ -61,7 +61,34 @@
   (`D_a(N) - D_b(N) = σ(⌊N/b⌋) - σ(⌊N/a⌋)`), and `abs_dilationDiff_sub_dilationDiff_le`
   (nearby dilations have nearly equal differences: the bound tends to `2(1 - a/b)`).
 
-### The concrete attack on `dilationInvariant_prime` (the "two near-periods" argument)
+* `bdd_exists_abs_mean_mul_log_le` / `bdd_tendsto_mean_of_tendsto_logAvg` (`Dilation.lean`):
+  `Sharp.exists_abs_mean_mul_log_le` for the **bounded** class, and its corollary
+  **`(log N)^{-1}∑_{n≤N}|mean g n|/n → 0  ⟹  mean g N → 0`**.  Any Halász-type route needs
+  this, because the coprime restrictions are not `±1`-valued.
+
+### REFUTED this lap: the soft "two near-periods" argument
+
+The idea below is recorded *because it fails*, so that no later lap re-runs it.
+
+Write `F(u) = σ(e^u)`; `F` is 2-Lipschitz.  The contraction of `Contract.lean` at a bad prime
+`p` fails only if `F(u - log p) ≈ -F(u)` (an "anti-period" `log p`), which gives a genuine
+approximate period `2 log p`, and two bad primes `p > q` give the approximate period
+`2(log p - log q) ≈ 2/q`, which is *tiny*.
+
+**Why it fails.**  A tiny period carries no information once it is only *approximate*.  An
+approximate period `δ` with error `η` per step transports a shift `c` at cost `η·c/δ`; with
+`δ ≈ 1/q` and `c = log p` the cost is `η q log p`, which swamps `η`.  Equivalently: `F` being
+2-Lipschitz makes small-scale periods automatic (`abs_dilationDiff_sub_dilationDiff_le` already
+gives `|D_a - D_b| ≤ 2(1-a/b)` for free), so they are vacuous.  The same computation kills the
+variant with many bad primes: nothing forces the Diophantine approximation
+`(2i-1)\log p ≈ 2j\log q` to have *bounded* `i, j`.
+
+Conclusion: no soft/Lipschitz argument can separate the anti-aligned configuration.  The
+separation must be quantitative and must use `∑_p (1 - g(p)\cos(t\log p))/p = ∞` **with
+uniformity in `t`** — which is exactly what `PrimeCos.lean` and `Uniform.lean`
+(`exists_forall_primeDefect_ge`) provide.  That is Halász's theorem, and it is the real wall.
+
+### The former plan (now refuted, kept for the record)
 
 Write `F(u) = σ(e^u)`.  `F` is 2-Lipschitz in `u` (`bdd_abs_mean_sub_mean_le`).  The
 contraction of `Contract.lean` at a bad prime `p` fails only if the `k = 0` and `k = 1` terms
