@@ -804,6 +804,73 @@ theorem sum_abs_dilationDiff_div_block_step {g : ℕ → ℝ} (hg : IsBddMultipl
   have := mul_le_mul_of_nonneg_left hharm hB0
   linarith
 
+/-! ### The packing induction -/
+
+/-- `\log N - \log\lfloor N/c\rfloor \le \log 2c` once `N \ge 2c`. -/
+@[category API, AMS 11]
+theorem log_sub_log_natDiv_le {N c : ℕ} (hc : 1 ≤ c) (hN : 2 * c ≤ N) :
+    Real.log N - Real.log ((N / c : ℕ) : ℝ) ≤ Real.log (2 * (c : ℝ)) := by
+  have hcR : (1 : ℝ) ≤ (c : ℝ) := by exact_mod_cast hc
+  have hcNR : (2 * c : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+  set m := N / c with hm
+  have hlt : N < (N / c + 1) * c := (Nat.div_lt_iff_lt_mul (by omega)).1 (Nat.lt_succ_self _)
+  have hcast : (N : ℝ) < ((m : ℝ) + 1) * (c : ℝ) := by exact_mod_cast hlt
+  have hd : (N : ℝ) / c ≤ (m : ℝ) + 1 := by
+    rw [div_le_iff₀ (by linarith)]
+    linarith
+  have h2 : (1 : ℝ) ≤ (N : ℝ) / (2 * c) := by
+    rw [le_div_iff₀ (by positivity)]
+    linarith
+  have h3 : (N : ℝ) / c - (N : ℝ) / (2 * c) = (N : ℝ) / (2 * c) := by
+    field_simp
+    ring
+  have hmR : (N : ℝ) / (2 * c) ≤ (m : ℝ) := by linarith
+  have hN0 : (0 : ℝ) < (N : ℝ) := by linarith
+  have hNa : (0 : ℝ) < (N : ℝ) / (2 * c) := div_pos hN0 (by positivity)
+  have hlog := Real.log_le_log hNa hmR
+  rw [Real.log_div (by positivity) (by positivity)] at hlog
+  linarith
+
+/--
+**The packing induction.**  If `\Phi` drops by a fixed `\gamma` at every block step
+`N \mapsto \lfloor N/T\rfloor`, then `\Phi(N) \le (B - \kappa)\log N + C` with
+`\kappa = \gamma/\log 2T`.
+
+The rate is `\gamma/\log 2T`, not `\gamma/\log T`: the floor loss in
+`\log N - \log\lfloor N/T\rfloor \le \log 2T` has to be paid out of the same `\gamma`, and with
+the smaller rate the induction closes exactly.
+-/
+@[category API, AMS 11]
+theorem le_of_block_recursion {Φ : ℕ → ℝ} {T N₀ : ℕ} {B γ C : ℝ} (hT : 2 ≤ T)
+    (hN₀ : 2 * T ≤ N₀) (hγ : 0 ≤ γ)
+    (hbase : ∀ N, N < N₀ → Φ N ≤ (B - γ / Real.log (2 * (T : ℝ))) * Real.log N + C)
+    (hstep : ∀ N, N₀ ≤ N →
+      Φ N ≤ Φ (N / T) + B * (Real.log N - Real.log ((N / T : ℕ) : ℝ)) - γ) :
+    ∀ N, Φ N ≤ (B - γ / Real.log (2 * (T : ℝ))) * Real.log N + C := by
+  have hTR : (2 : ℝ) ≤ (T : ℝ) := by exact_mod_cast hT
+  have hlogT : 0 < Real.log (2 * (T : ℝ)) := Real.log_pos (by linarith)
+  set κ : ℝ := γ / Real.log (2 * (T : ℝ)) with hκ
+  have hκ0 : 0 ≤ κ := by positivity
+  have hκT : κ * Real.log (2 * (T : ℝ)) = γ := by
+    rw [hκ, div_mul_cancel₀ _ (ne_of_gt hlogT)]
+  intro N
+  induction N using Nat.strong_induction_on with
+  | _ N ih =>
+    rcases lt_or_ge N N₀ with hlt | hge
+    · exact hbase N hlt
+    · have hN1 : 1 ≤ N := by omega
+      have hMlt : N / T < N := Nat.div_lt_self (by omega) (by omega)
+      have hIH := ih (N / T) hMlt
+      have hstepN := hstep N hge
+      have hlog : Real.log N - Real.log ((N / T : ℕ) : ℝ) ≤ Real.log (2 * (T : ℝ)) :=
+        log_sub_log_natDiv_le (by omega) (by omega)
+      have hlogM : 0 ≤ Real.log ((N / T : ℕ) : ℝ) := Real.log_natCast_nonneg _
+      have hshift : κ * (Real.log N - Real.log ((N / T : ℕ) : ℝ)) ≤ γ := by
+        calc κ * (Real.log N - Real.log ((N / T : ℕ) : ℝ))
+            ≤ κ * Real.log (2 * (T : ℝ)) := mul_le_mul_of_nonneg_left hlog hκ0
+          _ = γ := hκT
+      nlinarith [hIH, hstepN, hshift]
+
 /-! ### Saturation -/
 
 open scoped Classical in

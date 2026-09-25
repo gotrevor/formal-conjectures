@@ -114,6 +114,12 @@ Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
   `\kappa = (B-\Delta/2)(\log\rho)/2 / \log(2T)` and the `limsup` contradiction against
   `exists_abs_dilationDiff_mul_log_le`.
 
+* `log_sub_log_natDiv_le`, `le_of_block_recursion` — **the packing induction, proved** (ninth
+  commit of lap 16): a `\gamma`-drop at every block step `N \mapsto \lfloor N/T\rfloor` gives
+  `\Phi(N) \le (B-\kappa)\log N + C` with `\kappa = \gamma/\log 2T`.  Only the base case (all
+  `N < N_0`) and the seven eventual hypotheses of the block step are left, then the `limsup`
+  contradiction.
+
 ### Next lap, in order
 
 1. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
