@@ -366,6 +366,103 @@ theorem abs_dilationDiff_le_of_window {g : ℕ → ℝ} (hg : IsBddMultiplicativ
   rw [abs_sub_comm] at this
   linarith [abs_le.1 hstep' |>.1, abs_le.1 hstep' |>.2]
 
+/--
+**The prime window lands in the scale window.**  Put `X = \lfloor N/s\rfloor`.  Every
+`p \in (X, \lfloor cX\rfloor]` has `\lfloor N/p\rfloor \le s` and
+`s \le c(\lfloor N/p\rfloor + 1)`: the primes of one multiplicative window of ratio `c` realise
+scales in one multiplicative window of ratio `\approx c` ending at `s`.
+-/
+@[category API, AMS 11]
+theorem natDiv_mem_window {N s p : ℕ} (hs1 : 1 ≤ s) (hsN : s ≤ N) {c : ℝ} (hc : 1 < c)
+    (hcs : c ≤ s) (hp1 : N / s < p) (hp2 : p ≤ ⌊c * (N / s : ℕ)⌋₊) :
+    N / p ≤ s ∧ 1 ≤ N / p ∧ (s : ℝ) ≤ c * (((N / p : ℕ) : ℝ) + 1) := by
+  have hc0 : (0 : ℝ) < c := by linarith
+  have hsR : (1 : ℝ) ≤ (s : ℝ) := by exact_mod_cast hs1
+  have hNR : (1 : ℝ) ≤ (N : ℝ) := by
+    have : (1 : ℕ) ≤ N := le_trans hs1 hsN
+    exact_mod_cast this
+  have hp0 : 0 < p := lt_of_le_of_lt (Nat.zero_le _) hp1
+  have hpR : (0 : ℝ) < (p : ℝ) := by exact_mod_cast hp0
+  -- `X ≤ N / s` as reals
+  have hXR : ((N / s : ℕ) : ℝ) ≤ (N : ℝ) / s := by
+    rw [le_div_iff₀ (by linarith)]
+    have h := Nat.div_mul_le_self N s
+    have h' : ((N / s * s : ℕ) : ℝ) ≤ (N : ℝ) := by exact_mod_cast h
+    push_cast at h'
+    linarith
+  have hpub : (p : ℝ) ≤ c * ((N : ℝ) / s) := by
+    have h1 : (p : ℝ) ≤ c * ((N / s : ℕ) : ℝ) := by
+      have h := Nat.floor_le (a := c * ((N / s : ℕ) : ℝ)) (by positivity)
+      have hple : ((p : ℕ) : ℝ) ≤ ((⌊c * (N / s : ℕ)⌋₊ : ℕ) : ℝ) := by exact_mod_cast hp2
+      linarith
+    nlinarith [hXR, hc0]
+  have hNs : (s : ℝ) * ((N : ℝ) / s) = (N : ℝ) := by
+    field_simp
+  have hpN : (p : ℝ) ≤ (N : ℝ) := by
+    have h := mul_le_mul_of_nonneg_right hcs (show (0 : ℝ) ≤ (N : ℝ) / s by positivity)
+    rw [hNs] at h
+    linarith [hpub]
+  refine ⟨?_, ?_, ?_⟩
+  · -- `N / p ≤ s`
+    have hlt : N < p * s := (Nat.div_lt_iff_lt_mul (by omega)).1 hp1
+    by_contra hcon
+    have hge : s ≤ N / p := (not_le.1 hcon).le
+    have h' := (Nat.le_div_iff_mul_le hp0).1 hge
+    rw [Nat.mul_comm] at h'
+    exact absurd hlt (not_lt.2 h')
+  · -- `1 ≤ N / p`
+    refine (Nat.one_le_div_iff hp0).2 ?_
+    exact_mod_cast hpN
+  · -- `s ≤ c (⌊N/p⌋ + 1)`
+    have hfl : (N : ℝ) < (((N / p : ℕ) : ℝ) + 1) * (p : ℝ) := by
+      have hlt : N < (N / p + 1) * p := (Nat.div_lt_iff_lt_mul hp0).1 (Nat.lt_succ_self _)
+      have hc' : (N : ℝ) < (((N / p : ℕ) : ℝ) + 1) * (p : ℝ) := by exact_mod_cast hlt
+      linarith
+    have hNp : (N : ℝ) / p < ((N / p : ℕ) : ℝ) + 1 := by
+      rw [div_lt_iff₀ hpR]
+      linarith
+    have hps : (p : ℝ) * s ≤ c * N := by
+      have h := mul_le_mul_of_nonneg_right hpub (show (0 : ℝ) ≤ (s : ℝ) by linarith)
+      have he : c * ((N : ℝ) / s) * s = c * N := by field_simp
+      rw [he] at h
+      exact h
+    have hsle : (s : ℝ) ≤ c * ((N : ℝ) / p) := by
+      have h : (s : ℝ) ≤ c * (N : ℝ) / p := by
+        rw [le_div_iff₀ hpR]
+        linarith
+      calc (s : ℝ) ≤ c * (N : ℝ) / p := h
+        _ = c * ((N : ℝ) / p) := by ring
+    nlinarith [hNp, hc0]
+
+/--
+**The deficient primes of a window.**  Combining `Wirsing.natDiv_mem_window` with
+`Wirsing.abs_dilationDiff_le_of_window`: if `|D(s)| \le \Delta/4` and
+`(2+4q)\log(c^2) \le \Delta/4`, then every prime `p` of the window
+`(\lfloor N/s\rfloor, \lfloor c\lfloor N/s\rfloor\rfloor]` whose scale is at least
+`1/(c-1)` satisfies `|D(\lfloor N/p\rfloor)| \le \Delta/2`.
+-/
+@[category API, AMS 11]
+theorem abs_dilationDiff_natDiv_le_of_prime_window {g : ℕ → ℝ} (hg : IsBddMultiplicative g)
+    {q : ℕ} (hq : 1 ≤ q) {Δ c : ℝ} (hc : 1 < c)
+    (hlip : (2 + 4 * (q : ℝ)) * Real.log (c ^ 2) ≤ Δ / 4)
+    {N s p : ℕ} (hs1 : 1 ≤ s) (hsN : s ≤ N) (hcs : c ≤ s)
+    (hs : |dilationDiff g q s| ≤ Δ / 4)
+    (hp1 : N / s < p) (hp2 : p ≤ ⌊c * (N / s : ℕ)⌋₊)
+    (hwbig : 1 / (c - 1) ≤ ((N / p : ℕ) : ℝ)) :
+    |dilationDiff g q (N / p)| ≤ Δ / 2 := by
+  obtain ⟨h1, h2, h3⟩ := natDiv_mem_window hs1 hsN hc hcs hp1 hp2
+  have hwR : (1 : ℝ) ≤ ((N / p : ℕ) : ℝ) := by exact_mod_cast h2
+  have hlow : (s : ℝ) ≤ c ^ 2 * ((N / p : ℕ) : ℝ) := by
+    have hstep : ((N / p : ℕ) : ℝ) + 1 ≤ c * ((N / p : ℕ) : ℝ) := by
+      have hc1 : (0 : ℝ) < c - 1 := by linarith
+      rw [div_le_iff₀ hc1] at hwbig
+      nlinarith
+    calc (s : ℝ) ≤ c * (((N / p : ℕ) : ℝ) + 1) := h3
+      _ ≤ c * (c * ((N / p : ℕ) : ℝ)) := by
+          refine mul_le_mul_of_nonneg_left hstep (by linarith)
+      _ = c ^ 2 * ((N / p : ℕ) : ℝ) := by ring
+  exact abs_dilationDiff_le_of_window hg hq (by nlinarith : (1 : ℝ) ≤ c ^ 2) hlip h2 h1 hlow hs
+
 /-! ### Saturation -/
 
 open scoped Classical in

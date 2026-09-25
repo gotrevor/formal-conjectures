@@ -85,6 +85,14 @@ Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
   one scale `s` with `|D(s)| \le \Delta/4` forces `|D| \le \Delta/2` on the whole window
   `w \le s \le \rho w`, for any fixed `\rho` with `(2+4q)\log\rho \le \Delta/4`.
 
+* `natDiv_mem_window`, `abs_dilationDiff_natDiv_le_of_prime_window` — **the prime-window
+  transfer, proved** (fourth commit of lap 16): for `X = \lfloor N/s\rfloor`, every
+  `p \in (X, \lfloor cX\rfloor]` has `\lfloor N/p\rfloor \le s \le c(\lfloor N/p\rfloor+1)`,
+  hence (with `(2+4q)\log c^2 \le \Delta/4` and the scale at least `1/(c-1)`)
+  `|D(\lfloor N/p\rfloor)| \le \Delta/2`.  So the Mertens weight of the deficient primes at one
+  block is at least that of one multiplicative window of ratio `c`, which is what
+  `Newman.tendsto_sum_log_prime_div_window` bounds below.
+
 ### Next lap, in order
 
 1. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
