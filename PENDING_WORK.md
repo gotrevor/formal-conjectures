@@ -36,6 +36,49 @@ the sharp comparison in its `2/m`-increment form
 a one-line corollary).  In the log variable with `Φ(u) = ∫_0^u |F|` it is
 `u Φ'(u) ≤ Φ(u) + ε u + O(1)`.
 
+### Landed: good primes in a window (`Wirsing/GoodPrime.lean`, new, axiom-clean)
+
+* `exists_window_weight_gt K X₀`: some `X ≥ X₀` has prime weight `> K` in `(X, e^{|K|+1}X]`.
+  PNT via `Newman.tendsto_sum_log_prime_div_window`; Mertens with an `O(1)` error cannot give
+  this, because a window carries weight `log c` only.
+* `exists_prime_notMem`, `exists_prime_window_notMem`: the pigeonhole — a set of primes of
+  weight `> K` is not inside a set of weight `≤ K`.
+* `exists_near_extremal_prime`: at a point where the primes losing more than `ρ` carry weight
+  `≤ K` (that is `exists_sum_bad_weight_le_const`, with `K` independent of `N`), **every**
+  window of weight `> K` inside `rigidityPrimes M₀ N` contains a prime with
+  `s f(p) σ(⌊N/p⌋) ≥ A - ρ`.
+
+### THE ROUTE, as analysed this lap (read before attacking the crux again)
+
+The endgame that the pieces now support, and its one gap:
+
+1. At the variational point `N` (`Extremal.exists_sum_bad_weight_le_const`) the exceptional
+   prime weight is `K = (2(D+ε) + rigidityConst M₀)/ρ`, a constant.
+2. `exists_near_extremal_prime` + a **bad-prime** window (weight `> K`, available because
+   `hdiv` makes the bad weight diverge) gives a prime `p` with `f p = -1` and
+   `s σ(⌊N/p⌋) ≤ -(A - ρ)`: `σ` flips sign at scale `N/p`.
+3. `Rigidity.sum_bad_weight_le_step` at `N/p` gives a second exceptional weight `K'`; a
+   bad-prime window of weight `> K'` gives `q` with `f q = -1` and
+   `s σ(⌊N/(pq)⌋) ≥ A - ρ'`: `σ` flips back.
+4. `Rigidity.eq_of_mean_quotient_close` (proved) compares two quotients of ratio
+   `< 1/(1 - (A - ρ))`; applying it to `⌊N/p'⌋ ≈ ⌊N/(pq)⌋` for a near-extremal `p'` forces
+   `f p' = +1` for every near-extremal prime `p'` next to `pq`.
+
+**The gap.**  Steps 2-3 need the windows to sit inside `rigidityPrimes M₀ N`, i.e.
+`N/M₀ ≥ e^{|K|+1}X`, so `log N ≳ K + log M₀`.  But `K` is built from
+`D = deficitInf f M₀`, and the variational point `N` that realises `D` is not known to be
+large; forcing `N ≥ M₁` replaces `D` by `inf_{N ≥ M₁}`, which can grow with `M₁` (it does
+whenever `|σ(N)| → A` slowly).  **That tension — `K` constant versus `N` large — is the
+remaining crux**, and it is exactly what the `2δ log N` term of `sum_bad_weight_le` costs.
+Two ways out to try next:
+* sharpen `sum_bad_weight_le` using `exists_abs_mean_mul_log_le` (the new `ε log N` comparison)
+  in place of the `O(1)`-Mertens one used in `Rigidity.lean`: the `2δ log N + c(M₀)` numerator
+  should become `2δ log N + ε log N + c`, i.e. the bad weight `≤ (2δ + ε)log N/(ρ+δ)`, which at
+  `δ ≤ ερ` is `≤ 3ε log N/ρ` — still `∝ log N`, so this alone does not close it;
+* refute or confirm that `deficitInf` over `N ≥ M₁` stays bounded; if it can grow, the
+  variational point must be re-chosen jointly with `M₁` (minimise `(A - |σ N|)log N` over
+  `N ≥ M₁` *and* `M₁`).
+
 ### Next attack on the crux
 
 0. **Exploit the differential inequality.**  With `Ψ(N) = ∑_{n ≤ N} |σ(n)|/n` the inequality is
