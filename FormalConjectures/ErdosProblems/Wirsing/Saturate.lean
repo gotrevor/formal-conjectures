@@ -463,6 +463,41 @@ theorem abs_dilationDiff_natDiv_le_of_prime_window {g : ℕ → ℝ} (hg : IsBdd
       _ = c ^ 2 * ((N / p : ℕ) : ℝ) := by ring
   exact abs_dilationDiff_le_of_window hg hq (by nlinarith : (1 : ℝ) ≤ c ^ 2) hlip h2 h1 hlow hs
 
+/-! ### The harmonic weight of a window, from below -/
+
+/-- `\log(n+1) - \log n \le 1/n`. -/
+@[category API, AMS 11]
+theorem log_succ_sub_log_le {n : ℕ} (hn : 1 ≤ n) :
+    Real.log ((n : ℝ) + 1) - Real.log n ≤ 1 / n := by
+  have hn0 : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+  have hpos : (0 : ℝ) < ((n : ℝ) + 1) / n := by positivity
+  have h := Real.log_le_sub_one_of_pos hpos
+  rw [Real.log_div (by positivity) (by linarith)] at h
+  have he : ((n : ℝ) + 1) / n - 1 = 1 / n := by
+    field_simp
+    ring
+  linarith [h, he.le, he.ge]
+
+/--
+**The harmonic weight of a window, from below.**
+`\log(b+1) - \log(a+1) \le \sum_{a < n \le b} 1/n`.
+
+Mertens' first theorem has an `O(1)` error, so it cannot bound the *prime* weight of a window
+of fixed ratio from below without the prime number theorem.  The harmonic weight has no such
+problem, which is why the crossing argument is run against `\sum_{n \le N}|D(n)|/n` rather than
+against the Mertens weights.
+-/
+@[category API, AMS 11]
+theorem log_sub_log_le_sum_Ioc_one_div {a b : ℕ} (hab : a ≤ b) :
+    Real.log ((b : ℝ) + 1) - Real.log ((a : ℝ) + 1) ≤ ∑ n ∈ Ioc a b, (1 : ℝ) / n := by
+  induction b, hab using Nat.le_induction with
+  | base => simp
+  | succ k hk ih =>
+      rw [Finset.sum_Ioc_succ_top hk]
+      have hstep := log_succ_sub_log_le (n := k + 1) (by omega)
+      push_cast at hstep ⊢
+      linarith
+
 /-! ### Saturation -/
 
 open scoped Classical in
