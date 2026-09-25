@@ -31,6 +31,7 @@ public import FormalConjectures.ErdosProblems.Wirsing.Contract
 public import FormalConjectures.ErdosProblems.Wirsing.Dilation
 public import FormalConjectures.ErdosProblems.Wirsing.BddPrimeCos
 public import FormalConjectures.ErdosProblems.Wirsing.BddGeneral
+public import FormalConjectures.ErdosProblems.Wirsing.Saturate
 
 /-!
 # Wirsing's mean value theorem: assembly
@@ -161,12 +162,16 @@ prime is at most `1 - 1/(2p)`, and `\sum_{p \text{ bad}} 1/p = \infty` then driv
 slowly, not that it converges — and it is false for complex `g` (take `g(n) = n^{i\theta}`),
 so any proof must use that `g` is real.
 
-*Status.*  Open here.  It is [El79, Ch. 6]; Granville–Harper–Soundararajan derive Halász's
-theorem from it in [GHS19].
+*Status.*  Proved here, by the crossing argument of `Wirsing/Saturate.lean`
+(`Wirsing.tendsto_dilationDiff_atTop_nhds_zero`).  It is [El79, Ch. 6];
+Granville–Harper–Soundararajan derive Halász's theorem from it in [GHS19].
 -/
-@[category research open, AMS 11]
+@[category API, AMS 11]
 theorem dilationInvariant_prime : ∀ g : ℕ → ℝ, IsBddMultiplicative g → ∀ p : ℕ, p.Prime →
-    Tendsto (fun N : ℕ ↦ mean g N - mean g (N / p)) atTop (𝓝 0) := by sorry
+    Tendsto (fun N : ℕ ↦ mean g N - mean g (N / p)) atTop (𝓝 0) := by
+  intro g hg p hp
+  have h := tendsto_dilationDiff_atTop_nhds_zero g hg hp.two_le
+  exact h
 
 /-- Elliott's Lipschitz estimate for a general dilation, from the prime case
 (`Wirsing.dilationInvariant_of_prime`). -/

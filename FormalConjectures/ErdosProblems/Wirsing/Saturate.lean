@@ -1265,4 +1265,72 @@ theorem exists_saturation (g : ℕ → ℝ) (hg : IsBddMultiplicative g) {a : �
   rw [sub_mul]
   linarith [hDN, hsumle, hW3le]
 
+/--
+**The finite iteration.**  Starting from the trivial bound `|D| \le 2` and applying
+`Wirsing.exists_improvement` `k` times gives `|D| \le \max(\Delta, 2 - k\kappa)` eventually.
+Since `\kappa` does not depend on the current bound, finitely many steps reach any `\Delta > 0`.
+-/
+@[category API, AMS 11]
+theorem eventually_abs_dilationDiff_le_of_pos (g : ℕ → ℝ) (hg : IsBddMultiplicative g) {q : ℕ}
+    (hq2 : 2 ≤ q) {Δ : ℝ} (hΔ : 0 < Δ) (hΔ2 : Δ ≤ 2) :
+    ∀ᶠ N : ℕ in atTop, |dilationDiff g q N| ≤ Δ := by
+  obtain ⟨κ, hκ, hstep⟩ := exists_improvement g hg hq2 hΔ hΔ2
+  have key : ∀ k : ℕ, ∃ n₀ : ℕ, 1 ≤ n₀ ∧
+      ∀ n, n₀ ≤ n → |dilationDiff g q n| ≤ max Δ (2 - k * κ) := by
+    intro k
+    induction k with
+    | zero =>
+      refine ⟨1, le_refl 1, fun n _ ↦ ?_⟩
+      refine (abs_dilationDiff_le_two hg q n).trans ?_
+      simp only [Nat.cast_zero, zero_mul, sub_zero]
+      exact le_max_right _ _
+    | succ k ih =>
+      obtain ⟨n₀, hn₀, hbd⟩ := ih
+      set B : ℝ := max Δ (2 - k * κ) with hB
+      have hΔB : Δ ≤ B := le_max_left _ _
+      have hB2 : B ≤ 2 := by
+        refine max_le hΔ2 ?_
+        have : (0 : ℝ) ≤ k * κ := by positivity
+        linarith
+      have := hstep B hΔB hB2 n₀ hn₀ hbd
+      obtain ⟨n₁, hn₁⟩ := eventually_atTop.mp this
+      refine ⟨max n₁ 1, le_max_right _ _, fun n hn ↦ ?_⟩
+      refine (hn₁ n (le_trans (le_max_left _ _) hn)).trans ?_
+      rcases le_or_gt (2 - k * κ) Δ with h | h
+      · have : B = Δ := by rw [hB]; exact max_eq_left h
+        rw [this]
+        exact le_trans (by linarith) (le_max_left _ _)
+      · have : B = 2 - k * κ := by rw [hB]; exact max_eq_right h.le
+        rw [this]
+        refine le_trans (le_of_eq ?_) (le_max_right _ _)
+        push_cast
+        ring
+  obtain ⟨k, hk⟩ := exists_nat_gt ((2 - Δ) / κ)
+  have hkΔ : 2 - k * κ ≤ Δ := by
+    rw [div_lt_iff₀ hκ] at hk
+    linarith
+  obtain ⟨n₀, _, hbd⟩ := key k
+  refine eventually_atTop.2 ⟨n₀, fun n hn ↦ ?_⟩
+  exact (hbd n hn).trans (max_le (le_refl _) hkΔ)
+
+/--
+**Elliott's Lipschitz estimate for a prime dilation**, in the form
+`\mathrm{mean}\ g\ N - \mathrm{mean}\ g\ \lfloor N/q\rfloor \to 0`.  This is the crux of
+Wirsing's theorem; the proof is the crossing argument of this file, iterated finitely often.
+-/
+@[category API, AMS 11]
+theorem tendsto_dilationDiff_atTop_nhds_zero (g : ℕ → ℝ) (hg : IsBddMultiplicative g) {q : ℕ}
+    (hq2 : 2 ≤ q) : Tendsto (dilationDiff g q) atTop (𝓝 0) := by
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  set Δ : ℝ := min (ε / 2) 2 with hΔdef
+  have hΔ : 0 < Δ := lt_min (by linarith) (by norm_num)
+  have hΔ2 : Δ ≤ 2 := min_le_right _ _
+  have hΔε : Δ < ε := lt_of_le_of_lt (min_le_left _ _) (by linarith)
+  obtain ⟨n₀, hn₀⟩ := eventually_atTop.mp (eventually_abs_dilationDiff_le_of_pos g hg hq2 hΔ hΔ2)
+  refine ⟨n₀, fun n hn ↦ ?_⟩
+  have := hn₀ n hn
+  rw [Real.dist_eq, sub_zero]
+  linarith
+
 end Wirsing
