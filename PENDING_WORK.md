@@ -1,5 +1,52 @@
 # PENDING WORK — Erdős 239
 
+## Lap 15 (2026-09-25) — the reduction is COMPLETE; the crux is now `DilationInvariant`
+
+**Landed, all sorry-free, all green under `--wfail`.**
+
+* `Wirsing/Contract.lean` (new) — the lap-14 plan steps 1–5, finished:
+  * `DilationInvariant` (def): `∀ g bdd mult, ∀ a ≥ 1, mean g N - mean g ⌊N/a⌋ → 0`.
+  * `abs_sum_euler_le`: `|∑_{k≤K} g(p^k)/p^k| ≤ 1 - 1/p + 1/(p(p-1))` when `g p = -1`, `K ≥ 1`.
+    Only `g(1)=1`, `g(p)=-1`, `|g(p^k)|≤1` are used — no complete multiplicativity.
+  * `euler_bound_le`: that factor is `≤ 1 - 1/(2p)` for `p ≥ 5`.
+  * `eventually_abs_mean_le`: the one-step contraction.
+  * `eventually_abs_mean_le_prod`: `Finset.induction` over a set of bad primes `≥ 5`.
+  * `prod_le_exp_neg_sum`, `exists_finset_badPrimes`, and
+    `tendsto_mean_atTop_zero_of_dilationInvariant` — the crux, given `DilationInvariant`.
+* `Main.lean` — `tendsto_mean_atTop_zero_of_badPrimeSum_atTop` is now **proved**.  The single
+  `sorry` in `src/` is `Wirsing.dilationInvariant`.
+* `Wirsing/BddLog.lean` (new) — the whole `Log.lean` chain up to
+  `σ(N)log N = ∑_{p≤N}(log p/p)g(p)σ(⌊N/p⌋) + O(1)` transferred from `IsPMOneMultiplicative`
+  to `IsBddMultiplicative` (every use of `|f|=1` was really `|f|≤1`).  Needed because the
+  coprime restrictions take the value `0`.
+* `Wirsing/Dilation.lean` (new) — `abs_dilationDiff_mul_log_sub_sum_le`: with
+  `D(N) = mean g N - mean g ⌊N/a⌋`,
+
+      |D(N)·log N - ∑_{p ≤ N/a} (log p/p)·g(p)·D(⌊N/p⌋)|
+        ≤ 2(9+log 4) + 2(log 4+8) + 2(log N - log⌊N/a⌋).
+
+  Exact floor match `⌊⌊N/a⌋/p⌋ = ⌊⌊N/p⌋/a⌋` (`natDiv_div_comm`), so `D` satisfies the *same*
+  averaging relation as `σ`.
+
+### The obstruction this exposes, and the next attack
+
+The relation for `D` is **homogeneous and exactly critical**: `∑_{p≤N/a} log p/p = log N + O(1)`
+by Mertens, so putting `Δ = limsup|D|` gives only `Δ log N ≤ Δ log N + O(1)`.  No iteration of
+this relation alone can prove `D → 0`; the gain must come from somewhere else.  Recorded so no
+later lap re-derives it.
+
+Candidate sources of the gain, in order of promise:
+
+1. **Short-interval / large-sieve gain.**  The primes `p ∈ (N^{1-δ}, N]` contribute mass
+   `δ log N` and for those `⌊N/p⌋ < N^δ` is *small*, so `D(⌊N/p⌋)` is a mean at a tiny scale.
+   One extracts a genuine saving by bounding `∑_{p ~ P} |D(N/p)|^2` by a Halász/large-sieve
+   argument.  This is Elliott's route.
+2. **Iterate the relation twice** and use the `PrimeCos` input
+   `∑_p (1 - f(p)cos(t log p))/p = ∞` (`PrimeCos.lean`, already proved) to kill the `n^{iθ}`
+   obstruction that makes the estimate false for complex `g`.  Our `g` is real, which is
+   exactly the hypothesis that must be used, and it enters only through this non-pretentiousness.
+3. Get [GHS19] (arXiv:1706.03749) — see `ON-LINE-REQUEST.md`.
+
 ## Lap 14 (2026-09-25, review) — TWO REFUTATIONS AND A NEW ROUTE
 
 ### 1. The crux `∃ c, logMean f → c` is FALSE (not an overshoot)
