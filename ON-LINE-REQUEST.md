@@ -103,3 +103,40 @@ What is needed from it, in order of importance:
    that.  So Hildebrand must reach the asymptotic a different way, and that way is what we need.
 2. Where real-valuedness is used (the statement is false for `f(n) = n^{i\theta}`).
 3. Whether the proof uses PNT or sharp Mertens anywhere — both are now available in-repo.
+
+
+## 2026-09-25 (lap 15) — Hildebrand [Hi86], and GHS arXiv:1706.03749
+
+`WebSearch` from the box this lap recovered the **statement** of Hildebrand's key estimate,
+which is exactly the repo's remaining open obligation `Wirsing.dilationInvariant_prime`:
+
+> If `f` is real multiplicative with `-1 ≤ f(n) ≤ 1`, then for `1 ≤ w ≤ √x`
+>
+>     (1/x) ∑_{n≤x} f(n) = (w/x) ∑_{n≤x/w} f(n) + O( (log(log x / log 2w))^{-1/2} ).
+
+The `-1/2` exponent is the Turán–Kubilius standard deviation, and the repo already has the
+TK functional relation in exactly the right generality
+(`Wirsing.bdd_functional_relation_on`, `Wirsing/BddGeneral.lean`):
+
+    | σ(N)·L_S − ∑_{p∈S} (g(p)/p)·σ(⌊N/p⌋) | ≤ 3(√(L_S+1) + 1),   L_S = ∑_{p∈S} 1/p.
+
+**What is still missing is the two or three lines that turn that relation into the Lipschitz
+estimate.**  Naive attempts all fail: applying the relation at `x` and at `x/w` with the same
+`S` gives `L_S·|D(x)| ≤ 2 L_S + O(√L_S)`, which is vacuous, and reindexing the prime range by
+`w` changes `f(p)` to `f(p/w)`, which is meaningless.  So Hildebrand does something else.
+
+Please fetch **either** of:
+
+* https://academic.oup.com/blms/article-pdf/18/2/147/956525/18-2-147.pdf
+  (Hildebrand, *On Wirsing's mean value theorem for multiplicative functions*, BLMS 18 (1986)
+  147–152) — the whole paper is six pages; the proof of the Lipschitz estimate is what matters;
+* **https://arxiv.org/abs/1706.03749** (Granville–Harper–Soundararajan, *A new proof of
+  Halász's theorem, and its consequences*) — free on arXiv, and §2 contains a self-contained
+  proof of the Lipschitz estimate from the same TK relation;
+* failing both, https://arxiv.org/abs/math/9911246 (Granville–Soundararajan, *Decay of mean
+  values of multiplicative functions*), whose §2–3 also derive it.
+
+Drop the text under `ON-LINE-FINDINGS-hildebrand-1986.md` (or `-ghs-2019.md`).
+
+Specifically needed: **how the choice of the prime set `S` depends on `w` and `x`**, and where
+`f` real-valued is used.

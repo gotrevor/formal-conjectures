@@ -81,6 +81,32 @@
   bounded class now has every ingredient the `±1` class had.  A Halász endgame can be written
   entirely inside it.
 
+* `Wirsing/BddGeneral.lean` (new, sorry-free) — **the Turán–Kubilius functional relation for
+  the bounded class**: `bdd_functional_relation_on`,
+
+      | σ(N)·L_S − ∑_{p∈S} (g(p)/p)·σ(⌊N/p⌋) | ≤ 3(√(L_S+1) + 1),   L_S = ∑_{p∈S} 1/p,
+
+  for any finite set `S` of primes `≤ N` (plus `bdd_sum_sq_le`,
+  `bdd_sum_mul_omegaOn_approx`, `bdd_abs_sum_mul_omegaOn_sub_le`).
+
+### The target statement is now known exactly (found by `WebSearch`, lap 15)
+
+Hildebrand's key estimate — literally `dilationInvariant_prime` with a rate — is:
+
+> real multiplicative `-1 ≤ f ≤ 1`, `1 ≤ w ≤ √x`  ⟹
+> `(1/x)∑_{n≤x}f(n) = (w/x)∑_{n≤x/w}f(n) + O((log(log x / log 2w))^{-1/2})`.
+
+The `-1/2` is the Turán–Kubilius standard deviation, so `bdd_functional_relation_on` is
+certainly the engine; his hypothesis `-1 ≤ f ≤ 1` is exactly `IsBddMultiplicative`, which is
+why that transfer was worth doing.  **The missing step is how `S` is chosen in terms of `w`
+and `x`.**  Two naive choices are already refuted:
+
+* same `S` at `x` and at `x/w` ⟹ `L_S|D(x)| ≤ 2L_S + O(√L_S)`, vacuous;
+* reindexing the prime range by `w` to align the scales `x/p` ⟹ `f(p)` becomes `f(p/w)`,
+  meaningless.
+
+`ON-LINE-REQUEST.md` (lap-15 entry) asks for [Hi86] or GHS arXiv:1706.03749 §2.
+
 ### REFUTED this lap: the soft "two near-periods" argument
 
 The idea below is recorded *because it fails*, so that no later lap re-runs it.
