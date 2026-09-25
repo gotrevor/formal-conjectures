@@ -56,6 +56,34 @@
   *logarithmic-average* statement, which is automatically stable under dilation, instead of a
   pointwise one.  Attack `dilationInvariant_prime` through it.
 
+* Structural API for `D` (`Dilation.lean`): the cocycle identity `dilationDiff_mul`
+  (`D_{ab}(N) = D_a(N) + D_b(⌊N/a⌋)`), `dilationDiff_sub_dilationDiff`
+  (`D_a(N) - D_b(N) = σ(⌊N/b⌋) - σ(⌊N/a⌋)`), and `abs_dilationDiff_sub_dilationDiff_le`
+  (nearby dilations have nearly equal differences: the bound tends to `2(1 - a/b)`).
+
+### The concrete attack on `dilationInvariant_prime` (the "two near-periods" argument)
+
+Write `F(u) = σ(e^u)`.  `F` is 2-Lipschitz in `u` (`bdd_abs_mean_sub_mean_le`).  The
+contraction of `Contract.lean` at a bad prime `p` fails only if the `k = 0` and `k = 1` terms
+of the splitting *anti*-align, i.e. only if
+
+    F(u - log p) ≈ -F(u)        ("anti-period log p").
+
+Suppose that happens for every bad prime in a set of divergent reciprocal sum.  Then:
+
+1. anti-period `c` ⟹ period `2c`:  `|F(u) - F(u-2c)| ≤ 2η`;
+2. two periods `s > t` ⟹ period `s - t`:  `|F(u) - F(u-(s-t))| ≤ η₁ + η₂`;
+3. two bad primes `p > q` give the period `2(log p - log q) ≈ 2/q`, which is *tiny* for large
+   `q`.  A `2`-Lipschitz function with a tiny period `δ` satisfies `F(u - c) ≈ F(u)` for any
+   `c` (round `c` to a multiple of `δ`, cost `2δ`), contradicting the anti-period unless
+   `|F| ≲ δ`.
+
+This is the real-variable form of "a `±1`-valued multiplicative function cannot pretend to be
+`n^{iθ}` at two incommensurable frequencies", i.e. the content of `PrimeCos.lean` transported
+to the mean.  It is elementary and needs no analytic machinery.  Next lap: formalise 1 and 2
+as lemmas about `dilationDiff` (they are exactly the cocycle identity plus the triangle
+inequality), then quantify the "anti-alignment or contraction" dichotomy.
+
 ### The obstruction this exposes, and the next attack
 
 The relation for `D` is **homogeneous and exactly critical**: `∑_{p≤N/a} log p/p = log N + O(1)`

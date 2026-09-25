@@ -463,4 +463,38 @@ theorem tendsto_dilationDiff_of_tendsto_logAvg (g : ℕ → ℝ) (hg : IsBddMult
       _ < ε * Real.log N := by nlinarith
   exact lt_of_mul_lt_mul_right (by linarith) hlN.le
 
+/-- **The cocycle identity** `D_{ab}(N) = D_a(N) + D_b(\lfloor N/a\rfloor)`. -/
+@[category API, AMS 11]
+theorem dilationDiff_mul (g : ℕ → ℝ) (a b N : ℕ) :
+    dilationDiff g (a * b) N = dilationDiff g a N + dilationDiff g b (N / a) := by
+  simp only [dilationDiff, Nat.div_div_eq_div_mul]
+  ring
+
+/-- `D_a` and `D_b` differ only through the two scales `\lfloor N/a\rfloor`,
+`\lfloor N/b\rfloor`. -/
+@[category API, AMS 11]
+theorem dilationDiff_sub_dilationDiff (g : ℕ → ℝ) (a b N : ℕ) :
+    dilationDiff g a N - dilationDiff g b N = mean g (N / b) - mean g (N / a) := by
+  simp only [dilationDiff]
+  ring
+
+/--
+**Nearby dilations give nearly equal differences.**  For `1 ≤ a ≤ b ≤ N`,
+$$|D_a(N) - D_b(N)| \le
+  2\,\frac{\lfloor N/a\rfloor - \lfloor N/b\rfloor}{\lfloor N/a\rfloor},$$
+which for fixed `a ≤ b` tends to `2(1 - a/b)` as `N \to \infty`.  So `D_a(N)` varies slowly in
+the multiplicative variable `a`: two primes `p < q` with `q/p` close to `1` have essentially the
+same dilation difference at every `N`.
+-/
+@[category API, AMS 11]
+theorem abs_dilationDiff_sub_dilationDiff_le {g : ℕ → ℝ} (hg : IsBddMultiplicative g)
+    {a b N : ℕ} (ha : 1 ≤ a) (hab : a ≤ b) (hbN : b ≤ N) :
+    |dilationDiff g a N - dilationDiff g b N|
+      ≤ 2 * (((N / a : ℕ) : ℝ) - ((N / b : ℕ) : ℝ)) / ((N / a : ℕ) : ℝ) := by
+  have hb1 : 1 ≤ b := le_trans ha hab
+  have hM1 : 1 ≤ N / b := (Nat.one_le_div_iff (by omega)).2 hbN
+  have hMM' : N / b ≤ N / a := Nat.div_le_div_left hab (by omega)
+  rw [dilationDiff_sub_dilationDiff, abs_sub_comm]
+  exact bdd_abs_mean_sub_mean_le g hg hM1 hMM'
+
 end Wirsing
