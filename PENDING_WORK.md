@@ -1,5 +1,87 @@
 # PENDING WORK — Erdős 239
 
+## Lap 16 (2026-09-25) — A COMPLETE ELEMENTARY PROOF OF THE CRUX IS NOW IN HAND
+
+The crux `dilationInvariant_prime` (`∀ g` bdd real multiplicative, `∀ q` prime,
+`D(N) := σ(N) - σ(⌊N/q⌋) → 0`) has a **complete elementary proof** using only machinery the
+repository already contains.  This lap proved the first two of its four inputs
+(`Wirsing/Saturate.lean`, sorry-free).  The argument, in full:
+
+Let `Δ = limsup_N |D(N)|` and suppose `Δ > 0`.
+
+1. **Run bound** (`abs_sum_Ico_dilationDiff_le_two`, PROVED this lap).  The values of `D` along
+   a geometric progression telescope:
+   `∑_{i₁ ≤ i < i₂} D(⌊N/q^i⌋) = σ(⌊N/q^{i₁}⌋) - σ(⌊N/q^{i₂}⌋)`, so every partial sum is
+   `≤ 2` in absolute value.  Hence `D` cannot keep one sign and stay `≥ δ` in modulus over more
+   than `2/δ` consecutive progression terms (`card_le_of_forall_dilationDiff_ge`).
+
+2. **Crossings ⇒ a small scale in every geometric block** (`exists_sign_change` and
+   `abs_dilationDiff_le_of_straddle` PROVED this lap; the assembly `Claim A` is next).
+   Fix `J > 8/Δ`.  In the block of progression indices `i < J` at base `m`, the run bound
+   forbids all `D(⌊m/q^i⌋) ≥ Δ/4` and forbids all `≤ -Δ/4`.  So either some `i` has
+   `|D| ≤ Δ/4` — done — or two *adjacent* indices have opposite signs, and then, because `D` is
+   **real** and its steps are `O(1/m)` (`abs_dilationDiff_sub_le`), the discrete intermediate
+   value theorem produces a scale `s` between them with
+   `|D(s)| ≤ (2+4q)/s ≤ Δ/4`.  Either way:
+
+       ∀ m ≥ m₀, ∃ s ∈ [⌊m/q^J⌋, m], |D(s)| ≤ Δ/4.               (Claim A)
+
+   **This is the only step that uses that `g` is real**, and it is exactly where the argument
+   must fail for `g(n) = n^{iθ}`: there `D` rotates at constant modulus and never crosses `0`.
+   That is the decisive check that the route is not too good to be true.
+
+3. **Saturation** (`exists_saturation`, PROVED this lap).  The functional relation of
+   `Wirsing/Dilation.lean` is exactly critical, which lap 15 recorded as an obstruction.  It is
+   not one: criticality says the deficient scales must be **rare**.  With `B` an upper bound for
+   `|D|` on scales `≥ n₀`, there is a `C = C(g,q,n₀,B)` with
+
+       δ · ∑_{p ≤ N/q : |D(⌊N/p⌋)| ≤ B - δ, ⌊N/p⌋ ≥ n₀} (log p)/p
+         ≤ (B - |D(N)|)·log N + C.
+
+   Take `B = Δ + ε`, `δ = Δ/2`, and `N` with `|D(N)| ≥ Δ - ε`: the Mertens weight of the scales
+   where `|D|` drops to `Δ/2 + ε` or below is at most `(4ε/Δ)·log N + 2C/Δ`.
+
+4. **The contradiction, via PNT.**  Step 2 produces a deficient scale in *every* geometric block.
+   Turn one deficient scale into deficient *primes*: by the step bound, `|D|` stays `≤ Δ/2` on
+   the whole multiplicative window `[s, ρs]` once `(2+4q)·log ρ ≤ Δ/4`, and the primes `p` with
+   `⌊N/p⌋` in that window form a multiplicative window of ratio `ρ`, whose Mertens weight tends
+   to `log ρ` — **this is the prime number theorem, and the repository has it**
+   (`Wirsing.Newman.tendsto_sum_log_prime_div_window`, unconditional, via Zagier/Newman in
+   `Wirsing/Newman.lean`).  Taking one window per block, with blocks at geometric ratio
+   `T = q^J·ρ` and dropping the `O(1)` lowest blocks (where the window position is not yet
+   large), the deficient primes carry weight `≥ c₀·log N` with
+   `c₀ = c₀(Δ, q) = log ρ / (3 log T) > 0` independent of `N` and `ε`.  Choosing `ε` with
+   `4ε/Δ < c₀/2` contradicts step 3 for all large `N`.
+
+### Why this is not blocked by the lap-15 obstructions
+
+* The relation is critical, so it cannot be *iterated* — correct, and the argument never
+  iterates it.  It is used **once**, as the saturation inequality of step 3.
+* Mertens' first theorem has an `O(1)` error, so it cannot see a fixed-ratio window — correct,
+  and that is why step 4 needs PNT.  The repository proves PNT
+  (`Newman.tendsto_chebyshevPsi_nat_div_atTop_one`), and `tendsto_sum_log_prime_div_window`
+  is already the exact statement needed.  **This is the input the earlier laps did not realise
+  they already had.**
+* No Halász theorem, no Parseval, no Dirichlet-series analysis, no `logMean` convergence.
+
+### Landed this lap — `Wirsing/Saturate.lean` (new, sorry-free)
+
+* `sum_Ico_dilationDiff` — the telescoping identity along `⌊N/q^i⌋`.
+* `abs_sum_Ico_dilationDiff_le_two` — the run bound.
+* `card_le_of_forall_dilationDiff_ge` — `(i₂-i₁)·δ ≤ 2` for a one-signed run.
+* `exists_sign_change` — the discrete intermediate value theorem.
+* `abs_dilationDiff_le_of_straddle` — at a sign change, `|D| ≤ (2+4q)/(m+1)`.
+* `exists_saturation` — the saturation inequality of step 3, with an existential constant.
+
+### Next lap, in order
+
+1. **Claim A** (`exists_abs_dilationDiff_le_of_block`): assemble 1 + 2.  Pure bookkeeping over
+   `Ico 0 J`, plus "a sign vector with no adjacent sign change is constant" (a `Nat` induction).
+2. **The window transfer**: `|D| ≤ Δ/2` on `[s, ρs]` from `abs_dilationDiff_sub_le` by summing
+   `(2+4q)/m`; and `⌊N/p⌋ ∈ [s, ρs]` for `p` in a window of ratio `≈ ρ`.
+3. **The block/window packing** and the final contradiction, consuming
+   `Newman.tendsto_sum_log_prime_div_window`.
+
 ## Lap 15 (2026-09-25) — the reduction is COMPLETE; the crux is now `DilationInvariant`
 
 **Landed, all sorry-free, all green under `--wfail`.**
