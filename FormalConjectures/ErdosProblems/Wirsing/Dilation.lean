@@ -17,6 +17,7 @@ module
 
 public import FormalConjecturesUtil
 public import FormalConjectures.ErdosProblems.Wirsing.BddLog
+public import FormalConjectures.ErdosProblems.Wirsing.Contract
 
 /-!
 # The functional relation satisfied by the dilation difference
@@ -162,5 +163,50 @@ theorem abs_dilationDiff_mul_log_sub_sum_le (g : ℕ → ℝ) (hg : IsBddMultipl
       _ = |x| + |y| + |z| + |w| := by ring
   refine (hstep _ _ _ _).trans ?_
   linarith [hR1, hR2, hgap, hdrift]
+
+/-- `\lfloor N/a\rfloor \to \infty` for fixed `a \ge 1`. -/
+@[category API, AMS 11]
+theorem tendsto_natDiv_atTop {a : ℕ} (ha : 1 ≤ a) :
+    Tendsto (fun N : ℕ ↦ N / a) atTop atTop :=
+  tendsto_atTop_atTop.2 fun b ↦ ⟨b * a, fun n hn ↦ (Nat.le_div_iff_mul_le (by omega)).2 hn⟩
+
+/--
+**`DilationInvariant` only has to be proved for a prime dilation.**  Writing `a = pb`,
+`D_a(N) = D_p(N) + D_b(\lfloor N/p\rfloor)`, and `\lfloor N/p\rfloor \to \infty`, so the
+general case follows by strong induction on `a`.
+
+Together with `Wirsing.eventually_abs_mean_le`, which only ever dilates by a power of the one
+prime being removed, this cuts the remaining obligation down to: *for every real multiplicative
+`g` with `|g| \le 1` and every prime `p`, `\text{mean } g\ N - \text{mean } g\ \lfloor N/p\rfloor
+\to 0`.*
+-/
+@[category API, AMS 11]
+theorem dilationInvariant_of_prime
+    (h : ∀ g : ℕ → ℝ, IsBddMultiplicative g → ∀ p : ℕ, p.Prime →
+      Tendsto (fun N : ℕ ↦ mean g N - mean g (N / p)) atTop (𝓝 0)) :
+    DilationInvariant := by
+  intro g hg a
+  induction a using Nat.strong_induction_on with
+  | _ a ih =>
+    intro ha
+    rcases eq_or_lt_of_le ha with h1 | h1
+    · simp [← h1]
+    · obtain ⟨p, hp, b, rfl⟩ : ∃ p, p.Prime ∧ ∃ b, a = p * b := by
+        obtain ⟨p, hp, hpa⟩ := Nat.exists_prime_and_dvd (by omega : a ≠ 1)
+        obtain ⟨b, hb⟩ := hpa
+        exact ⟨p, hp, b, hb⟩
+      have hb1 : 1 ≤ b := by
+        rcases Nat.eq_zero_or_pos b with rfl | hb; · simp at h1
+        exact hb
+      have hblt : b < p * b := by
+        have := hp.two_le
+        nlinarith
+      have h1p := h g hg p hp
+      have h2b := (ih b hblt hb1).comp (tendsto_natDiv_atTop (a := p) hp.pos)
+      have hsum := h1p.add h2b
+      rw [add_zero] at hsum
+      refine hsum.congr fun N ↦ ?_
+      simp only [Function.comp_apply, Nat.div_div_eq_div_mul]
+      ring
 
 end Wirsing

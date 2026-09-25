@@ -28,6 +28,16 @@
   Exact floor match `⌊⌊N/a⌋/p⌋ = ⌊⌊N/p⌋/a⌋` (`natDiv_div_comm`), so `D` satisfies the *same*
   averaging relation as `σ`.
 
+* `dilationInvariant_of_prime` (in `Dilation.lean`) — **the crux sorry is now narrower**:
+  `D_{ab}(N) = D_a(N) + D_b(⌊N/a⌋)` and `⌊N/a⌋ → ∞`, so strong induction on `a` reduces
+  `DilationInvariant` to a **prime** dilation.  `Main.lean` now carries
+  `dilationInvariant_prime` as the only `sorry` in `src/`:
+
+      ∀ g bdd mult, ∀ p prime, mean g N - mean g ⌊N/p⌋ → 0.
+
+  (`eventually_abs_mean_le` only ever dilates by powers of the single prime it removes, so
+  nothing is lost.)
+
 ### The obstruction this exposes, and the next attack
 
 The relation for `D` is **homogeneous and exactly critical**: `∑_{p≤N/a} log p/p = log N + O(1)`

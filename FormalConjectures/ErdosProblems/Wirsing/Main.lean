@@ -28,6 +28,7 @@ public import FormalConjectures.ErdosProblems.Wirsing.Sharp
 public import FormalConjectures.ErdosProblems.Wirsing.GoodPrime
 public import FormalConjectures.ErdosProblems.Wirsing.TuranDeficit
 public import FormalConjectures.ErdosProblems.Wirsing.Contract
+public import FormalConjectures.ErdosProblems.Wirsing.Dilation
 
 /-!
 # Wirsing's mean value theorem: assembly
@@ -141,11 +142,15 @@ need not converge.  `Wirsing.tendsto_mean_atTop_zero_of_tendsto_logMean` above i
 -/
 
 /--
-**Elliott's Lipschitz estimate** — the single remaining open obligation of Wirsing's theorem.
+**Elliott's Lipschitz estimate at a prime** — the single remaining open obligation of
+Wirsing's theorem.
 
-For every real multiplicative `g` with `|g| \le 1` and every fixed `a \ge 1`,
-$$\frac1N\sum_{n \le N} g(n) - \frac{1}{\lfloor N/a\rfloor}\sum_{n \le N/a} g(n)
+For every real multiplicative `g` with `|g| \le 1` and every prime `p`,
+$$\frac1N\sum_{n \le N} g(n) - \frac{1}{\lfloor N/p\rfloor}\sum_{n \le N/p} g(n)
    \longrightarrow 0 .$$
+
+A composite dilation splits as `D_{ab}(N) = D_a(N) + D_b(\lfloor N/a\rfloor)`, so the prime case
+is all that is needed (`Wirsing.dilationInvariant_of_prime`).
 
 Everything else in the divergent case is reduced to this by `Wirsing/Split.lean` and
 `Wirsing/Contract.lean`: the coprime splitting identity is exact, the Euler factor of a bad
@@ -158,7 +163,14 @@ so any proof must use that `g` is real.
 theorem from it in [GHS19].
 -/
 @[category research open, AMS 11]
-theorem dilationInvariant : DilationInvariant := by sorry
+theorem dilationInvariant_prime : ∀ g : ℕ → ℝ, IsBddMultiplicative g → ∀ p : ℕ, p.Prime →
+    Tendsto (fun N : ℕ ↦ mean g N - mean g (N / p)) atTop (𝓝 0) := by sorry
+
+/-- Elliott's Lipschitz estimate for a general dilation, from the prime case
+(`Wirsing.dilationInvariant_of_prime`). -/
+@[category API, AMS 11]
+theorem dilationInvariant : DilationInvariant :=
+  dilationInvariant_of_prime dilationInvariant_prime
 
 /--
 **THE CRUX.**  If the bad primes have divergent reciprocal sum then the mean value is `0`:
