@@ -241,4 +241,46 @@ theorem beaver_math_olympiad_problem_8 : answer(sorry) ↔
     ∃ i, a i = b i / 2 + 1 := by
   sorry
 
+/--
+[BMO#9](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#9._1RB1LA_1RC0RD_1LA---_1RE1RD_1LF0LA_---0LE_(bbch))
+
+Consider configurations given by infinite sequences of non-negative integers
+$(x_0, x_1, x_2, \ldots)$. Define a partial transition map $T$ by the following rewrite rules,
+for all $a, b, c \in \mathbb{N}$ and every infinite tail sequence $\mathbf r$:
+
+$$(0, a, c, \mathbf r) \mapsto (3 + a + c, \mathbf r)$$
+$$(1, 0, \mathbf r) \mapsto \mathrm{Halt}$$
+$$(1, 1 + a, c, \mathbf r) \mapsto (a, 0, 1, 1 + c, \mathbf r)$$
+$$(2 + a, b, c, \mathbf r) \mapsto (a, 1 + b, 1 + c, \mathbf r)$$
+
+Starting from $(0, 0, 0, \ldots)$, does the orbit under $T$ ever reach $\mathrm{Halt}$?
+
+In the Lean statement, `x n` is the $n$-th configuration. The second branch of `x_rec` also
+covers the halting prefix $(1, 0, \ldots)$, with an arbitrary value. The conclusion says that this
+prefix never occurs, and every step before its first occurrence follows the rules above.
+
+[BMO#9](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#9._1RB1LA_1RC0RD_1LA---_1RE1RD_1LF0LA_---0LE_(bbch)) is equivalent to the non-termination of the 6-state Turing machine
+`1RB1LA_1RC0RD_1LA---_1RE1RD_1LF0LA_---0LE` (from all-0 tape).
+
+The machine was proven not to halt in Rocq by [bbchallenge.org](https://bbchallenge.org)
+contributor ccz181078; see
+[`BMO9.v`](https://github.com/ccz181078/busycoq/blob/605d26d30610615ebe09ec23fcea079d6ef6ef50/verify/BMO9.v).
+-/
+@[category research solved, AMS 5 11 68,
+  formal_proof using lean4 at
+    "https://github.com/gotrevor/collatz-cryptid/blob/ee724cb3ebc48ecf9ee3b6676d25b7d69de7b0f4/lean/Collatz/BMO/Problem9.lean#L114"]
+theorem beaver_math_olympiad_problem_9
+    (x : ℕ → ℕ → ℕ)
+    (x_ini : x 0 = fun _ ↦ 0)
+    (x_rec : ∀ n, x (n + 1) =
+      if x n 0 = 0 then
+        fun i ↦ if i = 0 then 3 + x n 1 + x n 2 else x n (i + 2)
+      else if x n 0 = 1 then
+        fun i ↦ if i = 0 then x n 1 - 1 else if i = 1 then 0 else if i = 2 then 1
+          else if i = 3 then 1 + x n 2 else x n (i - 1)
+      else
+        fun i ↦ if i = 0 then x n 0 - 2 else if i ≤ 2 then 1 + x n i else x n i) :
+    ¬ ∃ n, x n 0 = 1 ∧ x n 1 = 0 := by
+  sorry
+
 end BeaverMathOlympiad
