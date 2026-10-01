@@ -211,6 +211,32 @@ theorem beaver_math_olympiad_problem_5 : answer(sorry) ↔
   sorry
 
 /--
+[BMO#6](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#6._Space_Needle)
+
+Let $f(b) = b + k + 3a$, where $k$ and $a$ are non-negative integers satisfying
+$b = (2a+1) \cdot 2^k$. Does there exist a non-negative integer $n$ such that $f^n(6)$ is a power
+of $2$?
+
+The first values of $f^n(6)$ are $6, 10, 17, 41, 101, 251, 626, 1095, 2736, 2995$.
+
+[BMO#6](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#6._Space_Needle) is equivalent to asking whether the 6-state Turing machine
+[`1RB1LA_1LC0RE_1LF1LD_0RB0LA_1RC1RE_---0LD`](https://wiki.bbchallenge.org/wiki/Space_Needle)
+("Space Needle") halts or not.
+
+The machine is believed not to halt, but there is no proof, hence the problem is formulated
+using `answer(sorry) ↔`.
+
+The machine was discovered by [bbchallenge.org](https://bbchallenge.org) contributor mxdys on
+January 9th 2025.
+-/
+@[category research open, AMS 5 11 68]
+theorem beaver_math_olympiad_problem_6 :
+    answer(sorry) ↔ ∀ (f : ℕ → ℕ),
+      ∀ᵉ (hf : f = fun b ↦ b + padicValNat 2 b + 3 * ((b / 2 ^ padicValNat 2 b - 1) / 2)),
+      ∃ n m, f^[n] 6 = 2 ^ m := by
+  sorry
+
+/--
 [BMO#7](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#7._1RB1RF_1RC0RA_1LD1RC_1LE0LE_0RA0LD_0RB---_(bbch))
 
 Let $v_2(n)$ be the largest integer $k$ such that $2^k$ divides $n$, and let
