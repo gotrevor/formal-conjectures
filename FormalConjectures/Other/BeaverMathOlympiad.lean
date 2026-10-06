@@ -211,6 +211,61 @@ theorem beaver_math_olympiad_problem_5 : answer(sorry) ↔
   sorry
 
 /--
+[BMO#6](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#6._Space_Needle)
+
+Let $f(b) = b + k + 3a$, where $k$ and $a$ are non-negative integers satisfying
+$b = (2a+1) \cdot 2^k$. Does there exist a non-negative integer $n$ such that $f^n(6)$ is a power
+of $2$?
+
+The first values of $f^n(6)$ are $6, 10, 17, 41, 101, 251, 626, 1095, 2736, 2995$.
+
+[BMO#6](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#6._Space_Needle) is equivalent to asking whether the 6-state Turing machine
+[`1RB1LA_1LC0RE_1LF1LD_0RB0LA_1RC1RE_---0LD`](https://wiki.bbchallenge.org/wiki/Space_Needle)
+("Space Needle") halts or not.
+
+The machine is believed not to halt, but there is no proof, hence the problem is formulated
+using `answer(sorry) ↔`.
+
+The machine was discovered by [bbchallenge.org](https://bbchallenge.org) contributor mxdys on
+January 9th 2025.
+-/
+@[category research open, AMS 5 11 68]
+theorem beaver_math_olympiad_problem_6 :
+    answer(sorry) ↔ ∀ (f : ℕ → ℕ),
+      ∀ᵉ (hf : f = fun b ↦ b + padicValNat 2 b + 3 * ((b / 2 ^ padicValNat 2 b - 1) / 2)),
+      ∃ n m, f^[n] 6 = 2 ^ m := by
+  sorry
+
+/--
+[BMO#7](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#7._1RB1RF_1RC0RA_1LD1RC_1LE0LE_0RA0LD_0RB---_(bbch))
+
+Let $v_2(n)$ be the largest integer $k$ such that $2^k$ divides $n$, and let
+$f(n) = n + 1 + (v_2(n+1) \bmod 2)$. Let $(a_n)_{n \ge 0}$ be the sequence with $a_0 = 1$ and
+$a_{n+1} = f^{n+2}(\lfloor a_n / 2 \rfloor)$, where $f^k$ is the $k$-th iterate of $f$.
+Is there a non-negative integer $k$ such that $a_k$ is even?
+
+The first values of $a_n$ are $1, 3, 5, 7, 11, 15, 17, 19, 21, 23$.
+
+[BMO#7](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#7._1RB1RF_1RC0RA_1LD1RC_1LE0LE_0RA0LD_0RB---_(bbch)) is equivalent to the non-termination of the 6-state Turing machine
+`1RB1RF_1RC0RA_1LD1RC_1LE0LE_0RA0LD_0RB---` (from all-0 tape).
+
+The machine was posted to the [bbchallenge.org](https://bbchallenge.org) forum by contributor mxdys
+on September 28th 2025. Contributor pomme_de_terre proved that it does not halt on October 24th 2025,
+using an ansatz of contributor planet246; see
+[Discord discussion](https://discord.com/channels/960643023006490684/1421782442213376000/1431483206208852001).
+-/
+@[category research solved, AMS 5 11 68,
+  formal_proof using lean4 at
+    "https://github.com/gotrevor/collatz-cryptid/blob/489954329acec1bf87589f2408e9e9b88f50b814/lean/Collatz/BMO/Problem7.lean#L253"]
+theorem beaver_math_olympiad_problem_7
+    (f : ℕ → ℕ) (hf : f = fun n ↦ n + 1 + padicValNat 2 (n + 1) % 2)
+    (a : ℕ → ℕ)
+    (a_ini : a 0 = 1)
+    (a_rec : ∀ n, a (n + 1) = f^[n + 2] (a n / 2)) :
+    ¬ ∃ k, Even (a k) := by
+  sorry
+
+/--
 [BMO#8](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#8._1RB0LD_0RC1RB_0RD0RA_1LE0RD_1LF---_0LA1LA_(bbch))
 
 Let $(a_n)_{n \ge 1}$ and $(b_n)_{n \ge 1}$ be two sequences such that $(a_1, b_1) = (10, 12)$ and
