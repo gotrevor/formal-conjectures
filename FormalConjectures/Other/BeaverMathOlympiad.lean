@@ -221,8 +221,7 @@ Is there a non-negative integer $k$ such that $a_k$ is even?
 The first values of $a_n$ are $1, 3, 5, 7, 11, 15, 17, 19, 21, 23$.
 
 [BMO#7](https://wiki.bbchallenge.org/wiki/Beaver_Math_Olympiad#7._1RB1RF_1RC0RA_1LD1RC_1LE0LE_0RA0LD_0RB---_(bbch)) is slightly stronger than the halting problem of the 6-state Turing machine
-`1RB1RF_1RC0RA_1LD1RC_1LE0LE_0RA0LD_0RB---`
-(from all-0 tape).
+`1RB1RF_1RC0RA_1LD1RC_1LE0LE_0RA0LD_0RB---` (from all-0 tape).
 
 The machine was posted to the [bbchallenge.org](https://bbchallenge.org) forum by contributor mxdys
 on September 28th 2025. Contributor pomme_de_terre proved that it does not halt on October 24th 2025,
